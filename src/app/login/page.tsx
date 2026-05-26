@@ -1,10 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  return (
+    <main className="min-h-screen flex items-center justify-center px-6">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-10">
+          <h1 className="text-xl font-light tracking-tight">Consistency Tracker</h1>
+          <p className="mt-2 text-sm text-[color:var(--muted)]">
+            Sign in to start tracking.
+          </p>
+        </div>
+
+        <Suspense fallback={<LoginButtonFallback />}>
+          <LoginContent />
+        </Suspense>
+      </div>
+    </main>
+  );
+}
+
+function LoginButtonFallback() {
+  return (
+    <div className="w-full border border-[color:var(--border)] rounded-lg py-3 text-sm text-center text-[color:var(--muted)]">
+      Loading…
+    </div>
+  );
+}
+
+function LoginContent() {
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
@@ -26,31 +53,22 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-10">
-          <h1 className="text-xl font-light tracking-tight">Consistency Tracker</h1>
-          <p className="mt-2 text-sm text-[color:var(--muted)]">
-            Sign in to start tracking.
-          </p>
-        </div>
+    <>
+      <button
+        onClick={signInWithGoogle}
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-3 border border-[color:var(--border)] rounded-lg py-3 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition"
+      >
+        <GoogleIcon />
+        {loading ? "Redirecting…" : "Continue with Google"}
+      </button>
 
-        <button
-          onClick={signInWithGoogle}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-3 border border-[color:var(--border)] rounded-lg py-3 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition"
-        >
-          <GoogleIcon />
-          {loading ? "Redirecting…" : "Continue with Google"}
-        </button>
-
-        {error ? (
-          <p className="mt-4 text-xs text-red-600 text-center">
-            Something went wrong. Try again.
-          </p>
-        ) : null}
-      </div>
-    </main>
+      {error ? (
+        <p className="mt-4 text-xs text-red-600 text-center">
+          Something went wrong. Try again.
+        </p>
+      ) : null}
+    </>
   );
 }
 
