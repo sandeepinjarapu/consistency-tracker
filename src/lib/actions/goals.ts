@@ -10,6 +10,7 @@ export type Goal = {
   doc_url: string | null;
   category_id: string | null;
   target_days: number[];
+  reminder_time: string | null; // "HH:MM:SS" from Postgres TIME
   active: boolean;
   archived_at: string | null;
   created_at: string;
@@ -21,6 +22,7 @@ export type GoalInput = {
   doc_url?: string;
   category_id?: string | null;
   target_days: number[];
+  reminder_time?: string | null; // "HH:MM" — null/empty means no reminder
 };
 
 function validate(input: GoalInput): void {
@@ -42,15 +44,19 @@ function validate(input: GoalInput): void {
       throw new Error("Doc URL must be a valid URL");
     }
   }
+  if (input.reminder_time && !/^\d{2}:\d{2}$/.test(input.reminder_time)) {
+    throw new Error("Reminder time must be in HH:MM format");
+  }
 }
+
+const GOAL_COLUMNS =
+  "id, name, description, doc_url, category_id, target_days, reminder_time, active, archived_at, created_at";
 
 export async function listActiveGoals(): Promise<Goal[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("goals")
-    .select(
-      "id, name, description, doc_url, category_id, target_days, active, archived_at, created_at"
-    )
+    .select(GOAL_COLUMNS)
     .eq("active", true)
     .order("created_at", { ascending: true });
   if (error) throw error;
@@ -61,9 +67,7 @@ export async function getGoal(id: string): Promise<Goal | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("goals")
-    .select(
-      "id, name, description, doc_url, category_id, target_days, active, archived_at, created_at"
-    )
+    .select(GOAL_COLUMNS)
     .eq("id", id)
     .single();
   if (error) return null;
@@ -85,10 +89,9 @@ export async function createGoal(input: GoalInput): Promise<Goal> {
       doc_url: input.doc_url?.trim() || null,
       category_id: input.category_id || null,
       target_days: input.target_days,
+      reminder_time: input.reminder_time || null,
     })
-    .select(
-      "id, name, description, doc_url, category_id, target_days, active, archived_at, created_at"
-    )
+    .select(GOAL_COLUMNS)
     .single();
 
   if (error) throw error;
@@ -110,6 +113,7 @@ export async function updateGoal(
       doc_url: input.doc_url?.trim() || null,
       category_id: input.category_id || null,
       target_days: input.target_days,
+      reminder_time: input.reminder_time || null,
     })
     .eq("id", id);
   if (error) throw error;

@@ -7,6 +7,7 @@ import SignOutButton from "@/app/consistencytracker/sign-out-button";
 const ITEMS = [
   { href: "/consistencytracker", label: "Today" },
   { href: "/consistencytracker/goals", label: "Goals" },
+  { href: "/consistencytracker/reflections", label: "Reflections" },
   { href: "/consistencytracker/partners", label: "Partners" },
 ];
 

@@ -11,9 +11,16 @@ export type CheckIn = {
   date: string;
   status: "done" | "skipped";
   skip_reason: SkipReason | null;
+  note: string | null;
 };
 
 const VALID_REASONS: SkipReason[] = ["travel", "illness", "mood", "other"];
+
+function trimNote(note: string | null | undefined): string | null {
+  if (!note) return null;
+  const trimmed = note.trim().slice(0, 100);
+  return trimmed.length > 0 ? trimmed : null;
+}
 
 export async function markDone(goalId: string, date: string): Promise<void> {
   const supabase = await createClient();
@@ -75,6 +82,25 @@ export async function unmark(goalId: string, date: string): Promise<void> {
   const { error } = await supabase
     .from("check_ins")
     .delete()
+    .eq("goal_id", goalId)
+    .eq("date", date);
+  if (error) throw error;
+  revalidatePath("/consistencytracker", "layout");
+}
+
+/**
+ * Update (or clear) the note on an existing check-in for (goalId, date).
+ * Does nothing if no check-in row exists yet — call markDone/markSkipped first.
+ */
+export async function updateCheckInNote(
+  goalId: string,
+  date: string,
+  note: string
+): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("check_ins")
+    .update({ note: trimNote(note) })
     .eq("goal_id", goalId)
     .eq("date", date);
   if (error) throw error;
