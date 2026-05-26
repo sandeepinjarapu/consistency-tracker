@@ -65,29 +65,38 @@ function inviteText({
   return `${inviterName} invited you to Consistency Tracker.\n\nAccept here: ${inviteUrl}\n\n(This invite expires in 14 days.)`;
 }
 
+export type WeeklyGoalStat = {
+  name: string;
+  done: number;
+  target: number;
+  skipped: number;
+};
+
 /**
- * Send a "{Owner} shared N new goals with you today" digest. Batches all
- * new shares from one owner into one email so we don't spam the viewer.
+ * Send a weekly partner-summary email: how the owner did on their shared
+ * goals over the past week. One email per (viewer, owner) pair.
  */
-export async function sendShareDigest({
+export async function sendWeeklySummary({
   to,
   ownerName,
   ownerId,
-  goalNames,
+  weekLabel,
+  goals,
 }: {
   to: string;
   ownerName: string;
   ownerId: string;
-  goalNames: string[];
+  weekLabel: string;
+  goals: WeeklyGoalStat[];
 }): Promise<{ ok: boolean; error?: string }> {
-  if (goalNames.length === 0) return { ok: true };
+  if (goals.length === 0) return { ok: true };
   try {
     await resend.emails.send({
       from: FROM,
       to,
-      subject: subjectFor(ownerName, goalNames.length),
-      html: digestHtml({ ownerName, ownerId, goalNames }),
-      text: digestText({ ownerName, ownerId, goalNames }),
+      subject: weeklySubject(ownerName, goals),
+      html: weeklyHtml({ ownerName, ownerId, weekLabel, goals }),
+      text: weeklyText({ ownerName, ownerId, weekLabel, goals }),
     });
     return { ok: true };
   } catch (e) {
@@ -95,60 +104,73 @@ export async function sendShareDigest({
   }
 }
 
-function subjectFor(ownerName: string, count: number): string {
-  return count === 1
-    ? `${ownerName} shared a goal with you`
-    : `${ownerName} shared ${count} goals with you`;
+function weeklySubject(ownerName: string, goals: WeeklyGoalStat[]): string {
+  const totalDone = goals.reduce((s, g) => s + g.done, 0);
+  const totalTarget = goals.reduce((s, g) => s + g.target, 0);
+  return `${ownerName}'s week — ${totalDone} of ${totalTarget} done`;
 }
 
-function digestHtml({
+function weeklyHtml({
   ownerName,
   ownerId,
-  goalNames,
+  weekLabel,
+  goals,
 }: {
   ownerName: string;
   ownerId: string;
-  goalNames: string[];
+  weekLabel: string;
+  goals: WeeklyGoalStat[];
 }): string {
   const partnerUrl = `${SITE}/consistencytracker/partners/${ownerId}`;
-  const items = goalNames
-    .map((n) => `<li style="margin: 4px 0;">${escapeHtml(n)}</li>`)
+  const rows = goals
+    .map((g) => {
+      const pct = g.target > 0 ? Math.round((g.done / g.target) * 100) : 0;
+      const skipped = g.skipped > 0 ? ` <span style="color:#92400e;">· ${g.skipped} skipped</span>` : "";
+      return `<tr>
+        <td style="padding: 6px 12px 6px 0; font-size: 14px; color: #0a0a0a;">${escapeHtml(g.name)}</td>
+        <td style="padding: 6px 0; font-size: 14px; color: #374151; text-align: right; white-space: nowrap;">${g.done} / ${g.target} <span style="color:#9ca3af;">· ${pct}%</span>${skipped}</td>
+      </tr>`;
+    })
     .join("");
   return `<!doctype html>
 <html>
-  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0a0a0a; padding: 24px; max-width: 480px; margin: 0 auto;">
-    <h1 style="font-weight: 300; font-size: 20px; margin: 0 0 16px;">
-      ${escapeHtml(ownerName)} ${goalNames.length === 1 ? "shared a new goal" : `shared ${goalNames.length} new goals`} with you
-    </h1>
-    <ul style="font-size: 14px; line-height: 1.6; color: #374151; padding-left: 20px; margin: 16px 0;">
-      ${items}
-    </ul>
-    <p style="margin: 24px 0;">
-      <a href="${partnerUrl}" style="display: inline-block; background: #0a0a0a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-size: 14px;">View their tracker</a>
+  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0a0a0a; padding: 24px; max-width: 520px; margin: 0 auto;">
+    <h1 style="font-weight: 300; font-size: 20px; margin: 0 0 4px;">${escapeHtml(ownerName)}'s week</h1>
+    <p style="font-size: 12px; color: #9ca3af; margin: 0 0 20px;">${escapeHtml(weekLabel)}</p>
+    <table style="width: 100%; border-collapse: collapse;">${rows}</table>
+    <p style="margin: 28px 0 8px;">
+      <a href="${partnerUrl}" style="display: inline-block; background: #0a0a0a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-size: 14px;">See their tracker</a>
     </p>
-    <p style="font-size: 11px; color: #9ca3af; margin-top: 32px;">
-      You're getting this because you're partnered with ${escapeHtml(ownerName)} on Consistency Tracker. Digests are sent at most once a day.
+    <p style="font-size: 11px; color: #9ca3af; margin-top: 24px;">
+      Sent once a week (Sundays). You can manage partners in the app.
     </p>
   </body>
 </html>`;
 }
 
-function digestText({
+function weeklyText({
   ownerName,
   ownerId,
-  goalNames,
+  weekLabel,
+  goals,
 }: {
   ownerName: string;
   ownerId: string;
-  goalNames: string[];
+  weekLabel: string;
+  goals: WeeklyGoalStat[];
 }): string {
   const partnerUrl = `${SITE}/consistencytracker/partners/${ownerId}`;
+  const lines = goals.map((g) => {
+    const pct = g.target > 0 ? Math.round((g.done / g.target) * 100) : 0;
+    const skipped = g.skipped > 0 ? ` (${g.skipped} skipped)` : "";
+    return `  • ${g.name}: ${g.done}/${g.target} · ${pct}%${skipped}`;
+  });
   return [
-    `${ownerName} ${goalNames.length === 1 ? "shared a new goal" : `shared ${goalNames.length} new goals`} with you:`,
+    `${ownerName}'s week (${weekLabel}):`,
     "",
-    ...goalNames.map((n) => `  • ${n}`),
+    ...lines,
     "",
-    `View their tracker: ${partnerUrl}`,
+    `See their tracker: ${partnerUrl}`,
   ].join("\n");
 }
 

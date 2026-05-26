@@ -203,6 +203,43 @@ export async function listSharesForGoal(goalId: string): Promise<string[]> {
 }
 
 /**
+ * Number of share rows the current user (as viewer) hasn't seen yet.
+ * Used by the nav badge.
+ */
+export async function countUnseenShares(): Promise<number> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return 0;
+  const { count } = await supabase
+    .from("shares")
+    .select("*", { count: "exact", head: true })
+    .eq("viewer_id", user.id)
+    .is("notified_at", null);
+  return count ?? 0;
+}
+
+/**
+ * Mark all shares from a given owner (to the current user as viewer) as
+ * seen. Called when the user visits the partner's page.
+ */
+export async function markSharesSeen(ownerId: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase
+    .from("shares")
+    .update({ notified_at: new Date().toISOString() })
+    .eq("viewer_id", user.id)
+    .eq("owner_id", ownerId)
+    .is("notified_at", null);
+  revalidatePath("/consistencytracker", "layout");
+}
+
+/**
  * Whether the given userId is an accepted partner of the current user.
  */
 export async function isPartner(partnerId: string): Promise<boolean> {

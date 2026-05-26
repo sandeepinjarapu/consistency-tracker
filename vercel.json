@@ -1,8 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/daily-share-digest",
-      "schedule": "0 14 * * *"
+      "path": "/api/cron/weekly-partner-summary",
+      "schedule": "0 14 * * 0"
     }
   ]
 }
