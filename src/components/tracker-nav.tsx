@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import SignOutButton from "@/app/consistencytracker/sign-out-button";
 
+// The "Consistency Tracker" logo on the left IS the home/Today link, so
+// we don't repeat Today here. Standard pattern (GitHub, Linear, Notion).
 const ITEMS = [
-  { href: "/consistencytracker", label: "Today" },
   { href: "/consistencytracker/goals", label: "Goals" },
   { href: "/consistencytracker/reflections", label: "Reflections" },
   { href: "/consistencytracker/partners", label: "Partners", badgeKey: "partners" as const },
