@@ -38,6 +38,7 @@ export default async function TodayView() {
     .select(
       "id, name, description, target_days, created_at, category:categories(name, color)"
     )
+    .eq("user_id", user.id)
     .eq("active", true)
     .order("created_at", { ascending: true });
 
