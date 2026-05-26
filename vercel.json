@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/weekly-partner-summary",
-      "schedule": "0 14 * * 0"
+      "schedule": "30 2 * * 1"
     }
   ]
 }

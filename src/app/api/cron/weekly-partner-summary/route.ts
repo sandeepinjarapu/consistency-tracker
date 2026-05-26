@@ -21,19 +21,14 @@ export async function GET(request: Request) {
 
   const supabase = createServiceClient();
 
-  // Determine the "last full week" in UTC: Mon-Sun ending yesterday-ish.
-  // We run on Sunday at 14:00 UTC; the most recent completed Mon-Sun is
-  // the week whose Monday is 6 days before today.
+  // Cron runs Monday 02:30 UTC (≈ 8 AM IST Monday). At that point the
+  // PREVIOUS Mon-Sun week is fully complete. Summarize that, never the
+  // current in-progress week — otherwise Sunday-targeting goals would
+  // show as missed before Sunday is over.
   const todayUtc = todayIn("UTC");
   const thisWeekMon = isoWeekStart(todayUtc);
-  // Week to summarize: the one that just finished (Mon of last week to Sun)
-  // If cron fires on Sunday, today is in current week, so summarize current week (Mon-Sun)
-  const dow = dayOfWeekForDateString(todayUtc);
-  const weekStart = dow === 0 ? addDays(thisWeekMon, -7) : thisWeekMon;
-  // Actually: when run on Sunday, the current week's Mon..Sun is the one
-  // ending today. Better to just summarize Mon..Sun containing today.
-  const summaryWeekStart = thisWeekMon;
-  const summaryWeekEnd = addDays(summaryWeekStart, 6);
+  const summaryWeekStart = addDays(thisWeekMon, -7); // previous Monday
+  const summaryWeekEnd = addDays(summaryWeekStart, 6); // previous Sunday
 
   // Pull all accepted partnerships
   const { data: invites } = await supabase

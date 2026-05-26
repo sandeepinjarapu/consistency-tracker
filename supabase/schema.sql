@@ -42,6 +42,8 @@ create table if not exists public.goals (
   doc_url text,
   -- target_days: 0=Sun, 1=Mon, ..., 6=Sat. Default = every day.
   target_days smallint[] not null default array[0,1,2,3,4,5,6],
+  -- Optional reminder time (HH:MM:SS, user's local timezone) — added 0003
+  reminder_time time,
   active boolean not null default true,
   archived_at timestamptz,
   created_at timestamptz not null default now()
@@ -58,8 +60,11 @@ create table if not exists public.check_ins (
   date date not null,
   status text not null check (status in ('done','skipped')),
   skip_reason text check (skip_reason in ('travel','illness','mood','other')),
+  -- Optional <=100 char comment — added 0003
+  note text,
   created_at timestamptz not null default now(),
-  unique (goal_id, date)
+  unique (goal_id, date),
+  constraint check_ins_note_length check (note is null or char_length(note) <= 100)
 );
 create index if not exists check_ins_user_date_idx on public.check_ins(user_id, date);
 create index if not exists check_ins_goal_date_idx on public.check_ins(goal_id, date);
@@ -70,6 +75,8 @@ create table if not exists public.shares (
   owner_id uuid not null references auth.users(id) on delete cascade,
   viewer_id uuid not null references auth.users(id) on delete cascade,
   goal_id uuid not null references public.goals(id) on delete cascade,
+  -- When the viewer last "saw" this share (used by the in-app badge) — added 0004
+  notified_at timestamptz,
   created_at timestamptz not null default now(),
   unique (owner_id, viewer_id, goal_id),
   check (owner_id <> viewer_id)
@@ -236,11 +243,15 @@ drop policy if exists "shares: owner delete" on public.shares;
 create policy "shares: owner delete" on public.shares
   for delete to authenticated using (auth.uid() = owner_id);
 
--- partner_invites: only the inviter sees their invites in normal queries.
+-- partner_invites: inviter and accepted_by can both read their own rows.
 -- Token-based acceptance happens server-side via the service role key.
+-- (Widened from inviter-only in migration 0002 — needed for the "who
+-- invited me" lookup on the partner's side.)
 drop policy if exists "invites: inviter read" on public.partner_invites;
-create policy "invites: inviter read" on public.partner_invites
-  for select to authenticated using (auth.uid() = inviter_id);
+drop policy if exists "invites: read involved" on public.partner_invites;
+create policy "invites: read involved" on public.partner_invites
+  for select to authenticated
+  using (auth.uid() = inviter_id or auth.uid() = accepted_by);
 
 drop policy if exists "invites: inviter insert" on public.partner_invites;
 create policy "invites: inviter insert" on public.partner_invites
