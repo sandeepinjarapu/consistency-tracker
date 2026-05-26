@@ -4,8 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { addDays, todayIn } from "@/lib/dates";
 import { buildHeatmapCells, computeStats } from "@/lib/stats";
 import { targetDaysLabel } from "@/lib/target-days-label";
+import { listPartners, listSharesForGoal } from "@/lib/actions/partners";
 import Heatmap from "@/components/heatmap";
 import GoalRowActions from "@/components/goal-row-actions";
+import ShareToggles from "@/components/share-toggles";
 
 export default async function GoalPage({
   params,
@@ -46,13 +48,17 @@ export default async function GoalPage({
   const startDate = addDays(today, -364);
   const goalStartDate = (goal.created_at as string).slice(0, 10);
 
-  const { data: checkInsRaw } = await supabase
-    .from("check_ins")
-    .select("date, status")
-    .eq("goal_id", id)
-    .gte("date", startDate)
-    .lte("date", today)
-    .order("date", { ascending: true });
+  const [{ data: checkInsRaw }, partners, sharedWith] = await Promise.all([
+    supabase
+      .from("check_ins")
+      .select("date, status")
+      .eq("goal_id", id)
+      .gte("date", startDate)
+      .lte("date", today)
+      .order("date", { ascending: true }),
+    listPartners(),
+    listSharesForGoal(id),
+  ]);
 
   const checkIns = (checkInsRaw ?? []) as Array<{
     date: string;
@@ -124,6 +130,20 @@ export default async function GoalPage({
       </div>
 
       <Heatmap cells={cells} doneColor={categoryColor} />
+
+      <div className="mt-12 pt-6 border-t border-[color:var(--border)]">
+        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+          Sharing
+        </h3>
+        <ShareToggles
+          goalId={goal.id}
+          partners={partners.map((p) => ({
+            id: p.id,
+            display_name: p.display_name,
+          }))}
+          sharedWith={sharedWith}
+        />
+      </div>
     </section>
   );
 }
