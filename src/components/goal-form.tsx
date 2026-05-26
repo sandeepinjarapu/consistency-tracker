@@ -10,6 +10,7 @@ import {
   type Goal,
   type GoalInput,
 } from "@/lib/actions/goals";
+import { buildGCalUrl } from "@/lib/gcal";
 
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 const PRESETS: Array<{ label: string; days: number[] }> = [
@@ -202,17 +203,36 @@ export default function GoalForm({
             className="border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
           />
           {reminderTime ? (
-            <button
-              type="button"
-              onClick={() => setReminderTime("")}
-              className="text-xs text-[color:var(--muted)] hover:text-black"
-            >
-              Clear
-            </button>
+            <>
+              <a
+                href={buildGCalUrl({
+                  name: name || "Reminder",
+                  description: description || null,
+                  reminderTime,
+                  targetDays,
+                  timezone:
+                    typeof window !== "undefined"
+                      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+                      : "UTC",
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs underline text-[color:var(--muted)] hover:text-black"
+              >
+                Add to Google Calendar ↗
+              </a>
+              <button
+                type="button"
+                onClick={() => setReminderTime("")}
+                className="text-xs text-[color:var(--muted)] hover:text-black"
+              >
+                Clear
+              </button>
+            </>
           ) : null}
         </div>
         <p className="mt-1 text-xs text-[color:var(--muted)]">
-          Used to pre-fill a Google Calendar reminder on the goal's page.
+          The Calendar link reflects your current time + target days — click to add a recurring event.
         </p>
       </Field>
 
