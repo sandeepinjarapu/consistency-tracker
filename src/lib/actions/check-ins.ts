@@ -22,12 +22,34 @@ function trimNote(note: string | null | undefined): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+/**
+ * Server-side ownership guard for check-in mutations. RLS also enforces
+ * this (see 0005), but checking here gives a clearer error and avoids a
+ * round-trip on tampered clients.
+ */
+async function assertOwnsGoal(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  goalId: string
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("goals")
+    .select("user_id")
+    .eq("id", goalId)
+    .single();
+  if (error || !data) throw new Error("Goal not found");
+  if (data.user_id !== userId) {
+    throw new Error("You can only check in on your own goals");
+  }
+}
+
 export async function markDone(goalId: string, date: string): Promise<void> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
+  await assertOwnsGoal(supabase, user.id, goalId);
 
   const { error } = await supabase
     .from("check_ins")
@@ -59,6 +81,7 @@ export async function markSkipped(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
+  await assertOwnsGoal(supabase, user.id, goalId);
 
   const { error } = await supabase
     .from("check_ins")
@@ -79,6 +102,12 @@ export async function markSkipped(
 
 export async function unmark(goalId: string, date: string): Promise<void> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+  await assertOwnsGoal(supabase, user.id, goalId);
+
   const { error } = await supabase
     .from("check_ins")
     .delete()
@@ -98,6 +127,12 @@ export async function updateCheckInNote(
   note: string
 ): Promise<void> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+  await assertOwnsGoal(supabase, user.id, goalId);
+
   const { error } = await supabase
     .from("check_ins")
     .update({ note: trimNote(note) })

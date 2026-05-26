@@ -22,11 +22,17 @@ export default async function GoalsPage({
   const showArchived = sp.archived === "1";
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
   const categories = await listCategories();
 
   const { data: goals } = await supabase
     .from("goals")
     .select("id, name, description, category_id, target_days, active")
+    .eq("user_id", user.id)
     .eq("active", !showArchived)
     .order("created_at", { ascending: true });
 
@@ -41,6 +47,7 @@ export default async function GoalsPage({
   const { count: archivedCount } = await supabase
     .from("goals")
     .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id)
     .eq("active", false);
 
   const empty = (goals ?? []).length === 0;

@@ -223,11 +223,26 @@ create policy "check_ins: read own or shared" on public.check_ins
     )
   );
 
+-- Tightened in migration 0005: user_id must also match goal.user_id,
+-- so a partner viewing your shared goal can't insert a check-in for it.
 drop policy if exists "check_ins: write own" on public.check_ins;
-create policy "check_ins: write own" on public.check_ins
+drop policy if exists "check_ins: write own goal" on public.check_ins;
+create policy "check_ins: write own goal" on public.check_ins
   for all to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.goals g
+      where g.id = check_ins.goal_id and g.user_id = auth.uid()
+    )
+  )
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.goals g
+      where g.id = check_ins.goal_id and g.user_id = auth.uid()
+    )
+  );
 
 -- shares: owner manages, viewer can read what's shared with them
 drop policy if exists "shares: read mine (owner or viewer)" on public.shares;

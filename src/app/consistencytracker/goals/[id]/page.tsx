@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, todayIn } from "@/lib/dates";
 import { buildHeatmapCells, computeStats } from "@/lib/stats";
@@ -34,11 +34,18 @@ export default async function GoalPage({
   const { data: goal } = await supabase
     .from("goals")
     .select(
-      "id, name, description, doc_url, target_days, reminder_time, active, created_at, category:categories(name, color)"
+      "id, name, description, doc_url, target_days, reminder_time, active, created_at, user_id, category:categories(name, color)"
     )
     .eq("id", id)
     .single();
   if (!goal) notFound();
+
+  // This page is for owners only (with mutate controls). If a partner
+  // is viewing because the goal was shared with them, send them to the
+  // partner view instead.
+  if (goal.user_id !== user.id) {
+    redirect(`/consistencytracker/partners/${goal.user_id}`);
+  }
 
   const category = Array.isArray(goal.category)
     ? goal.category[0] ?? null
