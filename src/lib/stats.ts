@@ -25,11 +25,15 @@ export type GoalStats = {
 /**
  * Compute streak + counts for a goal over [startDate, endDate].
  *
- * Conventions:
- * - Both "done" and "skipped" preserve a streak (skipped = legitimate reason)
- * - "missed" (target day past with no check-in) breaks a streak
- * - Today, if pending (target day with no check-in), is neither counted as
- *   missed nor breaks the current streak
+ * Streak conventions (a streak measures what you actually did):
+ * - Only "done" days count toward and extend the streak
+ * - Both "skipped" and "missed" break the streak (skipped is honest
+ *   about a non-done day, but it's still not a done day)
+ * - Today, if pending (target day with no check-in), is neither counted
+ *   nor breaks the current streak — gives you until midnight to mark done
+ *
+ * Skip-with-reason is still valuable: it surfaces on weekly reflections
+ * as context for *why* the streak broke. But it doesn't pad the number.
  */
 export function computeStats({
   startDate,
@@ -61,27 +65,28 @@ export function computeStats({
         if (running > longest) longest = running;
       } else if (status === "skipped") {
         skippedCount++;
-        running++;
-        if (running > longest) longest = running;
+        running = 0;
       } else if (cursor !== endDate) {
         missedCount++;
         running = 0;
       }
-      // today with no status: pending, ignore
+      // today with no status: pending, neither counts nor resets
     }
     cursor = addDays(cursor, 1);
   }
 
-  // Current streak: walk back from endDate
+  // Current streak: walk back from endDate. Only "done" extends it.
   let currentStreak = 0;
   let back = endDate;
   while (back >= startDate) {
     const dow = dayOfWeekForDateString(back);
     if (targetDays.includes(dow)) {
       const status = map.get(back);
-      if (status === "done" || status === "skipped") {
+      if (status === "done") {
         currentStreak++;
-      } else if (back !== endDate) {
+      } else if (back === endDate && status === undefined) {
+        // today still pending — don't break, don't count
+      } else {
         break;
       }
     }
