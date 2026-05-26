@@ -6,6 +6,7 @@ import { addDays, todayIn } from "@/lib/dates";
 import { buildHeatmapCells, computeStats } from "@/lib/stats";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import Heatmap from "@/components/heatmap";
+import MarkSharesSeen from "@/components/mark-shares-seen";
 
 type SharedGoal = {
   id: string;
@@ -104,6 +105,7 @@ export default async function PartnerPage({
 
   return (
     <section className="space-y-10">
+      <MarkSharesSeen ownerId={partnerId} />
       <Link
         href="/consistencytracker/partners"
         className="text-xs text-[color:var(--muted)] hover:text-black"

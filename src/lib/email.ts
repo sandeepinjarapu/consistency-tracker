@@ -2,6 +2,7 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export async function sendInviteEmail({
   to,
@@ -62,6 +63,115 @@ function inviteText({
   inviteUrl: string;
 }): string {
   return `${inviterName} invited you to Consistency Tracker.\n\nAccept here: ${inviteUrl}\n\n(This invite expires in 14 days.)`;
+}
+
+export type WeeklyGoalStat = {
+  name: string;
+  done: number;
+  target: number;
+  skipped: number;
+};
+
+/**
+ * Send a weekly partner-summary email: how the owner did on their shared
+ * goals over the past week. One email per (viewer, owner) pair.
+ */
+export async function sendWeeklySummary({
+  to,
+  ownerName,
+  ownerId,
+  weekLabel,
+  goals,
+}: {
+  to: string;
+  ownerName: string;
+  ownerId: string;
+  weekLabel: string;
+  goals: WeeklyGoalStat[];
+}): Promise<{ ok: boolean; error?: string }> {
+  if (goals.length === 0) return { ok: true };
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to,
+      subject: weeklySubject(ownerName, goals),
+      html: weeklyHtml({ ownerName, ownerId, weekLabel, goals }),
+      text: weeklyText({ ownerName, ownerId, weekLabel, goals }),
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Send failed" };
+  }
+}
+
+function weeklySubject(ownerName: string, goals: WeeklyGoalStat[]): string {
+  const totalDone = goals.reduce((s, g) => s + g.done, 0);
+  const totalTarget = goals.reduce((s, g) => s + g.target, 0);
+  return `${ownerName}'s week — ${totalDone} of ${totalTarget} done`;
+}
+
+function weeklyHtml({
+  ownerName,
+  ownerId,
+  weekLabel,
+  goals,
+}: {
+  ownerName: string;
+  ownerId: string;
+  weekLabel: string;
+  goals: WeeklyGoalStat[];
+}): string {
+  const partnerUrl = `${SITE}/consistencytracker/partners/${ownerId}`;
+  const rows = goals
+    .map((g) => {
+      const pct = g.target > 0 ? Math.round((g.done / g.target) * 100) : 0;
+      const skipped = g.skipped > 0 ? ` <span style="color:#92400e;">· ${g.skipped} skipped</span>` : "";
+      return `<tr>
+        <td style="padding: 6px 12px 6px 0; font-size: 14px; color: #0a0a0a;">${escapeHtml(g.name)}</td>
+        <td style="padding: 6px 0; font-size: 14px; color: #374151; text-align: right; white-space: nowrap;">${g.done} / ${g.target} <span style="color:#9ca3af;">· ${pct}%</span>${skipped}</td>
+      </tr>`;
+    })
+    .join("");
+  return `<!doctype html>
+<html>
+  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0a0a0a; padding: 24px; max-width: 520px; margin: 0 auto;">
+    <h1 style="font-weight: 300; font-size: 20px; margin: 0 0 4px;">${escapeHtml(ownerName)}'s week</h1>
+    <p style="font-size: 12px; color: #9ca3af; margin: 0 0 20px;">${escapeHtml(weekLabel)}</p>
+    <table style="width: 100%; border-collapse: collapse;">${rows}</table>
+    <p style="margin: 28px 0 8px;">
+      <a href="${partnerUrl}" style="display: inline-block; background: #0a0a0a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-size: 14px;">See their tracker</a>
+    </p>
+    <p style="font-size: 11px; color: #9ca3af; margin-top: 24px;">
+      Sent once a week (Sundays). You can manage partners in the app.
+    </p>
+  </body>
+</html>`;
+}
+
+function weeklyText({
+  ownerName,
+  ownerId,
+  weekLabel,
+  goals,
+}: {
+  ownerName: string;
+  ownerId: string;
+  weekLabel: string;
+  goals: WeeklyGoalStat[];
+}): string {
+  const partnerUrl = `${SITE}/consistencytracker/partners/${ownerId}`;
+  const lines = goals.map((g) => {
+    const pct = g.target > 0 ? Math.round((g.done / g.target) * 100) : 0;
+    const skipped = g.skipped > 0 ? ` (${g.skipped} skipped)` : "";
+    return `  • ${g.name}: ${g.done}/${g.target} · ${pct}%${skipped}`;
+  });
+  return [
+    `${ownerName}'s week (${weekLabel}):`,
+    "",
+    ...lines,
+    "",
+    `See their tracker: ${partnerUrl}`,
+  ].join("\n");
 }
 
 function escapeHtml(s: string): string {
