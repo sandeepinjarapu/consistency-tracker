@@ -1,0 +1,82 @@
+"use server";
+
+import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+
+export type SkipReason = "travel" | "illness" | "mood" | "other";
+
+export type CheckIn = {
+  id: string;
+  goal_id: string;
+  date: string;
+  status: "done" | "skipped";
+  skip_reason: SkipReason | null;
+};
+
+const VALID_REASONS: SkipReason[] = ["travel", "illness", "mood", "other"];
+
+export async function markDone(goalId: string, date: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+
+  const { error } = await supabase
+    .from("check_ins")
+    .upsert(
+      {
+        goal_id: goalId,
+        user_id: user.id,
+        date,
+        status: "done",
+        skip_reason: null,
+      },
+      { onConflict: "goal_id,date" }
+    );
+  if (error) throw error;
+
+  revalidatePath("/consistencytracker", "layout");
+}
+
+export async function markSkipped(
+  goalId: string,
+  date: string,
+  reason: SkipReason
+): Promise<void> {
+  if (!VALID_REASONS.includes(reason)) {
+    throw new Error("Invalid skip reason");
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+
+  const { error } = await supabase
+    .from("check_ins")
+    .upsert(
+      {
+        goal_id: goalId,
+        user_id: user.id,
+        date,
+        status: "skipped",
+        skip_reason: reason,
+      },
+      { onConflict: "goal_id,date" }
+    );
+  if (error) throw error;
+
+  revalidatePath("/consistencytracker", "layout");
+}
+
+export async function unmark(goalId: string, date: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("check_ins")
+    .delete()
+    .eq("goal_id", goalId)
+    .eq("date", date);
+  if (error) throw error;
+  revalidatePath("/consistencytracker", "layout");
+}
