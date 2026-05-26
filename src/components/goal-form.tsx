@@ -41,6 +41,10 @@ export default function GoalForm({
   const [targetDays, setTargetDays] = useState<number[]>(
     initial?.target_days ?? [0, 1, 2, 3, 4, 5, 6]
   );
+  // Postgres returns HH:MM:SS; the input wants HH:MM
+  const [reminderTime, setReminderTime] = useState(
+    initial?.reminder_time ? initial.reminder_time.slice(0, 5) : ""
+  );
 
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -78,6 +82,7 @@ export default function GoalForm({
       doc_url: docUrl || undefined,
       category_id: categoryId || null,
       target_days: targetDays,
+      reminder_time: reminderTime || null,
     };
     startTransition(async () => {
       try {
@@ -184,6 +189,30 @@ export default function GoalForm({
         />
         <p className="mt-1 text-xs text-[color:var(--muted)]">
           A Google Doc, Notion page, or anything you want to link from this goal.
+        </p>
+      </Field>
+
+      <Field label="Reminder time (optional)" htmlFor="reminder_time">
+        <div className="flex items-center gap-3">
+          <input
+            id="reminder_time"
+            type="time"
+            value={reminderTime}
+            onChange={(e) => setReminderTime(e.target.value)}
+            className="border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
+          />
+          {reminderTime ? (
+            <button
+              type="button"
+              onClick={() => setReminderTime("")}
+              className="text-xs text-[color:var(--muted)] hover:text-black"
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
+        <p className="mt-1 text-xs text-[color:var(--muted)]">
+          Used to pre-fill a Google Calendar reminder on the goal's page.
         </p>
       </Field>
 

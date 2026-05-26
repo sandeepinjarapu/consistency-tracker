@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { todayIn, dayOfWeekIn, addDays } from "@/lib/dates";
+import { todayIn, dayOfWeekIn, addDays, isoWeekStart } from "@/lib/dates";
 import { buildAggregateCells, computeStats } from "@/lib/stats";
 import TodayGoalCard from "@/components/today-goal-card";
 import Heatmap from "@/components/heatmap";
@@ -71,7 +71,7 @@ export default async function TodayView() {
 
   const { data: yearCheckInsRaw } = await supabase
     .from("check_ins")
-    .select("goal_id, date, status, skip_reason, id")
+    .select("id, goal_id, date, status, skip_reason, note")
     .in("goal_id", goalIds)
     .gte("date", yearStart)
     .lte("date", today);
@@ -103,6 +103,15 @@ export default async function TodayView() {
       status: c.status,
     })),
   });
+
+  // "Reflect on last week" banner — show if previous week has no reflection
+  const prevWeekStart = addDays(isoWeekStart(today), -7);
+  const { data: prevReflection } = await supabase
+    .from("weekly_reflections")
+    .select("id")
+    .eq("week_start_date", prevWeekStart)
+    .maybeSingle();
+  const showReflectionBanner = !prevReflection;
 
   // Per-goal streaks for the goal list
   const goalRows = goals.map((g) => {
@@ -148,6 +157,18 @@ export default async function TodayView() {
             ))}
           </div>
         )}
+
+        {showReflectionBanner ? (
+          <Link
+            href="/consistencytracker/reflections"
+            className="mt-6 block border border-[color:var(--border)] rounded-lg px-4 py-3 hover:bg-gray-50 transition"
+          >
+            <p className="text-sm font-medium">Reflect on last week →</p>
+            <p className="text-xs text-[color:var(--muted)] mt-0.5">
+              Continue · Stop · Improve. A few sentences keeps the loop honest.
+            </p>
+          </Link>
+        ) : null}
       </div>
 
       <div>

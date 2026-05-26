@@ -5,6 +5,7 @@ import { addDays, todayIn } from "@/lib/dates";
 import { buildHeatmapCells, computeStats } from "@/lib/stats";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { listPartners, listSharesForGoal } from "@/lib/actions/partners";
+import { buildGCalUrl } from "@/lib/gcal";
 import Heatmap from "@/components/heatmap";
 import GoalRowActions from "@/components/goal-row-actions";
 import ShareToggles from "@/components/share-toggles";
@@ -33,7 +34,7 @@ export default async function GoalPage({
   const { data: goal } = await supabase
     .from("goals")
     .select(
-      "id, name, description, doc_url, target_days, active, created_at, category:categories(name, color)"
+      "id, name, description, doc_url, target_days, reminder_time, active, created_at, category:categories(name, color)"
     )
     .eq("id", id)
     .single();
@@ -108,16 +109,36 @@ export default async function GoalPage({
               {goal.description}
             </p>
           ) : null}
-          {goal.doc_url ? (
-            <a
-              href={goal.doc_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-block text-xs underline text-[color:var(--muted)] hover:text-black"
-            >
-              Reflection doc ↗
-            </a>
-          ) : null}
+          <div className="mt-3 flex items-center gap-4 text-xs text-[color:var(--muted)]">
+            {goal.doc_url ? (
+              <a
+                href={goal.doc_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-black"
+              >
+                Reflection doc ↗
+              </a>
+            ) : null}
+            {goal.reminder_time ? (
+              <a
+                href={buildGCalUrl({
+                  name: goal.name,
+                  description: goal.description,
+                  reminderTime: goal.reminder_time,
+                  targetDays: goal.target_days,
+                  timezone,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-black"
+              >
+                Add to Google Calendar ↗
+              </a>
+            ) : (
+              <span>No reminder set · <a href={`/consistencytracker/goals/${goal.id}/edit`} className="underline hover:text-black">add one</a></span>
+            )}
+          </div>
         </div>
         <GoalRowActions goalId={goal.id} archived={!goal.active} />
       </header>
