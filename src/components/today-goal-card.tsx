@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   markDone,
@@ -39,6 +39,29 @@ export default function TodayGoalCard({
   const [editingNote, setEditingNote] = useState(false);
   const [noteDraft, setNoteDraft] = useState(checkIn?.note ?? "");
   const [savingNote, startNoteTransition] = useTransition();
+  const skipMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close the Skip dropdown on outside click or Escape
+  useEffect(() => {
+    if (!showSkipMenu) return;
+    function onPointerDown(e: MouseEvent | TouchEvent) {
+      const target = e.target as Node | null;
+      if (skipMenuRef.current && target && !skipMenuRef.current.contains(target)) {
+        setShowSkipMenu(false);
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowSkipMenu(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showSkipMenu]);
 
   function run(fn: () => Promise<void>) {
     setShowSkipMenu(false);
@@ -120,7 +143,7 @@ export default function TodayGoalCard({
                 >
                   Mark done
                 </button>
-                <div className="relative">
+                <div className="relative" ref={skipMenuRef}>
                   <button
                     onClick={() => setShowSkipMenu((s) => !s)}
                     disabled={pending}
