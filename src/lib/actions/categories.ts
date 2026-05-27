@@ -33,12 +33,13 @@ export async function listCategories(): Promise<Category[]> {
   if (!user) return [];
 
   // First read
-  let { data, error } = await supabase
+  const firstRead = await supabase
     .from("categories")
     .select("id, name, color, sort_order")
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
-  if (error) throw error;
+  if (firstRead.error) throw firstRead.error;
+  let data = firstRead.data;
 
   // Seed defaults if completely empty (new user)
   if (!data || data.length === 0) {

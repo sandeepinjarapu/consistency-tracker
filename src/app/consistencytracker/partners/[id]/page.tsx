@@ -38,7 +38,7 @@ export default async function PartnerPage({
       <section className="max-w-md mx-auto pt-12 text-center space-y-4">
         <h1 className="text-xl font-light tracking-tight">Not your partner</h1>
         <p className="text-sm text-[color:var(--muted)]">
-          You can only view tracker data for people who have accepted your invite, or whose invite you've accepted.
+          You can only view tracker data for people who have accepted your invite, or whose invite you&apos;ve accepted.
         </p>
         <Link
           href="/consistencytracker/partners"
@@ -78,7 +78,7 @@ export default async function PartnerPage({
   })) as SharedGoal[];
 
   // Pull check-ins for all shared goals in one query
-  let checkInsByGoal = new Map<
+  const checkInsByGoal = new Map<
     string,
     Array<{ date: string; status: "done" | "skipped" }>
   >();
@@ -139,7 +139,7 @@ export default async function PartnerPage({
       {goals.length === 0 ? (
         <div className="border border-dashed border-[color:var(--border)] rounded-lg p-10 text-center">
           <p className="text-sm text-[color:var(--muted)]">
-            They haven't shared any goals with you yet. Once they toggle sharing on a goal, it'll appear here.
+            They haven&apos;t shared any goals with you yet. Once they toggle sharing on a goal, it&apos;ll appear here.
           </p>
         </div>
       ) : (
