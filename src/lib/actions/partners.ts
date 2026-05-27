@@ -285,6 +285,27 @@ export async function isPartner(partnerId: string): Promise<boolean> {
   return (out.data?.length ?? 0) > 0 || (inb.data?.length ?? 0) > 0;
 }
 
+/**
+ * Server-side ownership guard for share mutations. RLS also enforces
+ * this (see 0006), but checking here gives a clearer error and avoids
+ * a round-trip on tampered clients.
+ */
+async function assertOwnsGoal(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  goalId: string
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("goals")
+    .select("user_id")
+    .eq("id", goalId)
+    .single();
+  if (error || !data) throw new Error("Goal not found");
+  if (data.user_id !== userId) {
+    throw new Error("You can only share your own goals");
+  }
+}
+
 export async function setGoalShared(
   goalId: string,
   partnerId: string,
@@ -296,8 +317,10 @@ export async function setGoalShared(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
 
-  // Server-side guard: never share with someone who isn't an accepted partner,
-  // even if a tampered client sends an arbitrary UUID.
+  // Server-side guards: you must own the goal AND the recipient must
+  // actually be your accepted partner. Either check failing means a
+  // tampered client is trying to share something it shouldn't.
+  await assertOwnsGoal(supabase, user.id, goalId);
   const partnered = await isPartner(partnerId);
   if (!partnered) throw new Error("Not a partner");
 

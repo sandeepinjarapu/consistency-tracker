@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 export type Goal = {
   id: string;
+  user_id: string;
   name: string;
   description: string | null;
   doc_url: string | null;
@@ -50,7 +51,7 @@ function validate(input: GoalInput): void {
 }
 
 const GOAL_COLUMNS =
-  "id, name, description, doc_url, category_id, target_days, reminder_time, active, archived_at, created_at";
+  "id, user_id, name, description, doc_url, category_id, target_days, reminder_time, active, archived_at, created_at";
 
 export async function listActiveGoals(): Promise<Goal[]> {
   const supabase = await createClient();

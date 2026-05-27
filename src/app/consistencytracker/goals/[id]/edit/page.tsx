@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { listCategories } from "@/lib/actions/categories";
 import { getGoal } from "@/lib/actions/goals";
 import { listPartners, listSharesForGoal } from "@/lib/actions/partners";
@@ -11,6 +12,12 @@ export default async function EditGoalPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
   const [goal, categories, partners, sharedWith] = await Promise.all([
     getGoal(id),
     listCategories(),
@@ -18,6 +25,13 @@ export default async function EditGoalPage({
     listSharesForGoal(id),
   ]);
   if (!goal) notFound();
+
+  // Editing is owner-only. If a partner reaches this URL via a shared
+  // goal, redirect them to the read-only partner view (mirrors the
+  // detail page guard).
+  if (goal.user_id !== user.id) {
+    redirect(`/consistencytracker/partners/${goal.user_id}`);
+  }
 
   return (
     <section className="max-w-xl">
