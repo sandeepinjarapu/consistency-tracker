@@ -250,9 +250,18 @@ create policy "shares: read mine (owner or viewer)" on public.shares
   for select to authenticated
   using (auth.uid() = owner_id or auth.uid() = viewer_id);
 
+-- Tightened in migration 0006: goal_id must belong to the share owner,
+-- so a partner viewing your shared goal can't re-share it to a third user.
 drop policy if exists "shares: owner insert" on public.shares;
 create policy "shares: owner insert" on public.shares
-  for insert to authenticated with check (auth.uid() = owner_id);
+  for insert to authenticated
+  with check (
+    auth.uid() = owner_id
+    and exists (
+      select 1 from public.goals g
+      where g.id = shares.goal_id and g.user_id = auth.uid()
+    )
+  );
 
 drop policy if exists "shares: owner delete" on public.shares;
 create policy "shares: owner delete" on public.shares
