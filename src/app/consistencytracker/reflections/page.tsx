@@ -13,6 +13,17 @@ type WeekStats = {
   notes: Array<{ date: string; goalName: string; note: string }>;
 };
 
+type ReflectionRow = {
+  id: string;
+  week_start_date: string;
+  continue_text: string | null;
+  stop_text: string | null;
+  improve_text: string | null;
+  notes: string | null;
+  visibility: "private" | "partner";
+  updated_at: string;
+};
+
 export default async function ReflectionsPage() {
   const supabase = await createClient();
   const {
@@ -111,7 +122,7 @@ function WeekCard({
   end: string;
   isCurrent: boolean;
   stats: WeekStats;
-  reflection: ReturnType<typeof reflectionLike>;
+  reflection: ReflectionRow | null;
 }) {
   const total = stats.done + stats.skipped + stats.missed;
   const completion = total > 0 ? Math.round((stats.done / total) * 100) : 0;
@@ -146,7 +157,7 @@ function WeekCard({
           <ul className="space-y-1 text-sm">
             {stats.notes.map((n, i) => (
               <li key={i} className="text-[color:var(--muted)]">
-                <span className="italic">"{n.note}"</span> — {n.goalName}, {shortDate(n.date)}
+                <span className="italic">&ldquo;{n.note}&rdquo;</span> — {n.goalName}, {shortDate(n.date)}
               </li>
             ))}
           </ul>
@@ -253,16 +264,3 @@ function formatReasons(reasons: Record<string, number>): string {
     .join(", ");
 }
 
-// Helper type so WeekCard signature stays clean
-function reflectionLike() {
-  return null as null | {
-    id: string;
-    week_start_date: string;
-    continue_text: string | null;
-    stop_text: string | null;
-    improve_text: string | null;
-    notes: string | null;
-    visibility: "private" | "partner";
-    updated_at: string;
-  };
-}

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { setGoalShared } from "@/lib/actions/partners";
 
 type Partner = { id: string; display_name: string | null };
@@ -41,12 +42,12 @@ export default function ShareToggles({
     return (
       <p className="text-xs text-[color:var(--muted)]">
         No partners yet.{" "}
-        <a
+        <Link
           href="/consistencytracker/partners"
           className="underline hover:text-black"
         >
           Invite someone
-        </a>{" "}
+        </Link>{" "}
         to share this goal with them.
       </p>
     );

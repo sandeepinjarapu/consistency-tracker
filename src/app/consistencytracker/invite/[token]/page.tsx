@@ -80,7 +80,7 @@ export default async function InvitePage({
           {inviterName} invited you
         </h1>
         <p className="mt-2 text-sm text-[color:var(--muted)]">
-          Once you accept, you'll be able to see the goals they choose to share with you — and they can see yours.
+          Once you accept, you&apos;ll be able to see the goals they choose to share with you — and they can see yours.
         </p>
       </div>
 
