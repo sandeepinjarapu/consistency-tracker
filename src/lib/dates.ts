@@ -87,3 +87,28 @@ export function dayOfWeekForDateString(dateStr: string): number {
 
 export const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const DAY_LABELS_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
+
+/**
+ * Format a UTC timestamp (from Postgres timestamptz) as a lowercase
+ * time-of-day string in the user's timezone, e.g. "7:23am".
+ */
+export function formatCheckInTime(timestamp: string, timezone: string): string {
+  return new Date(timestamp)
+    .toLocaleTimeString("en-US", {
+      timeZone: timezone,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .replace(" ", "")
+    .toLowerCase();
+}
+
+/**
+ * Format an hour+minute pair as "7:23am".
+ */
+export function formatTime(hour: number, minute: number): string {
+  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  const period = hour < 12 ? "am" : "pm";
+  return `${h12}:${String(minute).padStart(2, "0")}${period}`;
+}

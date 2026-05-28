@@ -72,7 +72,7 @@ export default async function TodayView() {
 
   const { data: yearCheckInsRaw } = await supabase
     .from("check_ins")
-    .select("id, goal_id, date, status, skip_reason, note")
+    .select("id, goal_id, date, status, skip_reason, note, created_at")
     .in("goal_id", goalIds)
     .gte("date", yearStart)
     .lte("date", today);
@@ -153,6 +153,7 @@ export default async function TodayView() {
                 description={g.description}
                 categoryColor={g.category?.color ?? "#9ca3af"}
                 date={today}
+                timezone={timezone}
                 checkIn={checkInByGoal.get(g.id) ?? null}
               />
             ))}

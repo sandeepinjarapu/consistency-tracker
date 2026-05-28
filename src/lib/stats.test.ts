@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { computeStats, buildHeatmapCells, buildAggregateCells } from "./stats";
+import {
+  computeStats,
+  buildHeatmapCells,
+  buildAggregateCells,
+  computeTimePattern,
+} from "./stats";
 
 // Date range used across most tests: Mon 2024-01-15 .. Sun 2024-01-21
 // (a full week). Target days are all 7 days unless noted.
@@ -292,5 +297,56 @@ describe("buildAggregateCells", () => {
     });
     expect(cells[0].color).toBe("#ebedf0"); // Mon, 0 of 1 done
     expect(cells[1].color).toBe("#f3f4f6"); // Tue, no target
+  });
+});
+
+describe("computeTimePattern", () => {
+  it("returns null typical and zero counts for empty input", () => {
+    const r = computeTimePattern({ timestamps: [], timezone: "UTC" });
+    expect(r.typical).toBeNull();
+    expect(r.total).toBe(0);
+    expect(r.hourly).toHaveLength(24);
+    expect(r.hourly.every((c) => c === 0)).toBe(true);
+  });
+
+  it("buckets timestamps into the right hour in the given timezone", () => {
+    // 14:23 UTC. In UTC → hour 14. In LA (UTC-8) → hour 6. In IST (+5:30) → hour 19.
+    const ts = ["2024-01-15T14:23:00Z"];
+    expect(computeTimePattern({ timestamps: ts, timezone: "UTC" }).hourly[14]).toBe(1);
+    expect(
+      computeTimePattern({ timestamps: ts, timezone: "America/Los_Angeles" }).hourly[6]
+    ).toBe(1);
+    expect(
+      computeTimePattern({ timestamps: ts, timezone: "Asia/Kolkata" }).hourly[19]
+    ).toBe(1);
+  });
+
+  it("returns the median time as typical, robust to outliers", () => {
+    // Three 7:00am check-ins + one 11:00pm outlier. Median = 7:00am.
+    const r = computeTimePattern({
+      timestamps: [
+        "2024-01-15T07:00:00Z",
+        "2024-01-16T07:00:00Z",
+        "2024-01-17T07:00:00Z",
+        "2024-01-18T23:00:00Z",
+      ],
+      timezone: "UTC",
+    });
+    expect(r.typical).toEqual({ hour: 7, minute: 0 });
+    expect(r.total).toBe(4);
+  });
+
+  it("counts every timestamp toward total", () => {
+    const r = computeTimePattern({
+      timestamps: [
+        "2024-01-15T09:00:00Z",
+        "2024-01-15T10:00:00Z",
+        "2024-01-15T10:30:00Z",
+      ],
+      timezone: "UTC",
+    });
+    expect(r.total).toBe(3);
+    expect(r.hourly[9]).toBe(1);
+    expect(r.hourly[10]).toBe(2);
   });
 });

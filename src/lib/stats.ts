@@ -180,6 +180,55 @@ function formatDate(d: string): string {
 }
 
 /**
+ * Aggregate time-of-day pattern from check-in timestamps. Returns:
+ *  - typical: median time as { hour, minute } (null if no timestamps)
+ *  - hourly: 24-element array of counts per local hour
+ *  - total: number of timestamps considered
+ *
+ * Median is computed on minutes-since-local-midnight. Robust to outliers,
+ * and doesn't try to handle the midnight discontinuity (a habit you do at
+ * 11:50pm vs 12:10am will skew, but that's a rare case for typical users).
+ */
+export function computeTimePattern({
+  timestamps,
+  timezone,
+}: {
+  timestamps: string[];
+  timezone: string;
+}): {
+  typical: { hour: number; minute: number } | null;
+  hourly: number[];
+  total: number;
+} {
+  const hourly = new Array(24).fill(0);
+  const minutes: number[] = [];
+  for (const ts of timestamps) {
+    const local = new Date(ts).toLocaleString("en-CA", {
+      timeZone: timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    // en-CA with these options yields "HH:MM"
+    const [h, m] = local.split(":").map(Number);
+    if (Number.isFinite(h) && Number.isFinite(m)) {
+      hourly[h]++;
+      minutes.push(h * 60 + m);
+    }
+  }
+  if (minutes.length === 0) {
+    return { typical: null, hourly, total: 0 };
+  }
+  minutes.sort((a, b) => a - b);
+  const median = minutes[Math.floor(minutes.length / 2)];
+  return {
+    typical: { hour: Math.floor(median / 60), minute: median % 60 },
+    hourly,
+    total: timestamps.length,
+  };
+}
+
+/**
  * Build the per-goal heatmap cell array for a date range.
  */
 export function buildHeatmapCells({

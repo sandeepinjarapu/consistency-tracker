@@ -7,6 +7,8 @@ import {
   addDays,
   dateRange,
   dayOfWeekForDateString,
+  formatCheckInTime,
+  formatTime,
 } from "./dates";
 
 describe("todayIn", () => {
@@ -113,5 +115,40 @@ describe("dayOfWeekForDateString", () => {
     expect(dayOfWeekForDateString("2024-01-14")).toBe(0); // Sun
     expect(dayOfWeekForDateString("2024-01-15")).toBe(1); // Mon
     expect(dayOfWeekForDateString("2024-01-20")).toBe(6); // Sat
+  });
+});
+
+describe("formatCheckInTime", () => {
+  // 2024-01-15 14:23 UTC = 9:23am Eastern = 7:53pm IST = 6:23am Pacific
+  const ts = "2024-01-15T14:23:00Z";
+
+  it("formats in UTC", () => {
+    expect(formatCheckInTime(ts, "UTC")).toBe("2:23pm");
+  });
+
+  it("formats in user timezone (IST)", () => {
+    expect(formatCheckInTime(ts, "Asia/Kolkata")).toBe("7:53pm");
+  });
+
+  it("formats in user timezone (LA, west of UTC)", () => {
+    expect(formatCheckInTime(ts, "America/Los_Angeles")).toBe("6:23am");
+  });
+});
+
+describe("formatTime", () => {
+  it("formats midnight", () => {
+    expect(formatTime(0, 0)).toBe("12:00am");
+  });
+  it("formats noon", () => {
+    expect(formatTime(12, 0)).toBe("12:00pm");
+  });
+  it("formats morning", () => {
+    expect(formatTime(7, 23)).toBe("7:23am");
+  });
+  it("formats evening", () => {
+    expect(formatTime(20, 5)).toBe("8:05pm");
+  });
+  it("zero-pads minutes", () => {
+    expect(formatTime(9, 7)).toBe("9:07am");
   });
 });
