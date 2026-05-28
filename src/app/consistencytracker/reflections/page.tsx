@@ -1,17 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
-import { addDays, todayIn, isoWeekStart, dayOfWeekForDateString } from "@/lib/dates";
+import { addDays, todayIn, isoWeekStart } from "@/lib/dates";
 import { listReflections } from "@/lib/actions/reflections";
+import {
+  computeWeekStats,
+  compareWeeks,
+  buildHighlights,
+  type WeekStats,
+  type WeekTrend,
+  type Highlights,
+} from "@/lib/reflection-stats";
 import ReflectionEditor from "@/components/reflection-editor";
+import WeekGrid from "@/components/week-grid";
 
 const WEEKS_TO_SHOW = 12;
-
-type WeekStats = {
-  done: number;
-  skipped: number;
-  missed: number;
-  skipReasons: Record<string, number>;
-  notes: Array<{ date: string; goalName: string; note: string }>;
-};
 
 type ReflectionRow = {
   id: string;
@@ -39,8 +40,9 @@ export default async function ReflectionsPage() {
   const timezone = profile?.timezone ?? "UTC";
   const today = todayIn(timezone);
   const currentWeekStart = isoWeekStart(today);
-  const earliestWeekStart = addDays(currentWeekStart, -(WEEKS_TO_SHOW - 1) * 7);
-  const earliestWindow = earliestWeekStart;
+  // Pull one extra week before earliest so we can compute trend for the
+  // earliest displayed week.
+  const earliestWeekStart = addDays(currentWeekStart, -WEEKS_TO_SHOW * 7);
   const latestWindow = addDays(currentWeekStart, 6);
 
   // All active + archived goals (so historical weeks compute correctly)
@@ -53,13 +55,12 @@ export default async function ReflectionsPage() {
     target_days: number[];
     created_at: string;
   }>;
-  const goalById = new Map(goals.map((g) => [g.id, g]));
 
-  // Check-ins across the window
+  // Check-ins across the window (extra week included for trend comparison)
   const { data: ciRaw } = await supabase
     .from("check_ins")
     .select("goal_id, date, status, skip_reason, note")
-    .gte("date", earliestWindow)
+    .gte("date", earliestWeekStart)
     .lte("date", latestWindow);
   const checkIns = (ciRaw ?? []) as Array<{
     goal_id: string;
@@ -72,12 +73,18 @@ export default async function ReflectionsPage() {
   const reflections = await listReflections();
   const reflectionByWeek = new Map(reflections.map((r) => [r.week_start_date, r]));
 
-  // Build week list
-  const weeks: Array<{ start: string; end: string; isCurrent: boolean; stats: WeekStats }> = [];
-  for (let i = 0; i < WEEKS_TO_SHOW; i++) {
+  // Build week list — compute one extra week (oldest) just for trend comparison
+  type Week = {
+    start: string;
+    end: string;
+    isCurrent: boolean;
+    stats: WeekStats;
+  };
+  const weeks: Week[] = [];
+  for (let i = 0; i <= WEEKS_TO_SHOW; i++) {
     const start = addDays(currentWeekStart, -i * 7);
     const end = addDays(start, 6);
-    const stats = computeWeekStats({ start, end, today, goals, checkIns, goalById });
+    const stats = computeWeekStats({ start, end, today, goals, checkIns });
     weeks.push({ start, end, isCurrent: i === 0, stats });
   }
 
@@ -91,10 +98,17 @@ export default async function ReflectionsPage() {
       </header>
 
       <div className="space-y-10">
-        {weeks.map((w) => {
+        {weeks.slice(0, WEEKS_TO_SHOW).map((w, idx) => {
           const reflection = reflectionByWeek.get(w.start) ?? null;
           const hasAnyActivity = w.stats.done + w.stats.skipped + w.stats.missed > 0;
           if (!w.isCurrent && !hasAnyActivity && !reflection) return null;
+
+          // Trend vs prior week — only meaningful for completed weeks.
+          const prior = weeks[idx + 1]?.stats ?? null;
+          const trend = w.isCurrent ? null : compareWeeks(w.stats, prior);
+
+          const highlights = buildHighlights(w.stats);
+
           return (
             <WeekCard
               key={w.start}
@@ -102,6 +116,8 @@ export default async function ReflectionsPage() {
               end={w.end}
               isCurrent={w.isCurrent}
               stats={w.stats}
+              trend={trend}
+              highlights={highlights}
               reflection={reflection}
             />
           );
@@ -116,16 +132,21 @@ function WeekCard({
   end,
   isCurrent,
   stats,
+  trend,
+  highlights,
   reflection,
 }: {
   start: string;
   end: string;
   isCurrent: boolean;
   stats: WeekStats;
+  trend: WeekTrend | null;
+  highlights: Highlights;
   reflection: ReflectionRow | null;
 }) {
   const total = stats.done + stats.skipped + stats.missed;
   const completion = total > 0 ? Math.round((stats.done / total) * 100) : 0;
+  const highlightText = formatHighlights(highlights);
 
   return (
     <article className="border border-[color:var(--border)] rounded-lg p-6">
@@ -136,9 +157,14 @@ function WeekCard({
             <span className="ml-2 text-xs text-[color:var(--muted)] font-normal">· this week (in progress)</span>
           ) : null}
         </h2>
+        {trend?.hasPrior ? (
+          <span className="text-xs text-[color:var(--muted)] tabular-nums">
+            {formatTrend(trend)}
+          </span>
+        ) : null}
       </header>
 
-      <p className="text-xs text-[color:var(--muted)] mb-6">
+      <p className="text-xs text-[color:var(--muted)] mb-4">
         {total === 0 ? (
           <>No check-ins recorded.</>
         ) : (
@@ -148,6 +174,16 @@ function WeekCard({
           </>
         )}
       </p>
+
+      {highlightText ? (
+        <p className="text-sm mb-6 leading-relaxed">{highlightText}</p>
+      ) : null}
+
+      {stats.perGoal.length > 0 ? (
+        <div className="mb-6">
+          <WeekGrid perGoal={stats.perGoal} />
+        </div>
+      ) : null}
 
       {stats.notes.length > 0 ? (
         <div className="mb-6">
@@ -167,64 +203,6 @@ function WeekCard({
       <ReflectionEditor weekStartDate={start} initial={reflection} />
     </article>
   );
-}
-
-function computeWeekStats({
-  start,
-  end,
-  today,
-  goals,
-  checkIns,
-  goalById,
-}: {
-  start: string;
-  end: string;
-  today: string;
-  goals: Array<{ id: string; target_days: number[]; created_at: string }>;
-  checkIns: Array<{
-    goal_id: string;
-    date: string;
-    status: "done" | "skipped";
-    skip_reason: string | null;
-    note: string | null;
-  }>;
-  goalById: Map<string, { name: string }>;
-}): WeekStats {
-  const out: WeekStats = { done: 0, skipped: 0, missed: 0, skipReasons: {}, notes: [] };
-
-  // Filter check-ins to this week
-  const inWeek = checkIns.filter((c) => c.date >= start && c.date <= end);
-  for (const ci of inWeek) {
-    if (ci.status === "done") out.done++;
-    else if (ci.status === "skipped") {
-      out.skipped++;
-      const reason = ci.skip_reason ?? "other";
-      out.skipReasons[reason] = (out.skipReasons[reason] ?? 0) + 1;
-    }
-    if (ci.note) {
-      const goalName = goalById.get(ci.goal_id)?.name ?? "Goal";
-      out.notes.push({ date: ci.date, goalName, note: ci.note });
-    }
-  }
-
-  // Missed = target days in past that have no check-in
-  const checkInKeys = new Set(inWeek.map((c) => `${c.goal_id}:${c.date}`));
-  let cursor = start;
-  while (cursor <= end && cursor <= today) {
-    const dow = dayOfWeekForDateString(cursor);
-    for (const g of goals) {
-      const goalStart = g.created_at.slice(0, 10);
-      if (cursor < goalStart) continue;
-      if (cursor === today) continue; // today is still pending
-      if (!g.target_days.includes(dow)) continue;
-      if (!checkInKeys.has(`${g.id}:${cursor}`)) out.missed++;
-    }
-    cursor = addDays(cursor, 1);
-  }
-
-  // Sort notes by date
-  out.notes.sort((a, b) => (a.date < b.date ? -1 : 1));
-  return out;
 }
 
 function formatRange(start: string, end: string): string {
@@ -264,3 +242,42 @@ function formatReasons(reasons: Record<string, number>): string {
     .join(", ");
 }
 
+function formatTrend(trend: WeekTrend): string {
+  const parts: string[] = [];
+  if (trend.completionDelta !== null) {
+    if (trend.completionDelta > 0) parts.push(`↑ ${trend.completionDelta}% completion`);
+    else if (trend.completionDelta < 0) parts.push(`↓ ${Math.abs(trend.completionDelta)}% completion`);
+    else parts.push(`= completion`);
+  }
+  if (trend.doneDelta !== null && trend.doneDelta !== 0) {
+    parts.push(`${trend.doneDelta > 0 ? "+" : ""}${trend.doneDelta} done`);
+  }
+  if (trend.skipDelta !== null && trend.skipDelta !== 0) {
+    parts.push(`${trend.skipDelta > 0 ? "+" : ""}${trend.skipDelta} skipped`);
+  }
+  return parts.length > 0 ? parts.join(" · ") + " vs last week" : "";
+}
+
+function formatHighlights(h: Highlights): string | null {
+  const REASON_LABELS: Record<string, string> = {
+    travel: "mostly travel",
+    illness: "mostly illness",
+    mood: "mostly mood",
+    other: "mostly other",
+  };
+  const parts: string[] = [];
+  if (h.strongest) {
+    parts.push(
+      `Strongest: ${h.strongest.goalName} (${h.strongest.done}/${h.strongest.targetCount})`
+    );
+  }
+  if (h.weakest) {
+    const reason = h.weakestDominantReason
+      ? `, ${REASON_LABELS[h.weakestDominantReason] ?? h.weakestDominantReason}`
+      : "";
+    parts.push(
+      `Weakest: ${h.weakest.goalName} (${h.weakest.done}/${h.weakest.targetCount}${reason})`
+    );
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
