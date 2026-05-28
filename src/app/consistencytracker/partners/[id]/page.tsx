@@ -5,6 +5,7 @@ import { isPartner } from "@/lib/actions/partners";
 import { addDays, todayIn } from "@/lib/dates";
 import { buildHeatmapCells, computeStats } from "@/lib/stats";
 import { targetDaysLabel } from "@/lib/target-days-label";
+import { safeExternalUrl } from "@/lib/url";
 import Heatmap from "@/components/heatmap";
 import MarkSharesSeen from "@/components/mark-shares-seen";
 
@@ -162,6 +163,7 @@ export default async function PartnerPage({
               checkIns,
             });
             const color = goal.category?.color ?? "#9ca3af";
+            const docUrl = safeExternalUrl(goal.doc_url);
 
             return (
               <div key={goal.id}>
@@ -183,9 +185,9 @@ export default async function PartnerPage({
                       {goal.description}
                     </p>
                   ) : null}
-                  {goal.doc_url ? (
+                  {docUrl ? (
                     <a
-                      href={goal.doc_url}
+                      href={docUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-2 inline-block text-xs underline text-[color:var(--muted)] hover:text-black"

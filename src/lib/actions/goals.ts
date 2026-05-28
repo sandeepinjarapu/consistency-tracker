@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { safeExternalUrl } from "@/lib/url";
 
 export type Goal = {
   id: string;
@@ -38,12 +39,8 @@ function validate(input: GoalInput): void {
       throw new Error("Invalid target day");
     }
   }
-  if (input.doc_url) {
-    try {
-      new URL(input.doc_url);
-    } catch {
-      throw new Error("Doc URL must be a valid URL");
-    }
+  if (input.doc_url && !safeExternalUrl(input.doc_url)) {
+    throw new Error("Doc URL must be a valid http(s) URL");
   }
   if (input.reminder_time && !/^\d{2}:\d{2}$/.test(input.reminder_time)) {
     throw new Error("Reminder time must be in HH:MM format");
