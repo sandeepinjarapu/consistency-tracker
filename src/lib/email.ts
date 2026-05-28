@@ -1,6 +1,15 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-initialized so the module can be imported in builds / CI without
+// RESEND_API_KEY set. The Resend constructor validates the key at call
+// time; deferring it means only code paths that actually send mail
+// require the env var to be present.
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
+
 const FROM = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -14,7 +23,7 @@ export async function sendInviteEmail({
   inviteUrl: string;
 }): Promise<{ ok: boolean; error?: string }> {
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: FROM,
       to,
       subject: `${inviterName} invited you to Consistency Tracker`,
@@ -91,7 +100,7 @@ export async function sendWeeklySummary({
 }): Promise<{ ok: boolean; error?: string }> {
   if (goals.length === 0) return { ok: true };
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: FROM,
       to,
       subject: weeklySubject(ownerName, goals),
