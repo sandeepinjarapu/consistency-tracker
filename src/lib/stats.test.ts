@@ -349,4 +349,24 @@ describe("computeTimePattern", () => {
     expect(r.hourly[9]).toBe(1);
     expect(r.hourly[10]).toBe(2);
   });
+
+  // Regression: en-CA with hour12:false renders midnight as "24:30" in
+  // some engines instead of "00:30". Without normalization, a midnight
+  // check-in would land in hourly[24] (out of bounds → ghost 25th
+  // bucket) and the typical-time render would flip 12:xxam → 12:xxpm.
+  it("buckets midnight (00:xx) as hour 0, not hour 24", () => {
+    const r = computeTimePattern({
+      timestamps: [
+        "2024-01-15T00:30:00Z",
+        "2024-01-16T00:30:00Z",
+        "2024-01-17T00:30:00Z",
+      ],
+      timezone: "UTC",
+    });
+    expect(r.hourly).toHaveLength(24);
+    expect(r.hourly[0]).toBe(3);
+    // Confirm no slot at index 24 leaked in
+    expect((r.hourly as Array<number | undefined>)[24]).toBeUndefined();
+    expect(r.typical).toEqual({ hour: 0, minute: 30 });
+  });
 });

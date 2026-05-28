@@ -209,9 +209,13 @@ export function computeTimePattern({
       minute: "2-digit",
       hour12: false,
     });
-    // en-CA with these options yields "HH:MM"
-    const [h, m] = local.split(":").map(Number);
-    if (Number.isFinite(h) && Number.isFinite(m)) {
+    // en-CA with hour12:false renders midnight as "24:30" in some engines
+    // instead of "00:30". Normalize 24 → 0 so it lands in hourly[0]
+    // (otherwise the array gets a hidden 25th slot and the typical-time
+    // card renders 12:xxam as 12:xxpm).
+    const [hRaw, m] = local.split(":").map(Number);
+    const h = hRaw === 24 ? 0 : hRaw;
+    if (Number.isFinite(h) && Number.isFinite(m) && h >= 0 && h <= 23) {
       hourly[h]++;
       minutes.push(h * 60 + m);
     }
