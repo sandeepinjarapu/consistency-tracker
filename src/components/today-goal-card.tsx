@@ -10,6 +10,7 @@ import {
   type CheckIn,
   type SkipReason,
 } from "@/lib/actions/check-ins";
+import { formatCheckInTime } from "@/lib/dates";
 
 const REASON_LABELS: Record<SkipReason, string> = {
   travel: "Travel",
@@ -24,6 +25,7 @@ export default function TodayGoalCard({
   description,
   categoryColor,
   date,
+  timezone,
   checkIn,
 }: {
   goalId: string;
@@ -31,6 +33,7 @@ export default function TodayGoalCard({
   description: string | null;
   categoryColor: string;
   date: string;
+  timezone: string;
   checkIn: CheckIn | null;
 }) {
   const router = useRouter();
@@ -111,7 +114,12 @@ export default function TodayGoalCard({
           <div className="flex items-center gap-2 shrink-0 relative">
             {checkIn?.status === "done" ? (
               <>
-                <span className="text-xs text-green-700 font-medium">✓ Done</span>
+                <span className="text-xs">
+                  <span className="text-green-700 font-medium">✓ Done</span>
+                  <span className="text-[color:var(--muted)] ml-1">
+                    · {formatCheckInTime(checkIn.created_at, timezone)}
+                  </span>
+                </span>
                 <button
                   onClick={() => run(() => unmark(goalId, date))}
                   disabled={pending}
@@ -122,9 +130,14 @@ export default function TodayGoalCard({
               </>
             ) : checkIn?.status === "skipped" ? (
               <>
-                <span className="text-xs text-amber-700 font-medium">
-                  ⏭ Skipped
-                  {checkIn.skip_reason ? ` · ${REASON_LABELS[checkIn.skip_reason]}` : ""}
+                <span className="text-xs">
+                  <span className="text-amber-700 font-medium">
+                    ⏭ Skipped
+                    {checkIn.skip_reason ? ` · ${REASON_LABELS[checkIn.skip_reason]}` : ""}
+                  </span>
+                  <span className="text-[color:var(--muted)] ml-1">
+                    · {formatCheckInTime(checkIn.created_at, timezone)}
+                  </span>
                 </span>
                 <button
                   onClick={() => run(() => unmark(goalId, date))}

@@ -12,6 +12,7 @@ export type CheckIn = {
   status: "done" | "skipped";
   skip_reason: SkipReason | null;
   note: string | null;
+  created_at: string; // UTC timestamptz — when this check-in was logged
 };
 
 const VALID_REASONS: SkipReason[] = ["travel", "illness", "mood", "other"];

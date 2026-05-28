@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, todayIn } from "@/lib/dates";
-import { buildHeatmapCells, computeStats } from "@/lib/stats";
+import { addDays, todayIn, formatTime } from "@/lib/dates";
+import { buildHeatmapCells, computeStats, computeTimePattern } from "@/lib/stats";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { listPartners, listSharesForGoal } from "@/lib/actions/partners";
 import { buildGCalUrl } from "@/lib/gcal";
 import Heatmap from "@/components/heatmap";
 import GoalRowActions from "@/components/goal-row-actions";
 import ShareToggles from "@/components/share-toggles";
+import TimeHistogram from "@/components/time-histogram";
 
 export default async function GoalPage({
   params,
@@ -59,7 +60,7 @@ export default async function GoalPage({
   const [{ data: checkInsRaw }, partners, sharedWith] = await Promise.all([
     supabase
       .from("check_ins")
-      .select("date, status")
+      .select("date, status, created_at")
       .eq("goal_id", id)
       .gte("date", startDate)
       .lte("date", today)
@@ -71,7 +72,15 @@ export default async function GoalPage({
   const checkIns = (checkInsRaw ?? []) as Array<{
     date: string;
     status: "done" | "skipped";
+    created_at: string;
   }>;
+
+  const timePattern = computeTimePattern({
+    timestamps: checkIns
+      .filter((c) => c.status === "done")
+      .map((c) => c.created_at),
+    timezone,
+  });
 
   const cells = buildHeatmapCells({
     startDate,
@@ -150,14 +159,34 @@ export default async function GoalPage({
         <GoalRowActions goalId={goal.id} archived={!goal.active} />
       </header>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
         <Stat label="Current streak" value={`${stats.currentStreak}`} unit="days" />
         <Stat label="Longest streak" value={`${stats.longestStreak}`} unit="days" />
         <Stat label="Done" value={`${stats.doneCount}`} unit={`/ ${stats.doneCount + stats.skippedCount + stats.missedCount}`} />
         <Stat label="Completion" value={`${Math.round(stats.completionRate * 100)}%`} unit={stats.skippedCount > 0 ? `(${stats.skippedCount} skipped)` : ""} />
+        <Stat
+          label="Typical"
+          value={
+            timePattern.typical
+              ? formatTime(timePattern.typical.hour, timePattern.typical.minute)
+              : "—"
+          }
+          unit={timePattern.total > 0 ? "median" : ""}
+        />
       </div>
 
       <Heatmap cells={cells} doneColor={categoryColor} />
+
+      <div className="mt-8">
+        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+          Time of day
+        </h3>
+        <TimeHistogram
+          hourly={timePattern.hourly}
+          total={timePattern.total}
+          color={categoryColor}
+        />
+      </div>
 
       <div className="mt-12 pt-6 border-t border-[color:var(--border)]">
         <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
