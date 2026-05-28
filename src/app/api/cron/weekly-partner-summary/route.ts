@@ -14,8 +14,9 @@ export const runtime = "nodejs";
  * on those goals for the past Mon–Sun week, and email B one summary.
  */
 export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET;
   const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!secret || auth !== `Bearer ${secret}`) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
