@@ -50,17 +50,6 @@ function validate(input: GoalInput): void {
 const GOAL_COLUMNS =
   "id, user_id, name, description, doc_url, category_id, target_days, reminder_time, active, archived_at, created_at";
 
-export async function listActiveGoals(): Promise<Goal[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("goals")
-    .select(GOAL_COLUMNS)
-    .eq("active", true)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return data ?? [];
-}
-
 export async function getGoal(id: string): Promise<Goal | null> {
   const supabase = await createClient();
   const { data, error } = await supabase

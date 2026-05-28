@@ -175,28 +175,14 @@ export async function acceptInvite(
   if (new Date(invite.expires_at) < new Date()) return { ok: false, reason: "expired" };
   if (invite.inviter_id === user.id) return { ok: false, reason: "cannot_self_accept" };
 
-  // Idempotent: if these two users are already partnered via some other
-  // accepted invite, just mark this one accepted (so it clears from
-  // pending) and return success without creating duplicate state.
-  const { data: existingPartnership } = await service
-    .from("partner_invites")
-    .select("id")
-    .or(
-      `and(inviter_id.eq.${invite.inviter_id},accepted_by.eq.${user.id}),and(inviter_id.eq.${user.id},accepted_by.eq.${invite.inviter_id})`
-    )
-    .not("accepted_at", "is", null)
-    .neq("id", invite.id)
-    .limit(1);
-
-  // (Either way — already partnered or not — mark this invite accepted
-  // to clear pending state and let listPartners dedupe.)
+  // Idempotent: even if these two are already partnered via another
+  // accepted invite, we just mark this invite accepted so it clears from
+  // pending. listPartners dedupes, so no duplicate state is created.
   const { error: updateErr } = await service
     .from("partner_invites")
     .update({ accepted_at: new Date().toISOString(), accepted_by: user.id })
     .eq("id", invite.id);
   if (updateErr) return { ok: false, reason: "update_failed" };
-
-  void existingPartnership; // kept for future surfacing if we want to flag
 
   revalidatePath("/consistencytracker", "layout");
   return { ok: true, partnerId: invite.inviter_id };
@@ -328,8 +314,8 @@ export async function setGoalShared(
     const { error } = await supabase
       .from("shares")
       .insert({ owner_id: user.id, viewer_id: partnerId, goal_id: goalId });
-    // Ignore unique-violation (already shared)
-    if (error && !error.message.includes("duplicate")) throw error;
+    // Ignore unique-violation (already shared) — Postgres code 23505.
+    if (error && error.code !== "23505") throw error;
   } else {
     const { error } = await supabase
       .from("shares")

@@ -2,12 +2,26 @@
 
 import { createClient } from "@/lib/supabase/server";
 
+function isValidTimeZone(tz: string): boolean {
+  try {
+    Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Persist the user's browser-detected IANA timezone if it differs from
  * what's currently stored. Safe to call repeatedly.
  */
 export async function saveTimezone(timezone: string): Promise<void> {
-  if (!timezone || typeof timezone !== "string" || timezone.length > 64) {
+  if (
+    !timezone ||
+    typeof timezone !== "string" ||
+    timezone.length > 64 ||
+    !isValidTimeZone(timezone)
+  ) {
     return; // ignore garbage input
   }
 
