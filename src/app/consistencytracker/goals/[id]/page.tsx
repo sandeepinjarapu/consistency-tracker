@@ -6,6 +6,7 @@ import { buildHeatmapCells, computeStats, computeTimePattern } from "@/lib/stats
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { listPartners, listSharesForGoal } from "@/lib/actions/partners";
 import { buildGCalUrl } from "@/lib/gcal";
+import { safeExternalUrl } from "@/lib/url";
 import Heatmap from "@/components/heatmap";
 import GoalRowActions from "@/components/goal-row-actions";
 import ShareToggles from "@/components/share-toggles";
@@ -52,6 +53,7 @@ export default async function GoalPage({
     ? goal.category[0] ?? null
     : goal.category;
   const categoryColor = category?.color ?? "#9ca3af";
+  const docUrl = safeExternalUrl(goal.doc_url);
 
   // Date range: past year
   const startDate = addDays(today, -364);
@@ -126,9 +128,9 @@ export default async function GoalPage({
             </p>
           ) : null}
           <div className="mt-3 flex items-center gap-4 text-xs text-[color:var(--muted)]">
-            {goal.doc_url ? (
+            {docUrl ? (
               <a
-                href={goal.doc_url}
+                href={docUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline hover:text-black"

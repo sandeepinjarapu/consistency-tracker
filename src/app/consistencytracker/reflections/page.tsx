@@ -48,7 +48,8 @@ export default async function ReflectionsPage() {
   // All active + archived goals (so historical weeks compute correctly)
   const { data: allGoals } = await supabase
     .from("goals")
-    .select("id, name, target_days, created_at");
+    .select("id, name, target_days, created_at")
+    .eq("user_id", user.id);
   const goals = (allGoals ?? []) as Array<{
     id: string;
     name: string;
@@ -60,6 +61,7 @@ export default async function ReflectionsPage() {
   const { data: ciRaw } = await supabase
     .from("check_ins")
     .select("goal_id, date, status, skip_reason, note")
+    .eq("user_id", user.id)
     .gte("date", earliestWeekStart)
     .lte("date", latestWindow);
   const checkIns = (ciRaw ?? []) as Array<{
