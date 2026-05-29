@@ -38,7 +38,8 @@ export default async function EditGoalPage({
       <header className="mb-8">
         <h1 className="text-xl font-light tracking-tight">Edit goal</h1>
         <p className="mt-1 text-sm text-[color:var(--muted)]">
-          Changes apply going forward. Past check-ins stay as they were.
+          Your check-ins stay exactly as they were — but changing the days or
+          frequency re-scores your past weeks under the new cadence.
         </p>
       </header>
       <GoalForm mode="edit" initial={goal} categories={categories} />
