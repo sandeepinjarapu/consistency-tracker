@@ -15,6 +15,7 @@ type SharedGoal = {
   description: string | null;
   doc_url: string | null;
   target_days: number[];
+  weekly_target: number | null;
   created_at: string;
   category: { name: string | null; color: string | null } | null;
 };
@@ -67,7 +68,7 @@ export default async function PartnerPage({
   const { data: rawGoals } = await supabase
     .from("goals")
     .select(
-      "id, name, description, doc_url, target_days, created_at, category:categories(name, color)"
+      "id, name, description, doc_url, target_days, weekly_target, created_at, category:categories(name, color)"
     )
     .eq("user_id", partnerId)
     .eq("active", true)
@@ -155,15 +156,21 @@ export default async function PartnerPage({
               checkIns,
               goalStartDate: goalStart,
               todayStr: today,
+              weeklyTarget: goal.weekly_target,
             });
             const stats = computeStats({
               startDate: goalStart > yearStart ? goalStart : yearStart,
               endDate: today,
               targetDays: goal.target_days,
               checkIns,
+              weeklyTarget: goal.weekly_target,
             });
             const color = goal.category?.color ?? "#9ca3af";
             const docUrl = safeExternalUrl(goal.doc_url);
+            const cadenceLabel =
+              goal.weekly_target != null
+                ? `${goal.weekly_target}× per week`
+                : targetDaysLabel(goal.target_days);
 
             return (
               <div key={goal.id}>
@@ -176,7 +183,7 @@ export default async function PartnerPage({
                     />
                     <span className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
                       {goal.category?.name ?? "Uncategorized"} ·{" "}
-                      {targetDaysLabel(goal.target_days)}
+                      {cadenceLabel}
                     </span>
                   </div>
                   <h2 className="text-lg font-medium">{goal.name}</h2>
@@ -197,7 +204,7 @@ export default async function PartnerPage({
                   ) : null}
                   <p className="mt-2 text-xs text-[color:var(--muted)]">
                     {stats.currentStreak > 0
-                      ? `${stats.currentStreak} day streak · `
+                      ? `${stats.currentStreak} ${stats.streakUnit} streak · `
                       : ""}
                     {stats.doneCount} done · {Math.round(stats.completionRate * 100)}% completion
                   </p>

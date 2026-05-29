@@ -36,7 +36,7 @@ export default async function GoalPage({
   const { data: goal } = await supabase
     .from("goals")
     .select(
-      "id, name, description, doc_url, target_days, reminder_time, active, created_at, user_id, category:categories(name, color)"
+      "id, name, description, doc_url, target_days, reminder_time, weekly_target, active, created_at, user_id, category:categories(name, color)"
     )
     .eq("id", id)
     .single();
@@ -54,6 +54,11 @@ export default async function GoalPage({
     : goal.category;
   const categoryColor = category?.color ?? "#9ca3af";
   const docUrl = safeExternalUrl(goal.doc_url);
+  const isCount = goal.weekly_target != null;
+  const cadenceLabel = isCount
+    ? `${goal.weekly_target}× per week`
+    : targetDaysLabel(goal.target_days);
+  const streakUnit = isCount ? "weeks" : "days";
 
   // Date range: past year
   const startDate = addDays(today, -364);
@@ -91,6 +96,7 @@ export default async function GoalPage({
     checkIns,
     goalStartDate,
     todayStr: today,
+    weeklyTarget: goal.weekly_target,
   });
 
   const stats = computeStats({
@@ -98,6 +104,7 @@ export default async function GoalPage({
     endDate: today,
     targetDays: goal.target_days,
     checkIns,
+    weeklyTarget: goal.weekly_target,
   });
 
   return (
@@ -118,7 +125,7 @@ export default async function GoalPage({
               style={{ background: categoryColor }}
             />
             <span className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
-              {category?.name ?? "Uncategorized"} · {targetDaysLabel(goal.target_days)}
+              {category?.name ?? "Uncategorized"} · {cadenceLabel}
             </span>
           </div>
           <h1 className="text-2xl font-light tracking-tight">{goal.name}</h1>
@@ -138,32 +145,34 @@ export default async function GoalPage({
                 Reflection doc ↗
               </a>
             ) : null}
-            {goal.reminder_time ? (
-              <a
-                href={buildGCalUrl({
-                  name: goal.name,
-                  description: goal.description,
-                  reminderTime: goal.reminder_time,
-                  targetDays: goal.target_days,
-                  timezone,
-                })}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-black"
-              >
-                Add to Google Calendar ↗
-              </a>
-            ) : (
-              <span>No reminder set · <a href={`/consistencytracker/goals/${goal.id}/edit`} className="underline hover:text-black">add one</a></span>
-            )}
+            {!isCount ? (
+              goal.reminder_time ? (
+                <a
+                  href={buildGCalUrl({
+                    name: goal.name,
+                    description: goal.description,
+                    reminderTime: goal.reminder_time,
+                    targetDays: goal.target_days,
+                    timezone,
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-black"
+                >
+                  Add to Google Calendar ↗
+                </a>
+              ) : (
+                <span>No reminder set · <a href={`/consistencytracker/goals/${goal.id}/edit`} className="underline hover:text-black">add one</a></span>
+              )
+            ) : null}
           </div>
         </div>
         <GoalRowActions goalId={goal.id} archived={!goal.active} />
       </header>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
-        <Stat label="Current streak" value={`${stats.currentStreak}`} unit="days" />
-        <Stat label="Longest streak" value={`${stats.longestStreak}`} unit="days" />
+        <Stat label="Current streak" value={`${stats.currentStreak}`} unit={streakUnit} />
+        <Stat label="Longest streak" value={`${stats.longestStreak}`} unit={streakUnit} />
         <Stat label="Done" value={`${stats.doneCount}`} unit={`/ ${stats.doneCount + stats.skippedCount + stats.missedCount}`} />
         <Stat label="Completion" value={`${Math.round(stats.completionRate * 100)}%`} unit={stats.skippedCount > 0 ? `(${stats.skippedCount} skipped)` : ""} />
         <Stat

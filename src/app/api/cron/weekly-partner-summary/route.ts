@@ -79,7 +79,7 @@ export async function GET(request: Request) {
       .in("owner_id", ownerIds),
     supabase
       .from("goals")
-      .select("id, user_id, name, target_days, created_at, active")
+      .select("id, user_id, name, target_days, weekly_target, created_at, active")
       .in("user_id", ownerIds),
     supabase
       .from("check_ins")
@@ -120,7 +120,26 @@ export async function GET(request: Request) {
     // Per-goal stats for the week
     const stats: WeeklyGoalStat[] = sharedGoals.map((g) => {
       const goalStart = g.created_at.slice(0, 10);
-      // Target days in the window, accounting for goal start
+      const goalCheckIns = checkIns.filter(
+        (c) =>
+          c.goal_id === g.id &&
+          c.date >= summaryWeekStart &&
+          c.date <= summaryWeekEnd
+      );
+      const skipped = goalCheckIns.filter((c) => c.status === "skipped").length;
+
+      // Count goals: target is the weekly quota, and only done check-ins on
+      // eligible days count toward it.
+      if (g.weekly_target != null) {
+        const done = goalCheckIns.filter(
+          (c) =>
+            c.status === "done" &&
+            g.target_days.includes(dayOfWeekForDateString(c.date))
+        ).length;
+        return { name: g.name, done, target: g.weekly_target, skipped };
+      }
+
+      // Specific-day goals: target is the number of target days in the window.
       let target = 0;
       let cursor = summaryWeekStart;
       while (cursor <= summaryWeekEnd) {
@@ -130,14 +149,7 @@ export async function GET(request: Request) {
         }
         cursor = addDays(cursor, 1);
       }
-      const goalCheckIns = checkIns.filter(
-        (c) =>
-          c.goal_id === g.id &&
-          c.date >= summaryWeekStart &&
-          c.date <= summaryWeekEnd
-      );
       const done = goalCheckIns.filter((c) => c.status === "done").length;
-      const skipped = goalCheckIns.filter((c) => c.status === "skipped").length;
       return { name: g.name, done, target, skipped };
     });
 

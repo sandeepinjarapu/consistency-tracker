@@ -58,6 +58,7 @@ type GoalRow = {
   name: string;
   target_days: number[];
   created_at: string;
+  weekly_target?: number | null;
 };
 
 /**
@@ -88,6 +89,13 @@ export function computeWeekStats({
     // Skip goals created after this week ended — they contribute nothing.
     if (goalStart > end) continue;
 
+    // Count goals are scored by a weekly quota, not per-day compliance:
+    // a non-done eligible day is neutral (not a miss), and completion is
+    // measured against weekly_target rather than the number of target days.
+    const weeklyTarget =
+      typeof g.weekly_target === "number" ? g.weekly_target : null;
+    const isCount = weeklyTarget !== null;
+
     const dailyStatus: GoalDayStatus[] = [];
     let done = 0;
     let skipped = 0;
@@ -111,17 +119,20 @@ export function computeWeekStats({
         if (ci?.status === "done") {
           status = "done";
           done++;
-          targetCount++;
+          if (!isCount) targetCount++;
         } else if (ci?.status === "skipped") {
           status = "skipped";
           skipped++;
-          targetCount++;
+          if (!isCount) targetCount++;
           const reason = ci.skip_reason ?? "other";
           skipReasons[reason] = (skipReasons[reason] ?? 0) + 1;
         } else if (cursor === today) {
           // today, no check-in yet — pending, not missed
           status = "future";
-          targetCount++;
+          if (!isCount) targetCount++;
+        } else if (isCount) {
+          // count goal — a non-done eligible day is neutral, not a miss
+          status = "no-target";
         } else {
           status = "missed";
           missed++;
@@ -135,14 +146,23 @@ export function computeWeekStats({
       cursor = addDays(cursor, 1);
     }
 
+    const effectiveTargetCount =
+      weeklyTarget !== null ? weeklyTarget : targetCount;
+    const completion =
+      weeklyTarget !== null
+        ? Math.min(done / weeklyTarget, 1)
+        : targetCount > 0
+          ? done / targetCount
+          : 0;
+
     perGoal.push({
       goalId: g.id,
       goalName: g.name,
-      targetCount,
+      targetCount: effectiveTargetCount,
       done,
       skipped,
       missed,
-      completion: targetCount > 0 ? done / targetCount : 0,
+      completion,
       skipReasons,
       notes,
       dailyStatus,

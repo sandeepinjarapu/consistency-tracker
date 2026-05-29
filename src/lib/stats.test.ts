@@ -157,6 +157,76 @@ describe("computeStats — streak math", () => {
   });
 });
 
+describe("computeStats — count goals (weekly target)", () => {
+  // ISO weeks (Mon start): A = Jan 1–7, B = Jan 8–14, C = Jan 15–21, 2024.
+  const weekdays = [1, 2, 3, 4, 5];
+  const done = (date: string) => ({ date, status: "done" as const });
+
+  it("reports week-based streak, completion, and doneThisWeek", () => {
+    const s = computeStats({
+      startDate: "2024-01-01",
+      endDate: "2024-01-17", // Wed of week C (in progress)
+      targetDays: weekdays,
+      weeklyTarget: 3,
+      checkIns: [
+        done("2024-01-01"), done("2024-01-02"), done("2024-01-03"), // A: met
+        done("2024-01-08"), done("2024-01-09"), done("2024-01-10"), // B: met
+        done("2024-01-15"), done("2024-01-16"), // C: 2 so far, not yet met
+      ],
+    });
+    expect(s.streakUnit).toBe("week");
+    expect(s.doneThisWeek).toBe(2);
+    expect(s.weeklyTarget).toBe(3);
+    expect(s.completionRate).toBe(1); // completed weeks A,B both met
+    expect(s.currentStreak).toBe(2); // in-progress C doesn't break A,B
+    expect(s.longestStreak).toBe(2);
+  });
+
+  it("current week counts toward the streak once the target is met", () => {
+    const s = computeStats({
+      startDate: "2024-01-08",
+      endDate: "2024-01-17",
+      targetDays: weekdays,
+      weeklyTarget: 2,
+      checkIns: [
+        done("2024-01-08"), done("2024-01-09"), // B: met
+        done("2024-01-15"), done("2024-01-16"), // C (current): met
+      ],
+    });
+    expect(s.currentStreak).toBe(2); // B + current C
+    expect(s.doneThisWeek).toBe(2);
+  });
+
+  it("a missed completed week resets the streak", () => {
+    const s = computeStats({
+      startDate: "2024-01-01",
+      endDate: "2024-01-17",
+      targetDays: weekdays,
+      weeklyTarget: 3,
+      checkIns: [
+        done("2024-01-01"), done("2024-01-02"), done("2024-01-03"), // A: met
+        done("2024-01-08"), // B: only 1 → missed
+        done("2024-01-15"), done("2024-01-16"), done("2024-01-17"), // C: met
+      ],
+    });
+    expect(s.currentStreak).toBe(1); // current C met; prior B failed → stop
+    expect(s.longestStreak).toBe(1);
+    expect(s.completionRate).toBe(0.5); // completed A,B: 1 of 2 met
+  });
+
+  it("dones outside the eligible window don't count toward the quota", () => {
+    const s = computeStats({
+      startDate: "2024-01-15",
+      endDate: "2024-01-21", // full week C
+      targetDays: weekdays,
+      weeklyTarget: 1,
+      checkIns: [done("2024-01-20"), done("2024-01-21")], // Sat + Sun, off-window
+    });
+    expect(s.doneThisWeek).toBe(0);
+    expect(s.doneCount).toBe(0);
+  });
+});
+
 describe("buildHeatmapCells", () => {
   it("marks cells before goalStartDate as empty", () => {
     const cells = buildHeatmapCells({
@@ -226,6 +296,39 @@ describe("buildHeatmapCells", () => {
     });
     expect(cells[0].status).toBe("empty"); // Sun, not a target
     expect(cells[1].status).toBe("done"); // Mon
+  });
+
+  it("count goals: a past eligible day with no check-in is empty, not missed", () => {
+    const args = {
+      startDate: "2024-01-15",
+      endDate: "2024-01-17",
+      targetDays: ALL_DAYS,
+      checkIns: [],
+      goalStartDate: "2024-01-15",
+      todayStr: "2024-01-17",
+    };
+    expect(buildHeatmapCells(args)[0].status).toBe("missed"); // specific goal
+    expect(buildHeatmapCells({ ...args, weeklyTarget: 3 })[0].status).toBe(
+      "empty"
+    ); // count goal — a gap isn't a miss
+  });
+
+  it("count goals still render done and skipped days", () => {
+    const cells = buildHeatmapCells({
+      startDate: "2024-01-15",
+      endDate: "2024-01-17",
+      targetDays: ALL_DAYS,
+      checkIns: [
+        { date: "2024-01-15", status: "done" },
+        { date: "2024-01-16", status: "skipped" },
+      ],
+      goalStartDate: "2024-01-15",
+      todayStr: "2024-01-17",
+      weeklyTarget: 2,
+    });
+    expect(cells[0].status).toBe("done");
+    expect(cells[1].status).toBe("skipped");
+    expect(cells[2].status).toBe("empty"); // today pending
   });
 });
 
@@ -297,6 +400,27 @@ describe("buildAggregateCells", () => {
     });
     expect(cells[0].color).toBe("#ebedf0"); // Mon, 0 of 1 done
     expect(cells[1].color).toBe("#f3f4f6"); // Tue, no target
+  });
+
+  it("count goals only count toward a day once actually done", () => {
+    // g1 = specific daily goal, g2 = count goal (3×/week). On Jan 16 only g1
+    // is done; the not-done count goal must not drag the ratio to 1-of-2.
+    const cells = buildAggregateCells({
+      startDate: "2024-01-16",
+      endDate: "2024-01-16",
+      todayStr: "2024-01-16",
+      goals: [
+        { id: "g1", target_days: ALL_DAYS, created_at: "2024-01-01T00:00:00Z" },
+        {
+          id: "g2",
+          target_days: ALL_DAYS,
+          created_at: "2024-01-01T00:00:00Z",
+          weekly_target: 3,
+        },
+      ],
+      checkIns: [{ goal_id: "g1", date: "2024-01-16", status: "done" }],
+    });
+    expect(cells[0].color).toBe("#216e39"); // 1 of 1 effective → full intensity
   });
 });
 

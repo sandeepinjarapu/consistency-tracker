@@ -137,6 +137,58 @@ describe("computeWeekStats", () => {
     expect(r.notes[0].goalName).toBe("Writing");
     expect(r.notes[1].goalName).toBe("Gym");
   });
+
+  it("count goals: completion is done/weekly_target and gaps aren't missed", () => {
+    const r = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [
+        {
+          id: "g1",
+          name: "Workouts",
+          target_days: [1, 2, 3, 4, 5], // weekday eligible window
+          created_at: "2024-01-01T00:00:00Z",
+          weekly_target: 3,
+        },
+      ],
+      checkIns: [
+        { goal_id: "g1", date: "2024-01-15", status: "done", skip_reason: null, note: null }, // Mon
+        { goal_id: "g1", date: "2024-01-16", status: "done", skip_reason: null, note: null }, // Tue
+      ],
+    });
+    const g1 = r.perGoal[0];
+    expect(g1.done).toBe(2);
+    expect(g1.missed).toBe(0); // count goal — no per-day misses
+    expect(g1.targetCount).toBe(3); // the weekly quota, not the day count
+    expect(g1.completion).toBeCloseTo(2 / 3, 5);
+    expect(g1.dailyStatus[0]).toBe("done"); // Mon
+    expect(g1.dailyStatus[1]).toBe("done"); // Tue
+    expect(g1.dailyStatus[2]).toBe("no-target"); // Wed — eligible but not done → neutral
+    expect(g1.dailyStatus.includes("missed")).toBe(false);
+  });
+
+  it("count goals: completion caps at 1 when the quota is exceeded", () => {
+    const r = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [
+        {
+          id: "g1",
+          name: "Steps",
+          target_days: ALL_DAYS,
+          created_at: "2024-01-01T00:00:00Z",
+          weekly_target: 2,
+        },
+      ],
+      checkIns: [
+        { goal_id: "g1", date: "2024-01-15", status: "done", skip_reason: null, note: null },
+        { goal_id: "g1", date: "2024-01-16", status: "done", skip_reason: null, note: null },
+        { goal_id: "g1", date: "2024-01-17", status: "done", skip_reason: null, note: null },
+      ],
+    });
+    expect(r.perGoal[0].done).toBe(3);
+    expect(r.perGoal[0].completion).toBe(1); // capped
+  });
 });
 
 describe("compareWeeks", () => {

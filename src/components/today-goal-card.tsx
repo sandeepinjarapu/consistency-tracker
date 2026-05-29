@@ -27,6 +27,7 @@ export default function TodayGoalCard({
   date,
   timezone,
   checkIn,
+  paceLabel,
 }: {
   goalId: string;
   name: string;
@@ -35,6 +36,7 @@ export default function TodayGoalCard({
   date: string;
   timezone: string;
   checkIn: CheckIn | null;
+  paceLabel?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -107,6 +109,11 @@ export default function TodayGoalCard({
             {description ? (
               <p className="text-xs text-[color:var(--muted)] mt-0.5 truncate">
                 {description}
+              </p>
+            ) : null}
+            {paceLabel ? (
+              <p className="text-[11px] text-[color:var(--muted)] mt-1 tabular-nums">
+                {paceLabel}
               </p>
             ) : null}
           </div>

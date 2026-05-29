@@ -48,13 +48,14 @@ export default async function ReflectionsPage() {
   // All active + archived goals (so historical weeks compute correctly)
   const { data: allGoals } = await supabase
     .from("goals")
-    .select("id, name, target_days, created_at")
+    .select("id, name, target_days, created_at, weekly_target")
     .eq("user_id", user.id);
   const goals = (allGoals ?? []) as Array<{
     id: string;
     name: string;
     target_days: number[];
     created_at: string;
+    weekly_target: number | null;
   }>;
 
   // Check-ins across the window (extra week included for trend comparison)
