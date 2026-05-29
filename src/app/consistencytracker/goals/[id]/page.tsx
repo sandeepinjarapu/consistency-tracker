@@ -216,7 +216,19 @@ export default async function GoalPage({
         </div>
       ) : null}
 
-      <Heatmap cells={cells} doneColor={categoryColor} />
+      <Heatmap
+        cells={cells}
+        doneColor={categoryColor}
+        editable={{
+          goalId: goal.id,
+          goalStartDate,
+          today,
+          targetDays: goal.target_days,
+        }}
+      />
+      <p className="mt-2 text-xs text-[color:var(--muted)]">
+        Click a day to log or undo a check-in — this week, or up to 2 days into the new week.
+      </p>
 
       <div className="mt-8">
         <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">

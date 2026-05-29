@@ -1,4 +1,10 @@
+"use client";
+
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { addDays, dayOfWeekForDateString } from "@/lib/dates";
+import { markDone, unmark } from "@/lib/actions/check-ins";
+import { backfillAction } from "@/lib/heatmap-backfill";
 import HeatmapScroller from "./heatmap-scroller";
 
 export type CellStatus = "done" | "skipped" | "missed" | "empty";
@@ -46,15 +52,40 @@ const DAY_LABELS_SHOWN: Record<number, string> = {
  * component will pad with `empty` cells on the left so the first column
  * starts on a Sunday.
  */
+export type HeatmapEditable = {
+  goalId: string;
+  goalStartDate: string;
+  today: string;
+  targetDays: number[];
+};
+
 export default function Heatmap({
   cells,
   doneColor = COLOR.done,
   hideLegend = false,
+  editable,
 }: {
   cells: HeatmapCell[];
   doneColor?: string;
   hideLegend?: boolean;
+  editable?: HeatmapEditable;
 }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  const runBackfill = (cell: HeatmapCell, action: "mark" | "clear") => {
+    if (!editable || pending) return;
+    startTransition(async () => {
+      try {
+        if (action === "mark") await markDone(editable.goalId, cell.date);
+        else await unmark(editable.goalId, cell.date);
+        router.refresh();
+      } catch {
+        // ignore — ownership/RLS errors shouldn't occur for the owner
+      }
+    });
+  };
+
   if (cells.length === 0) {
     return (
       <p className="text-xs text-[color:var(--muted)]">
@@ -120,6 +151,7 @@ export default function Heatmap({
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label="Consistency heatmap"
+        style={pending ? { opacity: 0.6 } : undefined}
       >
         {/* Month labels */}
         {monthLabels.map((m, i) => {
@@ -157,6 +189,14 @@ export default function Heatmap({
             if (cell === null) return null;
             const x = LEFT_GUTTER + ci * COL;
             const y = TOP_GUTTER + ri * ROW;
+            const action = editable
+              ? backfillAction(cell, {
+                  goalStartDate: editable.goalStartDate,
+                  today: editable.today,
+                  targetDays: editable.targetDays,
+                })
+              : null;
+            const baseTip = cell.tooltip ?? tooltipFor(cell);
             return (
               <rect
                 key={`${ci}-${ri}`}
@@ -167,8 +207,14 @@ export default function Heatmap({
                 rx={2}
                 ry={2}
                 fill={colorFor(cell)}
+                style={action ? { cursor: "pointer" } : undefined}
+                onClick={action ? () => runBackfill(cell, action) : undefined}
               >
-                <title>{cell.tooltip ?? tooltipFor(cell)}</title>
+                <title>
+                  {action
+                    ? `${baseTip} — click to ${action === "clear" ? "undo" : "log"}`
+                    : baseTip}
+                </title>
               </rect>
             );
           })
