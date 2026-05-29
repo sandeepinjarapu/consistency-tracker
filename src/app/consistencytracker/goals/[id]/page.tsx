@@ -2,12 +2,18 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, todayIn, formatTime } from "@/lib/dates";
-import { buildHeatmapCells, computeStats, computeTimePattern } from "@/lib/stats";
+import {
+  buildHeatmapCells,
+  computeStats,
+  computeTimePattern,
+  computeWeeklyMet,
+} from "@/lib/stats";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { listPartners, listSharesForGoal } from "@/lib/actions/partners";
 import { buildGCalUrl } from "@/lib/gcal";
 import { safeExternalUrl } from "@/lib/url";
 import Heatmap from "@/components/heatmap";
+import WeeklyStrip from "@/components/weekly-strip";
 import GoalRowActions from "@/components/goal-row-actions";
 import ShareToggles from "@/components/share-toggles";
 import TimeHistogram from "@/components/time-histogram";
@@ -107,6 +113,17 @@ export default async function GoalPage({
     weeklyTarget: goal.weekly_target,
   });
 
+  const weeklyMet =
+    goal.weekly_target != null
+      ? computeWeeklyMet({
+          startDate: goalStartDate > startDate ? goalStartDate : startDate,
+          endDate: today,
+          targetDays: goal.target_days,
+          checkIns,
+          weeklyTarget: goal.weekly_target,
+        })
+      : [];
+
   return (
     <section>
       <Link
@@ -185,6 +202,19 @@ export default async function GoalPage({
           unit={timePattern.total > 0 ? "median" : ""}
         />
       </div>
+
+      {goal.weekly_target != null ? (
+        <div className="mb-8">
+          <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+            Weekly target
+          </h3>
+          <WeeklyStrip
+            weeks={weeklyMet}
+            weeklyTarget={goal.weekly_target}
+            doneColor={categoryColor}
+          />
+        </div>
+      ) : null}
 
       <Heatmap cells={cells} doneColor={categoryColor} />
 

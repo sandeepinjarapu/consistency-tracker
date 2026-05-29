@@ -50,7 +50,12 @@ create table if not exists public.goals (
   weekly_target smallint check (weekly_target is null or (weekly_target between 1 and 7)),
   active boolean not null default true,
   archived_at timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- weekly_target must fit within the eligible window — added 0008
+  constraint goals_weekly_target_within_window check (
+    weekly_target is null
+    or weekly_target <= coalesce(array_length(target_days, 1), 0)
+  )
 );
 create index if not exists goals_user_id_idx on public.goals(user_id);
 create index if not exists goals_active_idx on public.goals(user_id, active);

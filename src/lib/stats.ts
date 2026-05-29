@@ -123,11 +123,65 @@ export function computeStats({
   };
 }
 
+export type WeekMet = {
+  weekStart: string; // ISO Monday
+  done: number; // done check-ins on eligible days that week
+  met: boolean; // done >= weeklyTarget
+  partial: boolean; // goal didn't exist for the whole week (first stub week)
+  current: boolean; // the in-progress week containing endDate
+};
+
+/**
+ * Per-ISO-week met status for a count goal, oldest → newest. Used by both
+ * the weekly stats below and the weekly-met strip on goal pages.
+ *
+ * A week is "partial" when the goal was created after that week's Monday —
+ * it never had a fair shot at the full quota, so callers treat it as grace.
+ */
+export function computeWeeklyMet({
+  startDate,
+  endDate,
+  targetDays,
+  checkIns,
+  weeklyTarget,
+}: {
+  startDate: string;
+  endDate: string;
+  targetDays: number[];
+  checkIns: RawCheckIn[];
+  weeklyTarget: number;
+}): WeekMet[] {
+  const doneByWeek = new Map<string, number>();
+  for (const c of checkIns) {
+    if (c.status !== "done") continue;
+    if (c.date < startDate || c.date > endDate) continue;
+    if (!targetDays.includes(dayOfWeekForDateString(c.date))) continue;
+    const ws = isoWeekStart(c.date);
+    doneByWeek.set(ws, (doneByWeek.get(ws) ?? 0) + 1);
+  }
+
+  const firstWeekStart = isoWeekStart(startDate);
+  const currentWeekStart = isoWeekStart(endDate);
+  const weeks: WeekMet[] = [];
+  for (let ws = firstWeekStart; ws <= currentWeekStart; ws = addDays(ws, 7)) {
+    const done = doneByWeek.get(ws) ?? 0;
+    weeks.push({
+      weekStart: ws,
+      done,
+      met: done >= weeklyTarget,
+      partial: startDate > ws, // created after this week's Monday
+      current: ws === currentWeekStart,
+    });
+  }
+  return weeks;
+}
+
 /**
  * Count-goal stats: streak + completion measured in ISO weeks instead of
- * days. A week is "met" when the number of done check-ins on eligible days
- * (dow in targetDays) reaches weeklyTarget. The current in-progress week
- * never breaks the streak (mirrors the day-based "today pending" grace).
+ * days. A week is "met" when done check-ins on eligible days reach
+ * weeklyTarget. A met week always extends the streak; a non-met week only
+ * breaks it (and counts toward completion) if it's a *full, completed*
+ * week — the partial first week and the in-progress current week are grace.
  */
 function computeWeeklyCountStats({
   startDate,
@@ -142,56 +196,57 @@ function computeWeeklyCountStats({
   checkIns: RawCheckIn[];
   weeklyTarget: number;
 }): GoalStats {
-  const doneByWeek = new Map<string, number>();
   let doneCount = 0;
   let skippedCount = 0;
   for (const c of checkIns) {
     if (c.date < startDate || c.date > endDate) continue;
     if (!targetDays.includes(dayOfWeekForDateString(c.date))) continue;
-    if (c.status === "done") {
-      doneCount++;
-      const ws = isoWeekStart(c.date);
-      doneByWeek.set(ws, (doneByWeek.get(ws) ?? 0) + 1);
-    } else if (c.status === "skipped") {
-      skippedCount++;
-    }
+    if (c.status === "done") doneCount++;
+    else if (c.status === "skipped") skippedCount++;
   }
 
-  const firstWeekStart = isoWeekStart(startDate);
-  const currentWeekStart = isoWeekStart(endDate);
-  const isMet = (ws: string) => (doneByWeek.get(ws) ?? 0) >= weeklyTarget;
+  const weeks = computeWeeklyMet({
+    startDate,
+    endDate,
+    targetDays,
+    checkIns,
+    weeklyTarget,
+  });
 
-  // Longest streak + completion measured over *completed* weeks only
-  // (the current week is in progress, so it's excluded from the rate).
   let running = 0;
   let longestStreak = 0;
   let weeksElapsed = 0;
   let weeksMet = 0;
-  for (let ws = firstWeekStart; ws <= currentWeekStart; ws = addDays(ws, 7)) {
-    const isCurrent = ws === currentWeekStart;
-    const met = isMet(ws);
-    if (met) {
+  for (const w of weeks) {
+    const counts = !w.current && !w.partial; // a full, completed week
+    if (w.met) {
       running++;
       if (running > longestStreak) longestStreak = running;
-    } else if (!isCurrent) {
+    } else if (counts) {
       running = 0;
     }
-    if (!isCurrent) {
+    if (counts) {
       weeksElapsed++;
-      if (met) weeksMet++;
+      if (w.met) weeksMet++;
     }
   }
 
-  // Current streak: walk back from the current week. The current week counts
-  // only if already met; if not, it's in progress — skip without breaking.
-  let currentStreak = isMet(currentWeekStart) ? 1 : 0;
-  for (
-    let ws = addDays(currentWeekStart, -7);
-    ws >= firstWeekStart && isMet(ws);
-    ws = addDays(ws, -7)
-  ) {
-    currentStreak++;
+  // Current streak: newest → oldest. Met weeks extend it; grace weeks
+  // (partial first / in-progress current) are skipped; the first full,
+  // completed miss stops it.
+  let currentStreak = 0;
+  for (let i = weeks.length - 1; i >= 0; i--) {
+    const w = weeks[i];
+    if (w.met) currentStreak++;
+    else if (w.current || w.partial) continue;
+    else break;
   }
+
+  const doneThisWeek = weeks[weeks.length - 1]?.done ?? 0;
+  const completionRate =
+    weeksElapsed > 0
+      ? weeksMet / weeksElapsed
+      : Math.min(doneThisWeek / weeklyTarget, 1);
 
   return {
     doneCount,
@@ -199,9 +254,9 @@ function computeWeeklyCountStats({
     missedCount: 0,
     currentStreak,
     longestStreak,
-    completionRate: weeksElapsed > 0 ? weeksMet / weeksElapsed : 0,
+    completionRate,
     streakUnit: "week",
-    doneThisWeek: doneByWeek.get(currentWeekStart) ?? 0,
+    doneThisWeek,
     weeklyTarget,
   };
 }
