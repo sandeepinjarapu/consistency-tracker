@@ -117,8 +117,15 @@ export async function GET(request: Request) {
 
     if (sharedGoals.length === 0) continue;
 
+    // A count goal created after this week's Monday didn't have a full week —
+    // skip it this time; it'll appear next week once it has one.
+    const goalsForSummary = sharedGoals.filter(
+      (g) =>
+        !(g.weekly_target != null && g.created_at.slice(0, 10) > summaryWeekStart)
+    );
+
     // Per-goal stats for the week
-    const stats: WeeklyGoalStat[] = sharedGoals.map((g) => {
+    const stats: WeeklyGoalStat[] = goalsForSummary.map((g) => {
       const goalStart = g.created_at.slice(0, 10);
       const goalCheckIns = checkIns.filter(
         (c) =>

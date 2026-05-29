@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isPartner } from "@/lib/actions/partners";
 import { addDays, todayIn } from "@/lib/dates";
-import { buildHeatmapCells, computeStats } from "@/lib/stats";
+import { buildHeatmapCells, computeStats, computeWeeklyMet } from "@/lib/stats";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { safeExternalUrl } from "@/lib/url";
 import Heatmap from "@/components/heatmap";
+import WeeklyStrip from "@/components/weekly-strip";
 import MarkSharesSeen from "@/components/mark-shares-seen";
 
 type SharedGoal = {
@@ -171,6 +172,16 @@ export default async function PartnerPage({
               goal.weekly_target != null
                 ? `${goal.weekly_target}× per week`
                 : targetDaysLabel(goal.target_days);
+            const weeklyMet =
+              goal.weekly_target != null
+                ? computeWeeklyMet({
+                    startDate: goalStart > yearStart ? goalStart : yearStart,
+                    endDate: today,
+                    targetDays: goal.target_days,
+                    checkIns,
+                    weeklyTarget: goal.weekly_target,
+                  })
+                : [];
 
             return (
               <div key={goal.id}>
@@ -209,6 +220,15 @@ export default async function PartnerPage({
                     {stats.doneCount} done · {Math.round(stats.completionRate * 100)}% completion
                   </p>
                 </div>
+                {goal.weekly_target != null ? (
+                  <div className="mb-4">
+                    <WeeklyStrip
+                      weeks={weeklyMet}
+                      weeklyTarget={goal.weekly_target}
+                      doneColor={color}
+                    />
+                  </div>
+                ) : null}
                 <Heatmap cells={cells} doneColor={color} />
               </div>
             );

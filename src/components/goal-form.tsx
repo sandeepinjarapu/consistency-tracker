@@ -263,7 +263,7 @@ export default function GoalForm({
               </button>
             </div>
             <p className="mt-2 text-xs text-[color:var(--muted)]">
-              Shows up in Today until you hit your weekly count — no fixed reminder.
+              Shows up in Today with your weekly progress — no fixed reminder.
             </p>
           </div>
         ) : null}

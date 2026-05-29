@@ -4,6 +4,7 @@ import {
   buildHeatmapCells,
   buildAggregateCells,
   computeTimePattern,
+  computeWeeklyMet,
 } from "./stats";
 
 // Date range used across most tests: Mon 2024-01-15 .. Sun 2024-01-21
@@ -224,6 +225,63 @@ describe("computeStats — count goals (weekly target)", () => {
     });
     expect(s.doneThisWeek).toBe(0);
     expect(s.doneCount).toBe(0);
+  });
+
+  it("a partial first week isn't judged against the full quota", () => {
+    // Goal created Thu Jan 4 — week A (Jan 1–7) is a partial stub with only
+    // 2 done (below target 3). It must not break the streak or drag the rate.
+    const s = computeStats({
+      startDate: "2024-01-04",
+      endDate: "2024-01-17", // Wed of week C (in progress)
+      targetDays: ALL_DAYS,
+      weeklyTarget: 3,
+      checkIns: [
+        done("2024-01-04"), done("2024-01-05"), // A: 2 (partial, not met)
+        done("2024-01-08"), done("2024-01-09"), done("2024-01-10"), // B: met
+        done("2024-01-15"), done("2024-01-16"), done("2024-01-17"), // C: met
+      ],
+    });
+    expect(s.currentStreak).toBe(2); // B + current C; partial A doesn't break
+    expect(s.longestStreak).toBe(2);
+    expect(s.completionRate).toBe(1); // only full completed week B counts → 1/1
+  });
+
+  it("a brand-new count goal reflects current-week progress", () => {
+    const s = computeStats({
+      startDate: "2024-01-15", // created Monday of the current week
+      endDate: "2024-01-17",
+      targetDays: ALL_DAYS,
+      weeklyTarget: 3,
+      checkIns: [done("2024-01-15"), done("2024-01-16")],
+    });
+    expect(s.doneThisWeek).toBe(2);
+    expect(s.currentStreak).toBe(0); // current week not yet met
+    expect(s.completionRate).toBeCloseTo(2 / 3, 5); // no completed weeks → this week
+  });
+});
+
+describe("computeWeeklyMet", () => {
+  it("flags partial, completed, and current weeks oldest → newest", () => {
+    const weeks = computeWeeklyMet({
+      startDate: "2024-01-04", // Thu — week A is a partial stub
+      endDate: "2024-01-17", // week C in progress
+      targetDays: ALL_DAYS,
+      weeklyTarget: 3,
+      checkIns: [
+        { date: "2024-01-04", status: "done" },
+        { date: "2024-01-05", status: "done" }, // A: 2
+        { date: "2024-01-08", status: "done" },
+        { date: "2024-01-09", status: "done" },
+        { date: "2024-01-10", status: "done" }, // B: 3
+        { date: "2024-01-15", status: "done" },
+        { date: "2024-01-16", status: "done" },
+        { date: "2024-01-17", status: "done" }, // C: 3
+      ],
+    });
+    expect(weeks).toHaveLength(3);
+    expect(weeks[0]).toMatchObject({ weekStart: "2024-01-01", done: 2, met: false, partial: true, current: false });
+    expect(weeks[1]).toMatchObject({ weekStart: "2024-01-08", done: 3, met: true, partial: false, current: false });
+    expect(weeks[2]).toMatchObject({ weekStart: "2024-01-15", done: 3, met: true, partial: false, current: true });
   });
 });
 
