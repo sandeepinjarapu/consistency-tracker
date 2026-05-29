@@ -13,6 +13,7 @@ export type Goal = {
   category_id: string | null;
   target_days: number[];
   reminder_time: string | null; // "HH:MM:SS" from Postgres TIME
+  weekly_target: number | null; // null = specific-day goal; N = "N times per week"
   active: boolean;
   archived_at: string | null;
   created_at: string;
@@ -25,6 +26,7 @@ export type GoalInput = {
   category_id?: string | null;
   target_days: number[];
   reminder_time?: string | null; // "HH:MM" — null/empty means no reminder
+  weekly_target?: number | null; // null = specific-day; N = "N times per week"
 };
 
 function validate(input: GoalInput): void {
@@ -45,10 +47,18 @@ function validate(input: GoalInput): void {
   if (input.reminder_time && !/^\d{2}:\d{2}$/.test(input.reminder_time)) {
     throw new Error("Reminder time must be in HH:MM format");
   }
+  if (input.weekly_target != null) {
+    if (!Number.isInteger(input.weekly_target) || input.weekly_target < 1) {
+      throw new Error("Weekly target must be a positive whole number");
+    }
+    if (input.weekly_target > input.target_days.length) {
+      throw new Error("Weekly target can't exceed the number of eligible days");
+    }
+  }
 }
 
 const GOAL_COLUMNS =
-  "id, user_id, name, description, doc_url, category_id, target_days, reminder_time, active, archived_at, created_at";
+  "id, user_id, name, description, doc_url, category_id, target_days, reminder_time, weekly_target, active, archived_at, created_at";
 
 export async function getGoal(id: string): Promise<Goal | null> {
   const supabase = await createClient();
@@ -77,6 +87,7 @@ export async function createGoal(input: GoalInput): Promise<Goal> {
       category_id: input.category_id || null,
       target_days: input.target_days,
       reminder_time: input.reminder_time || null,
+      weekly_target: input.weekly_target ?? null,
     })
     .select(GOAL_COLUMNS)
     .single();
@@ -101,6 +112,7 @@ export async function updateGoal(
       category_id: input.category_id || null,
       target_days: input.target_days,
       reminder_time: input.reminder_time || null,
+      weekly_target: input.weekly_target ?? null,
     })
     .eq("id", id);
   if (error) throw error;

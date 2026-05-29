@@ -44,6 +44,10 @@ create table if not exists public.goals (
   target_days smallint[] not null default array[0,1,2,3,4,5,6],
   -- Optional reminder time (HH:MM:SS, user's local timezone) — added 0003
   reminder_time time,
+  -- Optional weekly-count cadence — added 0007. null = specific-day goal
+  -- (scored against target_days). When set, target_days is the eligible
+  -- window and the goal is "do it weekly_target times this week".
+  weekly_target smallint check (weekly_target is null or (weekly_target between 1 and 7)),
   active boolean not null default true,
   archived_at timestamptz,
   created_at timestamptz not null default now()

@@ -11,6 +11,7 @@ type GoalRow = {
   name: string;
   description: string | null;
   target_days: number[];
+  weekly_target: number | null;
   created_at: string;
   category: { name: string | null; color: string | null } | null;
 };
@@ -36,7 +37,7 @@ export default async function TodayView() {
   const { data: rawGoals } = await supabase
     .from("goals")
     .select(
-      "id, name, description, target_days, created_at, category:categories(name, color)"
+      "id, name, description, target_days, weekly_target, created_at, category:categories(name, color)"
     )
     .eq("user_id", user.id)
     .eq("active", true)
@@ -97,6 +98,7 @@ export default async function TodayView() {
       id: g.id,
       target_days: g.target_days,
       created_at: g.created_at,
+      weekly_target: g.weekly_target,
     })),
     checkIns: yearCheckIns.map((c) => ({
       goal_id: c.goal_id,
@@ -124,9 +126,13 @@ export default async function TodayView() {
       endDate: today,
       targetDays: g.target_days,
       checkIns: goalCheckIns,
+      weeklyTarget: g.weekly_target,
     });
     return { goal: g, stats };
   });
+  const statsByGoal = new Map(
+    goalRows.map(({ goal, stats }) => [goal.id, stats])
+  );
 
   return (
     <section className="space-y-12">
@@ -145,18 +151,28 @@ export default async function TodayView() {
 
         {goalsToday.length === 0 ? null : (
           <div className="space-y-2 mt-6">
-            {goalsToday.map((g) => (
-              <TodayGoalCard
-                key={g.id}
-                goalId={g.id}
-                name={g.name}
-                description={g.description}
-                categoryColor={g.category?.color ?? "#9ca3af"}
-                date={today}
-                timezone={timezone}
-                checkIn={checkInByGoal.get(g.id) ?? null}
-              />
-            ))}
+            {goalsToday.map((g) => {
+              const gStats = statsByGoal.get(g.id);
+              const paceLabel =
+                g.weekly_target != null
+                  ? (gStats?.doneThisWeek ?? 0) >= g.weekly_target
+                    ? `✓ ${g.weekly_target} of ${g.weekly_target} this week`
+                    : `${gStats?.doneThisWeek ?? 0} of ${g.weekly_target} this week`
+                  : undefined;
+              return (
+                <TodayGoalCard
+                  key={g.id}
+                  goalId={g.id}
+                  name={g.name}
+                  description={g.description}
+                  categoryColor={g.category?.color ?? "#9ca3af"}
+                  date={today}
+                  timezone={timezone}
+                  checkIn={checkInByGoal.get(g.id) ?? null}
+                  paceLabel={paceLabel}
+                />
+              );
+            })}
           </div>
         )}
 
@@ -217,7 +233,7 @@ export default async function TodayView() {
                 </div>
                 <div className="text-xs text-[color:var(--muted)] shrink-0 ml-4">
                   {stats.currentStreak > 0
-                    ? `${stats.currentStreak} day streak`
+                    ? `${stats.currentStreak} ${stats.streakUnit} streak`
                     : `${Math.round(stats.completionRate * 100)}% all-time`}
                   <span className="ml-2">→</span>
                 </div>

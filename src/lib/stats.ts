@@ -1,4 +1,4 @@
-import { addDays, dayOfWeekForDateString } from "./dates";
+import { addDays, dayOfWeekForDateString, isoWeekStart } from "./dates";
 import type { HeatmapCell, CellStatus } from "@/components/heatmap";
 
 type RawCheckIn = { date: string; status: "done" | "skipped" };
@@ -20,6 +20,10 @@ export type GoalStats = {
   currentStreak: number;
   longestStreak: number;
   completionRate: number; // 0..1
+  streakUnit: "day" | "week"; // "week" for count goals, "day" otherwise
+  // Count-goal only — progress within the current ISO week.
+  doneThisWeek?: number;
+  weeklyTarget?: number;
 };
 
 /**
@@ -40,12 +44,24 @@ export function computeStats({
   endDate,
   targetDays,
   checkIns,
+  weeklyTarget,
 }: {
   startDate: string;
   endDate: string;
   targetDays: number[];
   checkIns: RawCheckIn[];
+  weeklyTarget?: number | null;
 }): GoalStats {
+  if (weeklyTarget != null) {
+    return computeWeeklyCountStats({
+      startDate,
+      endDate,
+      targetDays,
+      checkIns,
+      weeklyTarget,
+    });
+  }
+
   const map = new Map(checkIns.map((c) => [c.date, c.status]));
 
   let doneCount = 0;
@@ -103,6 +119,90 @@ export function computeStats({
     currentStreak,
     longestStreak: longest,
     completionRate,
+    streakUnit: "day",
+  };
+}
+
+/**
+ * Count-goal stats: streak + completion measured in ISO weeks instead of
+ * days. A week is "met" when the number of done check-ins on eligible days
+ * (dow in targetDays) reaches weeklyTarget. The current in-progress week
+ * never breaks the streak (mirrors the day-based "today pending" grace).
+ */
+function computeWeeklyCountStats({
+  startDate,
+  endDate,
+  targetDays,
+  checkIns,
+  weeklyTarget,
+}: {
+  startDate: string;
+  endDate: string;
+  targetDays: number[];
+  checkIns: RawCheckIn[];
+  weeklyTarget: number;
+}): GoalStats {
+  const doneByWeek = new Map<string, number>();
+  let doneCount = 0;
+  let skippedCount = 0;
+  for (const c of checkIns) {
+    if (c.date < startDate || c.date > endDate) continue;
+    if (!targetDays.includes(dayOfWeekForDateString(c.date))) continue;
+    if (c.status === "done") {
+      doneCount++;
+      const ws = isoWeekStart(c.date);
+      doneByWeek.set(ws, (doneByWeek.get(ws) ?? 0) + 1);
+    } else if (c.status === "skipped") {
+      skippedCount++;
+    }
+  }
+
+  const firstWeekStart = isoWeekStart(startDate);
+  const currentWeekStart = isoWeekStart(endDate);
+  const isMet = (ws: string) => (doneByWeek.get(ws) ?? 0) >= weeklyTarget;
+
+  // Longest streak + completion measured over *completed* weeks only
+  // (the current week is in progress, so it's excluded from the rate).
+  let running = 0;
+  let longestStreak = 0;
+  let weeksElapsed = 0;
+  let weeksMet = 0;
+  for (let ws = firstWeekStart; ws <= currentWeekStart; ws = addDays(ws, 7)) {
+    const isCurrent = ws === currentWeekStart;
+    const met = isMet(ws);
+    if (met) {
+      running++;
+      if (running > longestStreak) longestStreak = running;
+    } else if (!isCurrent) {
+      running = 0;
+    }
+    if (!isCurrent) {
+      weeksElapsed++;
+      if (met) weeksMet++;
+    }
+  }
+
+  // Current streak: walk back from the current week. The current week counts
+  // only if already met; if not, it's in progress — skip without breaking.
+  let currentStreak = isMet(currentWeekStart) ? 1 : 0;
+  for (
+    let ws = addDays(currentWeekStart, -7);
+    ws >= firstWeekStart && isMet(ws);
+    ws = addDays(ws, -7)
+  ) {
+    currentStreak++;
+  }
+
+  return {
+    doneCount,
+    skippedCount,
+    missedCount: 0,
+    currentStreak,
+    longestStreak,
+    completionRate: weeksElapsed > 0 ? weeksMet / weeksElapsed : 0,
+    streakUnit: "week",
+    doneThisWeek: doneByWeek.get(currentWeekStart) ?? 0,
+    weeklyTarget,
   };
 }
 
@@ -120,13 +220,20 @@ export function buildAggregateCells({
   startDate: string;
   endDate: string;
   todayStr: string;
-  goals: Array<{ id: string; target_days: number[]; created_at: string }>;
+  goals: Array<{
+    id: string;
+    target_days: number[];
+    created_at: string;
+    weekly_target?: number | null;
+  }>;
   checkIns: Array<{ goal_id: string; date: string; status: "done" | "skipped" }>;
 }): HeatmapCell[] {
   const doneByDate = new Map<string, number>();
+  const doneByGoalDate = new Set<string>();
   for (const ci of checkIns) {
     if (ci.status === "done") {
       doneByDate.set(ci.date, (doneByDate.get(ci.date) ?? 0) + 1);
+      doneByGoalDate.add(`${ci.goal_id}:${ci.date}`);
     }
   }
 
@@ -139,11 +246,16 @@ export function buildAggregateCells({
   let cursor = startDate;
   while (cursor <= endDate) {
     const dow = dayOfWeekForDateString(cursor);
-    const targetCount = goalStarts.reduce(
-      (n, g) =>
-        cursor >= g.startDate && g.target_days.includes(dow) ? n + 1 : n,
-      0
-    );
+    // Specific-day goals count toward a day's denominator on their target
+    // days. Count goals have no mandatory day, so they only count on days
+    // they were actually done — they never drag a day toward "missed".
+    const targetCount = goalStarts.reduce((n, g) => {
+      if (cursor < g.startDate) return n;
+      if (g.weekly_target != null) {
+        return doneByGoalDate.has(`${g.id}:${cursor}`) ? n + 1 : n;
+      }
+      return g.target_days.includes(dow) ? n + 1 : n;
+    }, 0);
     const done = doneByDate.get(cursor) ?? 0;
 
     let color: string;
@@ -242,6 +354,7 @@ export function buildHeatmapCells({
   checkIns,
   goalStartDate,
   todayStr,
+  weeklyTarget,
 }: {
   startDate: string;
   endDate: string;
@@ -249,6 +362,7 @@ export function buildHeatmapCells({
   checkIns: RawCheckIn[];
   goalStartDate: string;
   todayStr: string;
+  weeklyTarget?: number | null;
 }): HeatmapCell[] {
   const map = new Map(checkIns.map((c) => [c.date, c.status]));
   const cells: HeatmapCell[] = [];
@@ -263,6 +377,7 @@ export function buildHeatmapCells({
       if (ci === "done") status = "done";
       else if (ci === "skipped") status = "skipped";
       else if (cursor === todayStr) status = "empty"; // today pending
+      else if (weeklyTarget != null) status = "empty"; // count goal: a gap isn't a miss
       else status = "missed";
     }
     cells.push({ date: cursor, status });

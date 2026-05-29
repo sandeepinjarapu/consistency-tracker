@@ -46,14 +46,27 @@ export default function GoalForm({
   const [reminderTime, setReminderTime] = useState(
     initial?.reminder_time ? initial.reminder_time.slice(0, 5) : ""
   );
+  // null = specific-day goal; a number = "N times per week" (count goal)
+  const [weeklyTarget, setWeeklyTarget] = useState<number | null>(
+    initial?.weekly_target ?? null
+  );
+  const isCount = weeklyTarget !== null;
 
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [creatingCategory, setCreatingCategory] = useState(false);
 
+  // Keep the weekly target from exceeding the number of eligible days.
+  function setDays(next: number[]) {
+    setTargetDays(next);
+    setWeeklyTarget((wt) => (wt == null ? null : Math.min(wt, next.length || 1)));
+  }
+
   function toggleDay(d: number) {
-    setTargetDays((cur) =>
-      cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d].sort()
+    setDays(
+      targetDays.includes(d)
+        ? targetDays.filter((x) => x !== d)
+        : [...targetDays, d].sort()
     );
   }
 
@@ -83,7 +96,8 @@ export default function GoalForm({
       doc_url: docUrl || undefined,
       category_id: categoryId || null,
       target_days: targetDays,
-      reminder_time: reminderTime || null,
+      reminder_time: isCount ? null : reminderTime || null,
+      weekly_target: weeklyTarget,
     };
     startTransition(async () => {
       try {
@@ -193,56 +207,121 @@ export default function GoalForm({
         </p>
       </Field>
 
-      <Field label="Reminder time (optional)" htmlFor="reminder_time">
-        <div className="flex items-center gap-3">
-          <input
-            id="reminder_time"
-            type="time"
-            value={reminderTime}
-            onChange={(e) => setReminderTime(e.target.value)}
-            className="border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
-          />
-          {reminderTime ? (
-            <>
-              <a
-                href={buildGCalUrl({
-                  name: name || "Reminder",
-                  description: description || null,
-                  reminderTime,
-                  targetDays,
-                  timezone:
-                    typeof window !== "undefined"
-                      ? Intl.DateTimeFormat().resolvedOptions().timeZone
-                      : "UTC",
-                })}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs underline text-[color:var(--muted)] hover:text-black"
-              >
-                Add to Google Calendar ↗
-              </a>
+      {!isCount ? (
+        <Field label="Reminder time (optional)" htmlFor="reminder_time">
+          <div className="flex items-center gap-3">
+            <input
+              id="reminder_time"
+              type="time"
+              value={reminderTime}
+              onChange={(e) => setReminderTime(e.target.value)}
+              className="border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
+            />
+            {reminderTime ? (
+              <>
+                <a
+                  href={buildGCalUrl({
+                    name: name || "Reminder",
+                    description: description || null,
+                    reminderTime,
+                    targetDays,
+                    timezone:
+                      typeof window !== "undefined"
+                        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+                        : "UTC",
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs underline text-[color:var(--muted)] hover:text-black"
+                >
+                  Add to Google Calendar ↗
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setReminderTime("")}
+                  className="text-xs text-[color:var(--muted)] hover:text-black"
+                >
+                  Clear
+                </button>
+              </>
+            ) : null}
+          </div>
+          <p className="mt-1 text-xs text-[color:var(--muted)]">
+            The Calendar link reflects your current time + target days — click to add a recurring event.
+          </p>
+        </Field>
+      ) : null}
+
+      <Field label="How often">
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setWeeklyTarget(null)}
+            className={`text-xs border rounded-full px-3 py-1 transition ${
+              !isCount
+                ? "border-black bg-black text-white"
+                : "border-[color:var(--border)] hover:border-black"
+            }`}
+          >
+            Specific days
+          </button>
+          <button
+            type="button"
+            onClick={() => setWeeklyTarget(Math.min(3, targetDays.length || 7))}
+            className={`text-xs border rounded-full px-3 py-1 transition ${
+              isCount
+                ? "border-black bg-black text-white"
+                : "border-[color:var(--border)] hover:border-black"
+            }`}
+          >
+            Times per week
+          </button>
+        </div>
+
+        {isCount ? (
+          <div className="mb-4">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setReminderTime("")}
-                className="text-xs text-[color:var(--muted)] hover:text-black"
+                onClick={() => setWeeklyTarget((n) => Math.max(1, (n ?? 1) - 1))}
+                disabled={(weeklyTarget ?? 1) <= 1}
+                aria-label="Fewer times per week"
+                className="w-8 h-8 rounded-md border border-[color:var(--border)] text-sm hover:border-black disabled:opacity-40"
               >
-                Clear
+                −
               </button>
-            </>
-          ) : null}
-        </div>
-        <p className="mt-1 text-xs text-[color:var(--muted)]">
-          The Calendar link reflects your current time + target days — click to add a recurring event.
-        </p>
-      </Field>
+              <span className="text-sm tabular-nums w-20 text-center">
+                {weeklyTarget}× / week
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setWeeklyTarget((n) =>
+                    Math.min(targetDays.length || 7, (n ?? 1) + 1)
+                  )
+                }
+                disabled={(weeklyTarget ?? 1) >= targetDays.length}
+                aria-label="More times per week"
+                className="w-8 h-8 rounded-md border border-[color:var(--border)] text-sm hover:border-black disabled:opacity-40"
+              >
+                +
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-[color:var(--muted)]">
+              Shows up in Today until you hit your weekly count — no fixed reminder.
+            </p>
+          </div>
+        ) : null}
 
-      <Field label="Target days">
+        <p className="text-xs text-[color:var(--muted)] mb-2">
+          {isCount ? "Which days count" : "Target days"}
+        </p>
         <div className="flex items-center gap-2 mb-3">
           {PRESETS.map((p) => (
             <button
               key={p.label}
               type="button"
-              onClick={() => setTargetDays(p.days)}
+              onClick={() => setDays(p.days)}
               className={`text-xs border rounded-full px-3 py-1 transition ${
                 presetMatch?.label === p.label
                   ? "border-black bg-black text-white"
