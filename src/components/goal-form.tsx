@@ -207,51 +207,6 @@ export default function GoalForm({
         </p>
       </Field>
 
-      {!isCount ? (
-        <Field label="Reminder time (optional)" htmlFor="reminder_time">
-          <div className="flex items-center gap-3">
-            <input
-              id="reminder_time"
-              type="time"
-              value={reminderTime}
-              onChange={(e) => setReminderTime(e.target.value)}
-              className="border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
-            />
-            {reminderTime ? (
-              <>
-                <a
-                  href={buildGCalUrl({
-                    name: name || "Reminder",
-                    description: description || null,
-                    reminderTime,
-                    targetDays,
-                    timezone:
-                      typeof window !== "undefined"
-                        ? Intl.DateTimeFormat().resolvedOptions().timeZone
-                        : "UTC",
-                  })}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs underline text-[color:var(--muted)] hover:text-black"
-                >
-                  Add to Google Calendar ↗
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setReminderTime("")}
-                  className="text-xs text-[color:var(--muted)] hover:text-black"
-                >
-                  Clear
-                </button>
-              </>
-            ) : null}
-          </div>
-          <p className="mt-1 text-xs text-[color:var(--muted)]">
-            The Calendar link reflects your current time + target days — click to add a recurring event.
-          </p>
-        </Field>
-      ) : null}
-
       <Field label="How often">
         <div className="flex items-center gap-2 mb-4">
           <button
@@ -353,6 +308,51 @@ export default function GoalForm({
           })}
         </div>
       </Field>
+
+      {!isCount ? (
+        <Field label="Reminder time (optional)" htmlFor="reminder_time">
+          <div className="flex items-center gap-3">
+            <input
+              id="reminder_time"
+              type="time"
+              value={reminderTime}
+              onChange={(e) => setReminderTime(e.target.value)}
+              className="border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
+            />
+            {reminderTime ? (
+              <>
+                <a
+                  href={buildGCalUrl({
+                    name: name || "Reminder",
+                    description: description || null,
+                    reminderTime,
+                    targetDays,
+                    timezone:
+                      typeof window !== "undefined"
+                        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+                        : "UTC",
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs underline text-[color:var(--muted)] hover:text-black"
+                >
+                  Add to Google Calendar ↗
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setReminderTime("")}
+                  className="text-xs text-[color:var(--muted)] hover:text-black"
+                >
+                  Clear
+                </button>
+              </>
+            ) : null}
+          </div>
+          <p className="mt-1 text-xs text-[color:var(--muted)]">
+            The Calendar link reflects your current time + target days — click to add a recurring event.
+          </p>
+        </Field>
+      ) : null}
 
       {error ? (
         <p className="text-xs text-red-600">{error}</p>
