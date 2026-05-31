@@ -2,7 +2,7 @@
 
 A minimal, timezone-aware habit tracker built around a GitHub-style consistency heatmap — with flexible weekly-count goals, weekly reflections, and partner accountability.
 
-**Live demo → https://consistency-tracker-gamma.vercel.app/consistencytracker** (sign in with Google)
+**Live demo → https://consistency-tracker-demo.vercel.app/consistencytracker** (sign in with Google)
 
 Built with Next.js 15 (App Router), Supabase (Postgres + Auth + Row-Level Security), and TypeScript.
 
