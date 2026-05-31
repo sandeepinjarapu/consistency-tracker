@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, dayOfWeekForDateString } from "@/lib/dates";
-import { markDone, unmark } from "@/lib/actions/check-ins";
+import { backfillCheckIn, clearBackfillCheckIn } from "@/lib/actions/check-ins";
 import { backfillAction } from "@/lib/heatmap-backfill";
 import HeatmapScroller from "./heatmap-scroller";
 
@@ -77,11 +77,11 @@ export default function Heatmap({
     if (!editable || pending) return;
     startTransition(async () => {
       try {
-        if (action === "mark") await markDone(editable.goalId, cell.date);
-        else await unmark(editable.goalId, cell.date);
+        if (action === "mark") await backfillCheckIn(editable.goalId, cell.date);
+        else await clearBackfillCheckIn(editable.goalId, cell.date);
         router.refresh();
       } catch {
-        // ignore — ownership/RLS errors shouldn't occur for the owner
+        // ignore — the UI only offers cells inside the window the server enforces
       }
     });
   };
