@@ -2,9 +2,14 @@ import { addDays, dayOfWeekForDateString, isoWeekStart } from "./dates";
 
 export type BackfillAction = "mark" | "clear" | null;
 
+export type BackfillWindow = {
+  goalStartDate: string;
+  today: string;
+  targetDays: number[];
+};
+
 /**
- * Decide what clicking a heatmap day should do when backfilling check-ins,
- * or `null` if that day is locked.
+ * Whether a given day may be edited (logged or cleared) via backfill.
  *
  * A day is editable only when it is:
  *  - on or after the goal's start, on or before today (never future),
@@ -17,25 +22,32 @@ export type BackfillAction = "mark" | "clear" | null;
  *    week rolls over you can still fix the prior Sat on Mon and the prior
  *    Sun on Tue, but the previous week locks from Wednesday.
  *
- * When editable: "clear" if a check-in already exists (done/skipped),
- * otherwise "mark".
+ * Shared by the heatmap UI (affordance) and the backfill server actions
+ * (authoritative enforcement) so the two always agree.
  */
-export function backfillAction(
-  cell: { date: string; status: "done" | "skipped" | "missed" | "empty" },
-  opts: { goalStartDate: string; today: string; targetDays: number[] }
-): BackfillAction {
-  const { date } = cell;
-  const { goalStartDate, today, targetDays } = opts;
-
-  if (date > today) return null; // future
-  if (date < goalStartDate) return null; // before the goal existed
-  if (!targetDays.includes(dayOfWeekForDateString(date))) return null; // off-window
+export function isBackfillable(
+  date: string,
+  { goalStartDate, today, targetDays }: BackfillWindow
+): boolean {
+  if (date > today) return false; // future
+  if (date < goalStartDate) return false; // before the goal existed
+  if (!targetDays.includes(dayOfWeekForDateString(date))) return false; // off-window
 
   // ISO date strings compare chronologically, so min() is a string min.
   const weekStart = isoWeekStart(today);
   const twoDaysAgo = addDays(today, -2);
   const lowerBound = weekStart < twoDaysAgo ? weekStart : twoDaysAgo;
-  if (date < lowerBound) return null; // outside the editable window
+  return date >= lowerBound; // inside the editable window
+}
 
+/**
+ * Decide what clicking a heatmap day should do, or `null` if the day is
+ * locked. "clear" if a check-in already exists (done/skipped), else "mark".
+ */
+export function backfillAction(
+  cell: { date: string; status: "done" | "skipped" | "missed" | "empty" },
+  opts: BackfillWindow
+): BackfillAction {
+  if (!isBackfillable(cell.date, opts)) return null;
   return cell.status === "done" || cell.status === "skipped" ? "clear" : "mark";
 }

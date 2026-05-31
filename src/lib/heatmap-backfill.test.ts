@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { backfillAction } from "./heatmap-backfill";
+import { backfillAction, isBackfillable } from "./heatmap-backfill";
 
 // Reference calendar (2024): Mon 01-15 … Sun 01-21 is one ISO week;
 // the next week is Mon 01-22 … Sun 01-28.
@@ -97,5 +97,27 @@ describe("backfillAction — editable time window", () => {
     expect(
       backfillAction(cell("2024-01-19", "missed"), { ...base, today: "2024-01-22" })
     ).toBeNull();
+  });
+});
+
+describe("isBackfillable (shared client/server predicate)", () => {
+  const base = { goalStartDate: "2024-01-01", targetDays: ALL_DAYS };
+
+  it("is true for an eligible day inside the window", () => {
+    expect(isBackfillable("2024-01-16", { ...base, today: "2024-01-19" })).toBe(true);
+  });
+
+  it("is false for future, off-window, pre-goal, and out-of-window days", () => {
+    expect(isBackfillable("2024-01-20", { ...base, today: "2024-01-19" })).toBe(false); // future
+    expect(
+      isBackfillable("2024-01-20", { goalStartDate: "2024-01-01", targetDays: WEEKDAYS, today: "2024-01-21" })
+    ).toBe(false); // Saturday, off a weekday window
+    expect(isBackfillable("2023-12-31", { ...base, today: "2024-01-19" })).toBe(false); // before goal start
+    expect(isBackfillable("2024-01-19", { ...base, today: "2024-01-22" })).toBe(false); // prior Fri locked on Mon
+  });
+
+  it("honors the 2-day grace into the previous week", () => {
+    expect(isBackfillable("2024-01-20", { ...base, today: "2024-01-22" })).toBe(true); // prior Sat on Mon
+    expect(isBackfillable("2024-01-20", { ...base, today: "2024-01-23" })).toBe(false); // prior Sat not on Tue
   });
 });
