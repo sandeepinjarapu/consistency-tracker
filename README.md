@@ -13,7 +13,8 @@ Built with Next.js 15 (App Router), Supabase (Postgres + Auth + Row-Level Securi
 - **Consistency heatmap** — a GitHub-style year view per goal plus an aggregate across all goals. Click a day to **backfill** a missed check-in (within the current week + a short grace period).
 - **Honest streaks & stats** — day streaks for specific-day goals, **week streaks** for weekly-count goals, completion rate, longest streak, and your "typical" time of day.
 - **Weekly reflections** — a Continue / Stop / Improve journal with auto-computed weekly stats and highlights.
-- **Partner accountability** — invite a friend by email, share individual goals read-only, and get an automatic **weekly summary email** of their progress.
+- **Weekly summary email** — every Monday you get a recap of the past week across all your goals, for personal accountability — no partner required.
+- **Partner accountability** — invite a friend by email and share individual goals read-only; they get a weekly summary of just the shared goals, CC'd to you so you share the same view.
 - **Timezone-aware** — "today", streaks, and weekly boundaries are all computed in each user's own timezone.
 - **Calendar reminders** — one-click "Add to Google Calendar" for specific-day goals.
 
