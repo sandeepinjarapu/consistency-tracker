@@ -123,6 +123,7 @@ export async function GET(request: Request) {
       ownerId,
       weekLabel,
       goals: stats,
+      self: true,
     });
     if (result.ok) sent++;
     else errors.push(`self ${ownerId}: ${result.error}`);

@@ -92,6 +92,7 @@ export async function sendWeeklySummary({
   ownerId,
   weekLabel,
   goals,
+  self = false,
 }: {
   to: string;
   cc?: string;
@@ -99,6 +100,8 @@ export async function sendWeeklySummary({
   ownerId: string;
   weekLabel: string;
   goals: WeeklyGoalStat[];
+  /** True when the recipient is the goal owner (self-summary). */
+  self?: boolean;
 }): Promise<{ ok: boolean; error?: string }> {
   if (goals.length === 0) return { ok: true };
   try {
@@ -106,9 +109,9 @@ export async function sendWeeklySummary({
       from: FROM,
       to,
       ...(cc ? { cc } : {}),
-      subject: weeklySubject(ownerName, goals),
-      html: weeklyHtml({ ownerName, ownerId, weekLabel, goals }),
-      text: weeklyText({ ownerName, ownerId, weekLabel, goals }),
+      subject: weeklySubject(ownerName, goals, self),
+      html: weeklyHtml({ ownerName, ownerId, weekLabel, goals, self }),
+      text: weeklyText({ ownerName, ownerId, weekLabel, goals, self }),
     });
     return { ok: true };
   } catch (e) {
@@ -116,10 +119,15 @@ export async function sendWeeklySummary({
   }
 }
 
-function weeklySubject(ownerName: string, goals: WeeklyGoalStat[]): string {
+function weeklySubject(
+  ownerName: string,
+  goals: WeeklyGoalStat[],
+  self: boolean
+): string {
   const totalDone = goals.reduce((s, g) => s + g.done, 0);
   const totalTarget = goals.reduce((s, g) => s + g.target, 0);
-  return `${ownerName}'s week — ${totalDone} of ${totalTarget} done`;
+  const who = self ? "Your" : `${ownerName}'s`;
+  return `${who} week — ${totalDone} of ${totalTarget} done`;
 }
 
 function weeklyHtml({
@@ -127,13 +135,19 @@ function weeklyHtml({
   ownerId,
   weekLabel,
   goals,
+  self,
 }: {
   ownerName: string;
   ownerId: string;
   weekLabel: string;
   goals: WeeklyGoalStat[];
+  self: boolean;
 }): string {
-  const partnerUrl = `${SITE}/consistencytracker/partners/${ownerId}`;
+  const ctaUrl = self
+    ? `${SITE}/consistencytracker`
+    : `${SITE}/consistencytracker/partners/${ownerId}`;
+  const heading = self ? "Your week" : `${escapeHtml(ownerName)}'s week`;
+  const ctaLabel = self ? "Open your tracker" : "See their tracker";
   const rows = goals
     .map((g) => {
       const pct = g.target > 0 ? Math.round((g.done / g.target) * 100) : 0;
@@ -147,11 +161,11 @@ function weeklyHtml({
   return `<!doctype html>
 <html>
   <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0a0a0a; padding: 24px; max-width: 520px; margin: 0 auto;">
-    <h1 style="font-weight: 300; font-size: 20px; margin: 0 0 4px;">${escapeHtml(ownerName)}'s week</h1>
+    <h1 style="font-weight: 300; font-size: 20px; margin: 0 0 4px;">${heading}</h1>
     <p style="font-size: 12px; color: #9ca3af; margin: 0 0 20px;">${escapeHtml(weekLabel)}</p>
     <table style="width: 100%; border-collapse: collapse;">${rows}</table>
     <p style="margin: 28px 0 8px;">
-      <a href="${partnerUrl}" style="display: inline-block; background: #0a0a0a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-size: 14px;">See their tracker</a>
+      <a href="${ctaUrl}" style="display: inline-block; background: #0a0a0a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-size: 14px;">${ctaLabel}</a>
     </p>
     <p style="font-size: 11px; color: #9ca3af; margin-top: 24px;">
       Sent once a week (Sundays). You can manage partners in the app.
@@ -165,24 +179,28 @@ function weeklyText({
   ownerId,
   weekLabel,
   goals,
+  self,
 }: {
   ownerName: string;
   ownerId: string;
   weekLabel: string;
   goals: WeeklyGoalStat[];
+  self: boolean;
 }): string {
-  const partnerUrl = `${SITE}/consistencytracker/partners/${ownerId}`;
+  const ctaUrl = self
+    ? `${SITE}/consistencytracker`
+    : `${SITE}/consistencytracker/partners/${ownerId}`;
   const lines = goals.map((g) => {
     const pct = g.target > 0 ? Math.round((g.done / g.target) * 100) : 0;
     const skipped = g.skipped > 0 ? ` (${g.skipped} skipped)` : "";
     return `  • ${g.name}: ${g.done}/${g.target} · ${pct}%${skipped}`;
   });
   return [
-    `${ownerName}'s week (${weekLabel}):`,
+    `${self ? "Your" : `${ownerName}'s`} week (${weekLabel}):`,
     "",
     ...lines,
     "",
-    `See their tracker: ${partnerUrl}`,
+    `${self ? "Open your tracker" : "See their tracker"}: ${ctaUrl}`,
   ].join("\n");
 }
 
