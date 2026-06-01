@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { sendWeeklySummary, type WeeklyGoalStat } from "@/lib/email";
-import { addDays, dayOfWeekForDateString, isoWeekStart, todayIn } from "@/lib/dates";
+import { sendWeeklySummary } from "@/lib/email";
+import { addDays, isoWeekStart, todayIn } from "@/lib/dates";
 import { partnerSummaryPairs } from "@/lib/partner-pairs";
+import {
+  computeWeeklyGoalStats,
+  totalTarget,
+  type SummaryGoal,
+} from "@/lib/weekly-summary";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,31 +37,52 @@ export async function GET(request: Request) {
   const summaryWeekStart = addDays(thisWeekMon, -7); // previous Monday
   const summaryWeekEnd = addDays(summaryWeekStart, 6); // previous Sunday
 
-  // Pull all accepted partnerships
+  // Accepted partnerships → deduped (viewer, owner) pairs.
   const { data: invites } = await supabase
     .from("partner_invites")
     .select("inviter_id, accepted_by")
     .not("accepted_at", "is", null);
-
-  // Build (viewer, owner) pairs from both directions of each partnership,
-  // de-duplicated so a partnership accepted more than once still sends one
-  // summary per direction.
   const pairs = partnerSummaryPairs(invites ?? []);
 
-  if (pairs.length === 0) {
-    return NextResponse.json({ ok: true, sent: 0, pairs: 0 });
+  // Pull every active goal + this week's check-ins. Self-summaries go to all
+  // goal owners; partner summaries cover the shared subset.
+  const [goalsRes, checkInsRes] = await Promise.all([
+    supabase
+      .from("goals")
+      .select("id, user_id, name, target_days, weekly_target, created_at")
+      .eq("active", true),
+    supabase
+      .from("check_ins")
+      .select("goal_id, date, status")
+      .gte("date", summaryWeekStart)
+      .lte("date", summaryWeekEnd),
+  ]);
+  const goals = goalsRes.data ?? [];
+  const checkIns = checkInsRes.data ?? [];
+
+  const goalOwnerIds = [...new Set(goals.map((g) => g.user_id))];
+  if (goalOwnerIds.length === 0) {
+    return NextResponse.json({ ok: true, sent: 0, pairs: pairs.length });
   }
 
-  // Resolve emails (auth.users) and profile names + tz
+  // Shares only matter for owners who have a partner.
+  const partnerOwnerIds = [...new Set(pairs.map((p) => p.ownerId))];
+  const { data: sharesData } =
+    partnerOwnerIds.length > 0
+      ? await supabase
+          .from("shares")
+          .select("owner_id, viewer_id, goal_id")
+          .in("owner_id", partnerOwnerIds)
+      : { data: [] as { owner_id: string; viewer_id: string; goal_id: string }[] };
+  const shares = sharesData ?? [];
+
+  // Resolve emails + names for everyone we might email or name.
   const allUserIds = [
-    ...new Set(pairs.flatMap((p) => [p.viewerId, p.ownerId])),
+    ...new Set([...goalOwnerIds, ...pairs.flatMap((p) => [p.viewerId, p.ownerId])]),
   ];
   const [usersRes, profilesRes] = await Promise.all([
     supabase.auth.admin.listUsers({ perPage: 1000 }),
-    supabase
-      .from("profiles")
-      .select("id, display_name")
-      .in("id", allUserIds),
+    supabase.from("profiles").select("id, display_name").in("id", allUserIds),
   ]);
   const emailById = new Map(
     (usersRes.data?.users ?? [])
@@ -67,112 +93,74 @@ export async function GET(request: Request) {
     (profilesRes.data ?? []).map((p) => [p.id, p.display_name ?? "Someone"])
   );
 
-  // Pull all shares + relevant goals + check-ins in the week
-  const ownerIds = [...new Set(pairs.map((p) => p.ownerId))];
-  const [sharesRes, goalsRes, checkInsRes] = await Promise.all([
-    supabase
-      .from("shares")
-      .select("owner_id, viewer_id, goal_id")
-      .in("owner_id", ownerIds),
-    supabase
-      .from("goals")
-      .select("id, user_id, name, target_days, weekly_target, created_at, active")
-      .in("user_id", ownerIds),
-    supabase
-      .from("check_ins")
-      .select("goal_id, date, status")
-      .gte("date", summaryWeekStart)
-      .lte("date", summaryWeekEnd),
-  ]);
-
-  const shares = sharesRes.data ?? [];
-  const goals = goalsRes.data ?? [];
-  const checkIns = checkInsRes.data ?? [];
-
   const goalById = new Map(goals.map((g) => [g.id, g]));
+  const goalsByOwner = new Map<string, SummaryGoal[]>();
+  for (const g of goals) {
+    const list = goalsByOwner.get(g.user_id) ?? [];
+    list.push(g);
+    goalsByOwner.set(g.user_id, list);
+  }
 
+  const weekLabel = formatRange(summaryWeekStart, summaryWeekEnd);
   let sent = 0;
   const errors: string[] = [];
 
+  // 1. Self-summary: every owner gets a summary of all their active goals,
+  //    whether or not they've shared anything.
+  for (const ownerId of goalOwnerIds) {
+    const to = emailById.get(ownerId);
+    if (!to) continue;
+    const stats = computeWeeklyGoalStats(
+      goalsByOwner.get(ownerId) ?? [],
+      checkIns,
+      summaryWeekStart,
+      summaryWeekEnd
+    );
+    if (totalTarget(stats) === 0) continue;
+    const result = await sendWeeklySummary({
+      to,
+      ownerName: nameById.get(ownerId) ?? "Someone",
+      ownerId,
+      weekLabel,
+      goals: stats,
+    });
+    if (result.ok) sent++;
+    else errors.push(`self ${ownerId}: ${result.error}`);
+  }
+
+  // 2. Partner summary: each partner gets the owner's shared subset, with the
+  //    owner CC'd so both share the same view.
   for (const pair of pairs) {
     const to = emailById.get(pair.viewerId);
     if (!to) continue;
 
-    // Goals from this owner shared with this viewer
     const sharedGoalIds = shares
-      .filter(
-        (s) =>
-          s.owner_id === pair.ownerId && s.viewer_id === pair.viewerId
-      )
+      .filter((s) => s.owner_id === pair.ownerId && s.viewer_id === pair.viewerId)
       .map((s) => s.goal_id);
-
     if (sharedGoalIds.length === 0) continue;
 
     const sharedGoals = sharedGoalIds
       .map((id) => goalById.get(id))
-      .filter((g): g is NonNullable<typeof g> => !!g && g.active);
-
+      .filter((g): g is NonNullable<typeof g> => !!g);
     if (sharedGoals.length === 0) continue;
 
-    // A count goal created after this week's Monday didn't have a full week —
-    // skip it this time; it'll appear next week once it has one.
-    const goalsForSummary = sharedGoals.filter(
-      (g) =>
-        !(g.weekly_target != null && g.created_at.slice(0, 10) > summaryWeekStart)
+    const stats = computeWeeklyGoalStats(
+      sharedGoals,
+      checkIns,
+      summaryWeekStart,
+      summaryWeekEnd
     );
+    if (totalTarget(stats) === 0) continue;
 
-    // Per-goal stats for the week
-    const stats: WeeklyGoalStat[] = goalsForSummary.map((g) => {
-      const goalStart = g.created_at.slice(0, 10);
-      const goalCheckIns = checkIns.filter(
-        (c) =>
-          c.goal_id === g.id &&
-          c.date >= summaryWeekStart &&
-          c.date <= summaryWeekEnd
-      );
-      const skipped = goalCheckIns.filter((c) => c.status === "skipped").length;
-
-      // Count goals: target is the weekly quota, and only done check-ins on
-      // eligible days count toward it.
-      if (g.weekly_target != null) {
-        const done = goalCheckIns.filter(
-          (c) =>
-            c.status === "done" &&
-            g.target_days.includes(dayOfWeekForDateString(c.date))
-        ).length;
-        return { name: g.name, done, target: g.weekly_target, skipped };
-      }
-
-      // Specific-day goals: target is the number of target days in the window.
-      let target = 0;
-      let cursor = summaryWeekStart;
-      while (cursor <= summaryWeekEnd) {
-        if (cursor >= goalStart) {
-          const dow = dayOfWeekForDateString(cursor);
-          if (g.target_days.includes(dow)) target++;
-        }
-        cursor = addDays(cursor, 1);
-      }
-      const done = goalCheckIns.filter((c) => c.status === "done").length;
-      return { name: g.name, done, target, skipped };
-    });
-
-    // Skip the email if there's nothing meaningful (no target days at all)
-    const totalTarget = stats.reduce((s, g) => s + g.target, 0);
-    if (totalTarget === 0) continue;
-
-    // CC the goal owner so both partners get the same summary and the owner
-    // knows it went out.
     const ownerEmail = emailById.get(pair.ownerId);
     const result = await sendWeeklySummary({
       to,
       cc: ownerEmail && ownerEmail !== to ? ownerEmail : undefined,
       ownerName: nameById.get(pair.ownerId) ?? "Someone",
       ownerId: pair.ownerId,
-      weekLabel: formatRange(summaryWeekStart, summaryWeekEnd),
+      weekLabel,
       goals: stats,
     });
-
     if (result.ok) sent++;
     else errors.push(`${pair.viewerId}<-${pair.ownerId}: ${result.error}`);
   }
