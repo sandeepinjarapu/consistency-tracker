@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendWeeklySummary, type WeeklyGoalStat } from "@/lib/email";
 import { addDays, dayOfWeekForDateString, isoWeekStart, todayIn } from "@/lib/dates";
+import { partnerSummaryPairs } from "@/lib/partner-pairs";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,14 +38,10 @@ export async function GET(request: Request) {
     .select("inviter_id, accepted_by")
     .not("accepted_at", "is", null);
 
-  // Build (viewer, owner) pairs from both directions of each partnership
-  type Pair = { viewerId: string; ownerId: string };
-  const pairs: Pair[] = [];
-  for (const inv of invites ?? []) {
-    if (!inv.accepted_by) continue;
-    pairs.push({ viewerId: inv.accepted_by, ownerId: inv.inviter_id });
-    pairs.push({ viewerId: inv.inviter_id, ownerId: inv.accepted_by });
-  }
+  // Build (viewer, owner) pairs from both directions of each partnership,
+  // de-duplicated so a partnership accepted more than once still sends one
+  // summary per direction.
+  const pairs = partnerSummaryPairs(invites ?? []);
 
   if (pairs.length === 0) {
     return NextResponse.json({ ok: true, sent: 0, pairs: 0 });
@@ -164,8 +161,12 @@ export async function GET(request: Request) {
     const totalTarget = stats.reduce((s, g) => s + g.target, 0);
     if (totalTarget === 0) continue;
 
+    // CC the goal owner so both partners get the same summary and the owner
+    // knows it went out.
+    const ownerEmail = emailById.get(pair.ownerId);
     const result = await sendWeeklySummary({
       to,
+      cc: ownerEmail && ownerEmail !== to ? ownerEmail : undefined,
       ownerName: nameById.get(pair.ownerId) ?? "Someone",
       ownerId: pair.ownerId,
       weekLabel: formatRange(summaryWeekStart, summaryWeekEnd),

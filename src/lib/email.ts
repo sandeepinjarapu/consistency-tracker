@@ -87,12 +87,14 @@ export type WeeklyGoalStat = {
  */
 export async function sendWeeklySummary({
   to,
+  cc,
   ownerName,
   ownerId,
   weekLabel,
   goals,
 }: {
   to: string;
+  cc?: string;
   ownerName: string;
   ownerId: string;
   weekLabel: string;
@@ -103,6 +105,7 @@ export async function sendWeeklySummary({
     await getResend().emails.send({
       from: FROM,
       to,
+      ...(cc ? { cc } : {}),
       subject: weeklySubject(ownerName, goals),
       html: weeklyHtml({ ownerName, ownerId, weekLabel, goals }),
       text: weeklyText({ ownerName, ownerId, weekLabel, goals }),
