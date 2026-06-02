@@ -411,6 +411,48 @@ export function computeTimePattern({
   };
 }
 
+function partOfDay(hour: number): string {
+  if (hour < 5) return "late at night";
+  if (hour < 12) return "in the morning";
+  if (hour < 17) return "in the afternoon";
+  if (hour < 21) return "in the evening";
+  return "at night";
+}
+
+/**
+ * A short, descriptive insight line for a goal's detail page. Strictly a
+ * mirror of observed behavior — when the user typically does the goal and
+ * whether a streak is running. Deliberately never prescriptive: it states
+ * what is, never what to do next. Returns null when there isn't enough
+ * history to say anything meaningful (avoids noise on brand-new goals).
+ */
+export function buildGoalInsight({
+  typical,
+  timedTotal,
+  currentStreak,
+  streakUnit,
+  doneCount,
+}: {
+  typical: { hour: number; minute: number } | null;
+  timedTotal: number; // done check-ins with a usable time-of-day
+  currentStreak: number;
+  streakUnit: string; // "days" | "weeks"
+  doneCount: number;
+}): string | null {
+  const parts: string[] = [];
+  if (typical && timedTotal >= 4) {
+    parts.push(`You usually do this ${partOfDay(typical.hour)}.`);
+  }
+  if (currentStreak >= 2) {
+    const unit = streakUnit.replace(/s$/, "");
+    parts.push(`You're on a ${currentStreak}-${unit} run.`);
+  }
+  if (parts.length === 0) return null;
+  // Require some history so the line isn't noise on a goal with 1-2 check-ins.
+  if (doneCount < 3 && currentStreak < 2) return null;
+  return parts.join(" ");
+}
+
 /**
  * Build the per-goal heatmap cell array for a date range.
  */

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { addDays, todayIn, formatTime } from "@/lib/dates";
 import {
   buildHeatmapCells,
+  buildGoalInsight,
   computeStats,
   computeTimePattern,
   computeWeeklyMet,
@@ -236,8 +237,20 @@ async function StatsSection({
         })
       : [];
 
+  const insight = buildGoalInsight({
+    typical: timePattern.typical,
+    timedTotal: timePattern.total,
+    currentStreak: stats.currentStreak,
+    streakUnit,
+    doneCount: stats.doneCount,
+  });
+
   return (
     <>
+      {insight ? (
+        <p className="text-sm mb-6 leading-relaxed">{insight}</p>
+      ) : null}
+
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
         <Stat label="Current streak" value={`${stats.currentStreak}`} unit={streakUnit} />
         <Stat label="Longest streak" value={`${stats.longestStreak}`} unit={streakUnit} />
