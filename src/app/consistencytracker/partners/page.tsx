@@ -77,8 +77,15 @@ export default async function PartnersPage() {
                       <div className="w-8 h-8 rounded-full bg-gray-200" />
                     )}
                     <div className="min-w-0">
-                      <p className="text-sm font-medium">
+                      <p className="text-sm font-medium inline-flex items-center gap-1.5">
                         {p.display_name ?? "Unnamed partner"}
+                        {p.hasNewShare ? (
+                          <span
+                            className="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"
+                            title="Newly shared a goal with you"
+                            aria-label="Newly shared a goal with you"
+                          />
+                        ) : null}
                       </p>
                       <p className="text-xs text-[color:var(--muted)] mt-0.5">
                         {partnerActivity(p, today)}
