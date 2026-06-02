@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getCurrentUser } from "@/lib/supabase/current-user";
 import { sendInviteEmail } from "@/lib/email";
 import { revalidatePath } from "next/cache";
 
@@ -30,9 +31,7 @@ function siteUrl(): string {
  */
 export async function listPartners(): Promise<Partner[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
 
   // Two queries: invites I sent that got accepted, and invites sent to me that I accepted
@@ -65,9 +64,7 @@ export async function listPartners(): Promise<Partner[]> {
 
 export async function listPendingInvites(): Promise<PendingInvite[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
 
   const { data } = await supabase
@@ -94,9 +91,7 @@ export async function sendInvite(
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) throw new Error("Not signed in");
 
   // Don't allow inviting yourself
@@ -156,10 +151,7 @@ export async function revokeInvite(inviteId: string): Promise<void> {
 export async function acceptInvite(
   token: string
 ): Promise<{ ok: true; partnerId: string } | { ok: false; reason: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, reason: "not_signed_in" };
 
   const service = createServiceClient();
@@ -193,9 +185,7 @@ export async function acceptInvite(
  */
 export async function listSharesForGoal(goalId: string): Promise<string[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
   const { data } = await supabase
     .from("shares")
@@ -211,9 +201,7 @@ export async function listSharesForGoal(goalId: string): Promise<string[]> {
  */
 export async function countUnseenShares(): Promise<number> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return 0;
   const { count } = await supabase
     .from("shares")
@@ -229,9 +217,7 @@ export async function countUnseenShares(): Promise<number> {
  */
 export async function markSharesSeen(ownerId: string): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return;
   await supabase
     .from("shares")
@@ -247,9 +233,7 @@ export async function markSharesSeen(ownerId: string): Promise<void> {
  */
 export async function isPartner(partnerId: string): Promise<boolean> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user || user.id === partnerId) return false;
 
   const [out, inb] = await Promise.all([
@@ -298,9 +282,7 @@ export async function setGoalShared(
   shared: boolean
 ): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) throw new Error("Not signed in");
 
   // Server-side guards: you must own the goal AND the recipient must

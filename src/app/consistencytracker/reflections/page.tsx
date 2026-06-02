@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { addDays, todayIn, isoWeekStart } from "@/lib/dates";
 import { listReflections } from "@/lib/actions/reflections";
 import {
@@ -27,16 +28,10 @@ type ReflectionRow = {
 
 export default async function ReflectionsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("timezone")
-    .eq("id", user.id)
-    .single();
+  const profile = await getCurrentProfile();
   const timezone = profile?.timezone ?? "UTC";
   const today = todayIn(timezone);
   const currentWeekStart = isoWeekStart(today);

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/current-user";
 import { createServiceClient } from "@/lib/supabase/service";
 import InviteAcceptButton from "@/components/invite-accept-button";
 
@@ -10,10 +10,7 @@ export default async function InvitePage({
 }) {
   const { token } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null; // middleware redirects to /login
 
   // Service-role lookup — the token is the proof of intent

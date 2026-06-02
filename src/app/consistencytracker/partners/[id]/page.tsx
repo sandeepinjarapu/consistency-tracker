@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/current-user";
 import { isPartner } from "@/lib/actions/partners";
 import { addDays, todayIn } from "@/lib/dates";
 import { buildHeatmapCells, computeStats, computeWeeklyMet } from "@/lib/stats";
@@ -29,9 +30,7 @@ export default async function PartnerPage({
   const { id: partnerId } = await params;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
 
   // Verify partnership

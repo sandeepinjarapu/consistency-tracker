@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { todayIn, dayOfWeekIn, addDays, isoWeekStart } from "@/lib/dates";
 import { buildAggregateCells, computeStats } from "@/lib/stats";
 import TodayGoalCard from "@/components/today-goal-card";
@@ -17,31 +18,27 @@ type GoalRow = {
 };
 
 export default async function TodayView() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
+  const supabase = await createClient();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("timezone, display_name")
-    .eq("id", user.id)
-    .single();
+  // Profile and goals are independent — fetch them together.
+  const [profile, { data: rawGoals }] = await Promise.all([
+    getCurrentProfile(),
+    supabase
+      .from("goals")
+      .select(
+        "id, name, description, target_days, weekly_target, created_at, category:categories(name, color)"
+      )
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .order("created_at", { ascending: true }),
+  ]);
 
   const timezone = profile?.timezone ?? "UTC";
   const today = todayIn(timezone);
   const dow = dayOfWeekIn(timezone);
   const yearStart = addDays(today, -364);
-
-  const { data: rawGoals } = await supabase
-    .from("goals")
-    .select(
-      "id, name, description, target_days, weekly_target, created_at, category:categories(name, color)"
-    )
-    .eq("user_id", user.id)
-    .eq("active", true)
-    .order("created_at", { ascending: true });
 
   const goals: GoalRow[] = (rawGoals ?? []).map((g) => ({
     ...g,
@@ -71,16 +68,27 @@ export default async function TodayView() {
   const goalsToday = goals.filter((g) => g.target_days.includes(dow));
   const goalIds = goals.map((g) => g.id);
 
-  const { data: yearCheckInsRaw } = await supabase
-    .from("check_ins")
-    .select("id, goal_id, date, status, skip_reason, note, created_at")
-    .in("goal_id", goalIds)
-    .gte("date", yearStart)
-    .lte("date", today);
+  // Year check-ins (heatmap + streaks) and the prior-week reflection lookup
+  // (banner) are independent — fetch them together.
+  const prevWeekStart = addDays(isoWeekStart(today), -7);
+  const [{ data: yearCheckInsRaw }, { data: prevReflection }] = await Promise.all([
+    supabase
+      .from("check_ins")
+      .select("id, goal_id, date, status, skip_reason, note, created_at")
+      .in("goal_id", goalIds)
+      .gte("date", yearStart)
+      .lte("date", today),
+    supabase
+      .from("weekly_reflections")
+      .select("id")
+      .eq("week_start_date", prevWeekStart)
+      .maybeSingle(),
+  ]);
 
   const yearCheckIns = (yearCheckInsRaw ?? []) as Array<
     CheckIn & { goal_id: string }
   >;
+  const showReflectionBanner = !prevReflection;
 
   const todayCheckIns = yearCheckIns.filter((c) => c.date === today);
   const checkInByGoal = new Map(todayCheckIns.map((c) => [c.goal_id, c]));
@@ -106,15 +114,6 @@ export default async function TodayView() {
       status: c.status,
     })),
   });
-
-  // "Reflect on last week" banner — show if previous week has no reflection
-  const prevWeekStart = addDays(isoWeekStart(today), -7);
-  const { data: prevReflection } = await supabase
-    .from("weekly_reflections")
-    .select("id")
-    .eq("week_start_date", prevWeekStart)
-    .maybeSingle();
-  const showReflectionBanner = !prevReflection;
 
   // Per-goal streaks for the goal list
   const goalRows = goals.map((g) => {
