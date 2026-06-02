@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { isPartner } from "@/lib/actions/partners";
 import { listMyReactions } from "@/lib/actions/reactions";
-import { addDays, todayIn } from "@/lib/dates";
+import { addDays, todayIn, isoWeekStart } from "@/lib/dates";
 import { buildHeatmapCells, computeStats, computeWeeklyMet } from "@/lib/stats";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { safeExternalUrl } from "@/lib/url";
@@ -107,9 +107,11 @@ export default async function PartnerPage({
     }
   }
 
-  // Which reactions I've already left on this partner's goals.
+  // Which reactions I've already left on this partner's goals this week
+  // (reactions are once per goal per ISO week).
+  const weekStart = isoWeekStart(today);
   const myReactions: Record<string, true> =
-    goals.length > 0 ? await listMyReactions(partnerId) : {};
+    goals.length > 0 ? await listMyReactions(partnerId, weekStart) : {};
 
   return (
     <section className="space-y-10">
@@ -244,6 +246,9 @@ export default async function PartnerPage({
                   }}
                 />
                 <div className="mt-3">
+                  <p className="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1.5">
+                    Let them know you noticed
+                  </p>
                   <ReactionButtons
                     goalId={goal.id}
                     initial={{
