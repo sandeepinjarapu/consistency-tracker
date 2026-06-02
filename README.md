@@ -15,7 +15,7 @@ Built with Next.js 15 (App Router), Supabase (Postgres + Auth + Row-Level Securi
 - **Weekly reflections** — a Continue / Stop / Improve journal with auto-computed weekly stats, highlights, and a plain-language recap of how the week actually went.
 - **Weekly summary email** — every Monday you get a recap of the past week across all your goals, for personal accountability — no partner required.
 - **Partner accountability** — invite a friend by email and share individual goals read-only. A quiet "shared with…" badge keeps it clear what's exposed (everything is private by default), the partners list shows when each partner last showed up, and they get a weekly summary of just the shared goals, CC'd to you so you share the same view.
-- **Gentle reactions** — on a shared goal a partner can leave a lightweight, per-week 👀 *Saw it* / 👏 *Proud* — a quiet "I noticed," never a nudge. You see a warm history of how often and how recently ("Richa has been proud of this for 3 weeks").
+- **Gentle reactions** — on a shared goal a partner can leave a lightweight, per-week 👀 *Saw it* / 👏 *Proud* — a quiet "I noticed," never a nudge. You see a warm history of how often and how recently ("Wendy has been proud of this for 3 weeks").
 - **Timezone-aware** — "today", streaks, and weekly boundaries are all computed in each user's own timezone.
 - **Calendar reminders** — one-click "Add to Google Calendar" for specific-day goals.
 
