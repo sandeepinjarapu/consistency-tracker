@@ -64,11 +64,17 @@ export default function Heatmap({
   doneColor = COLOR.done,
   hideLegend = false,
   editable,
+  schedule,
 }: {
   cells: HeatmapCell[];
   doneColor?: string;
   hideLegend?: boolean;
   editable?: HeatmapEditable;
+  // Read-only schedule context for tooltip disambiguation (e.g. the partner
+  // view, which renders someone else's goal without click-to-edit). Lets an
+  // "empty" cell read "not logged" vs "not scheduled" without making it
+  // editable. `editable` already carries the same fields and takes precedence.
+  schedule?: { goalStartDate: string; today: string; targetDays: number[] };
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -232,7 +238,7 @@ export default function Heatmap({
                   targetDays: editable.targetDays,
                 })
               : null;
-            const baseTip = cell.tooltip ?? tooltipFor(cell, editable);
+            const baseTip = cell.tooltip ?? tooltipFor(cell, editable ?? schedule);
             const tipText = action
               ? `${baseTip} — click to ${action === "clear" ? "undo" : "log"}`
               : baseTip;
