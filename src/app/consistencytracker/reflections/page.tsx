@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { addDays, todayIn, isoWeekStart } from "@/lib/dates";
@@ -13,7 +14,10 @@ import {
 import ReflectionEditor from "@/components/reflection-editor";
 import WeekGrid from "@/components/week-grid";
 
-const WEEKS_TO_SHOW = 12;
+// Weeks shown by default and per "Show earlier weeks" step. The visible
+// window grows via the ?weeks= search param so each request stays bounded.
+const WEEKS_STEP = 12;
+const WEEKS_MAX = 520; // ~10 years, a safety ceiling on the query window
 
 type ReflectionRow = {
   id: string;
@@ -26,10 +30,21 @@ type ReflectionRow = {
   updated_at: string;
 };
 
-export default async function ReflectionsPage() {
+export default async function ReflectionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ weeks?: string }>;
+}) {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return null;
+
+  const { weeks: weeksParam } = await searchParams;
+  const parsed = Number.parseInt(weeksParam ?? "", 10);
+  const weeksToShow = Math.min(
+    Number.isFinite(parsed) && parsed > 0 ? parsed : WEEKS_STEP,
+    WEEKS_MAX
+  );
 
   const profile = await getCurrentProfile();
   const timezone = profile?.timezone ?? "UTC";
@@ -37,7 +52,7 @@ export default async function ReflectionsPage() {
   const currentWeekStart = isoWeekStart(today);
   // Pull one extra week before earliest so we can compute trend for the
   // earliest displayed week.
-  const earliestWeekStart = addDays(currentWeekStart, -WEEKS_TO_SHOW * 7);
+  const earliestWeekStart = addDays(currentWeekStart, -weeksToShow * 7);
   const latestWindow = addDays(currentWeekStart, 6);
 
   // All active + archived goals (so historical weeks compute correctly)
@@ -79,12 +94,30 @@ export default async function ReflectionsPage() {
     stats: WeekStats;
   };
   const weeks: Week[] = [];
-  for (let i = 0; i <= WEEKS_TO_SHOW; i++) {
+  for (let i = 0; i <= weeksToShow; i++) {
     const start = addDays(currentWeekStart, -i * 7);
     const end = addDays(start, 6);
     const stats = computeWeekStats({ start, end, today, goals, checkIns });
     weeks.push({ start, end, isCurrent: i === 0, stats });
   }
+
+  // Is there history older than the current window? Show "earlier weeks" only
+  // if a goal was created — or a reflection written — before it. Uses
+  // already-fetched data (no extra query).
+  const oldestGoalStart = goals.reduce<string | null>(
+    (min, g) => {
+      const d = g.created_at.slice(0, 10);
+      return min === null || d < min ? d : min;
+    },
+    null
+  );
+  const oldestReflectionWeek = reflections.length
+    ? reflections[reflections.length - 1].week_start_date
+    : null;
+  const hasOlder =
+    weeksToShow < WEEKS_MAX &&
+    ((oldestGoalStart !== null && oldestGoalStart < earliestWeekStart) ||
+      (oldestReflectionWeek !== null && oldestReflectionWeek < earliestWeekStart));
 
   return (
     <section>
@@ -96,7 +129,7 @@ export default async function ReflectionsPage() {
       </header>
 
       <div className="space-y-10">
-        {weeks.slice(0, WEEKS_TO_SHOW).map((w, idx) => {
+        {weeks.slice(0, weeksToShow).map((w, idx) => {
           const reflection = reflectionByWeek.get(w.start) ?? null;
           const hasAnyActivity = w.stats.done + w.stats.skipped + w.stats.missed > 0;
           if (!w.isCurrent && !hasAnyActivity && !reflection) return null;
@@ -121,6 +154,17 @@ export default async function ReflectionsPage() {
           );
         })}
       </div>
+
+      {hasOlder ? (
+        <div className="mt-10 text-center">
+          <Link
+            href={`?weeks=${weeksToShow + WEEKS_STEP}`}
+            className="text-sm underline text-[color:var(--muted)] hover:text-black"
+          >
+            Show earlier weeks
+          </Link>
+        </div>
+      ) : null}
     </section>
   );
 }
