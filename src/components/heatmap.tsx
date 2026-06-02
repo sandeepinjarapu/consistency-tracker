@@ -232,7 +232,7 @@ export default function Heatmap({
                   targetDays: editable.targetDays,
                 })
               : null;
-            const baseTip = cell.tooltip ?? tooltipFor(cell);
+            const baseTip = cell.tooltip ?? tooltipFor(cell, editable);
             const tipText = action
               ? `${baseTip} — click to ${action === "clear" ? "undo" : "log"}`
               : baseTip;
@@ -325,13 +325,31 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   );
 }
 
-function tooltipFor(cell: HeatmapCell): string {
+function tooltipFor(
+  cell: HeatmapCell,
+  ctx?: { goalStartDate: string; today: string; targetDays: number[] }
+): string {
   const date = formatDate(cell.date);
   switch (cell.status) {
     case "done": return `${date} · Done`;
     case "skipped": return `${date} · Skipped`;
     case "missed": return `${date} · Missed`;
-    case "empty": return `${date} · Not scheduled`;
+    case "empty": {
+      // "empty" is overloaded: a genuine off-day, a future/pre-goal day, today
+      // before it's logged, or a count-goal gap. When the goal's schedule is
+      // known (the editable detail view), distinguish a scheduled-but-unlogged
+      // day from a day that simply isn't scheduled.
+      if (ctx) {
+        const dow = dayOfWeekForDateString(cell.date);
+        const inRange = cell.date >= ctx.goalStartDate && cell.date <= ctx.today;
+        if (inRange && ctx.targetDays.includes(dow)) {
+          return cell.date === ctx.today
+            ? `${date} · Today — not logged yet`
+            : `${date} · Not logged`;
+        }
+      }
+      return `${date} · Not scheduled`;
+    }
   }
 }
 
