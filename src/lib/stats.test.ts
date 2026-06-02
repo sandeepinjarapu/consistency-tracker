@@ -482,9 +482,12 @@ describe("buildAggregateCells", () => {
   });
 });
 
+// Helper: an entry logged live (createdAt's UTC date == activity date).
+const live = (ts: string) => ({ createdAt: ts, date: ts.slice(0, 10) });
+
 describe("computeTimePattern", () => {
   it("returns null typical and zero counts for empty input", () => {
-    const r = computeTimePattern({ timestamps: [], timezone: "UTC" });
+    const r = computeTimePattern({ entries: [], timezone: "UTC" });
     expect(r.typical).toBeNull();
     expect(r.total).toBe(0);
     expect(r.hourly).toHaveLength(24);
@@ -493,24 +496,25 @@ describe("computeTimePattern", () => {
 
   it("buckets timestamps into the right hour in the given timezone", () => {
     // 14:23 UTC. In UTC → hour 14. In LA (UTC-8) → hour 6. In IST (+5:30) → hour 19.
-    const ts = ["2024-01-15T14:23:00Z"];
-    expect(computeTimePattern({ timestamps: ts, timezone: "UTC" }).hourly[14]).toBe(1);
+    // date 2024-01-15 is the same local day across all three for 14:23 UTC.
+    const e = [live("2024-01-15T14:23:00Z")];
+    expect(computeTimePattern({ entries: e, timezone: "UTC" }).hourly[14]).toBe(1);
     expect(
-      computeTimePattern({ timestamps: ts, timezone: "America/Los_Angeles" }).hourly[6]
+      computeTimePattern({ entries: e, timezone: "America/Los_Angeles" }).hourly[6]
     ).toBe(1);
     expect(
-      computeTimePattern({ timestamps: ts, timezone: "Asia/Kolkata" }).hourly[19]
+      computeTimePattern({ entries: e, timezone: "Asia/Kolkata" }).hourly[19]
     ).toBe(1);
   });
 
   it("returns the median time as typical, robust to outliers", () => {
     // Three 7:00am check-ins + one 11:00pm outlier. Median = 7:00am.
     const r = computeTimePattern({
-      timestamps: [
-        "2024-01-15T07:00:00Z",
-        "2024-01-16T07:00:00Z",
-        "2024-01-17T07:00:00Z",
-        "2024-01-18T23:00:00Z",
+      entries: [
+        live("2024-01-15T07:00:00Z"),
+        live("2024-01-16T07:00:00Z"),
+        live("2024-01-17T07:00:00Z"),
+        live("2024-01-18T23:00:00Z"),
       ],
       timezone: "UTC",
     });
@@ -518,12 +522,12 @@ describe("computeTimePattern", () => {
     expect(r.total).toBe(4);
   });
 
-  it("counts every timestamp toward total", () => {
+  it("counts every live check-in toward total", () => {
     const r = computeTimePattern({
-      timestamps: [
-        "2024-01-15T09:00:00Z",
-        "2024-01-15T10:00:00Z",
-        "2024-01-15T10:30:00Z",
+      entries: [
+        live("2024-01-15T09:00:00Z"),
+        live("2024-01-15T10:00:00Z"),
+        live("2024-01-15T10:30:00Z"),
       ],
       timezone: "UTC",
     });
@@ -532,16 +536,50 @@ describe("computeTimePattern", () => {
     expect(r.hourly[10]).toBe(2);
   });
 
+  it("ignores backfills (logged on a later day than the activity)", () => {
+    // Saturday's run, backfilled Monday morning. createdAt date != activity date.
+    const r = computeTimePattern({
+      entries: [{ createdAt: "2024-01-22T09:00:00Z", date: "2024-01-20" }],
+      timezone: "UTC",
+    });
+    expect(r.total).toBe(0);
+    expect(r.typical).toBeNull();
+  });
+
+  it("ignores an undo-then-recheck on a different day, keeps same-day ones", () => {
+    const r = computeTimePattern({
+      entries: [
+        live("2024-01-15T07:00:00Z"), // live, counts
+        { createdAt: "2024-01-18T22:00:00Z", date: "2024-01-16" }, // rechecked later, ignored
+      ],
+      timezone: "UTC",
+    });
+    expect(r.total).toBe(1);
+    expect(r.typical).toEqual({ hour: 7, minute: 0 });
+  });
+
+  it("respects timezone when deciding same-day (date boundary)", () => {
+    // 02:00 UTC on the 16th is still the 15th in LA (UTC-8). If the activity
+    // date is the LA-local 2024-01-15, it counts; against 2024-01-16 it wouldn't.
+    const entry = { createdAt: "2024-01-16T02:00:00Z", date: "2024-01-15" };
+    expect(
+      computeTimePattern({ entries: [entry], timezone: "America/Los_Angeles" }).total
+    ).toBe(1);
+    expect(
+      computeTimePattern({ entries: [entry], timezone: "UTC" }).total
+    ).toBe(0);
+  });
+
   // Regression: en-CA with hour12:false renders midnight as "24:30" in
   // some engines instead of "00:30". Without normalization, a midnight
   // check-in would land in hourly[24] (out of bounds → ghost 25th
   // bucket) and the typical-time render would flip 12:xxam → 12:xxpm.
   it("buckets midnight (00:xx) as hour 0, not hour 24", () => {
     const r = computeTimePattern({
-      timestamps: [
-        "2024-01-15T00:30:00Z",
-        "2024-01-16T00:30:00Z",
-        "2024-01-17T00:30:00Z",
+      entries: [
+        live("2024-01-15T00:30:00Z"),
+        live("2024-01-16T00:30:00Z"),
+        live("2024-01-17T00:30:00Z"),
       ],
       timezone: "UTC",
     });

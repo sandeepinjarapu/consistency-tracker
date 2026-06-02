@@ -347,20 +347,26 @@ function formatDate(d: string): string {
 }
 
 /**
- * Aggregate time-of-day pattern from check-in timestamps. Returns:
- *  - typical: median time as { hour, minute } (null if no timestamps)
+ * Aggregate time-of-day pattern from check-ins. Returns:
+ *  - typical: median time as { hour, minute } (null if nothing counted)
  *  - hourly: 24-element array of counts per local hour
- *  - total: number of timestamps considered
+ *  - total: number of check-ins counted
+ *
+ * Only check-ins logged **live** — where the row's `createdAt` falls on the
+ * same local day as the activity `date` — are counted. A backfill (logged on
+ * a later day) or an undo-then-recheck on a different day carries a
+ * `createdAt` that reflects when the row was written, not when the habit was
+ * done, so it would distort "typical time"; those are skipped.
  *
  * Median is computed on minutes-since-local-midnight. Robust to outliers,
  * and doesn't try to handle the midnight discontinuity (a habit you do at
  * 11:50pm vs 12:10am will skew, but that's a rare case for typical users).
  */
 export function computeTimePattern({
-  timestamps,
+  entries,
   timezone,
 }: {
-  timestamps: string[];
+  entries: { createdAt: string; date: string }[];
   timezone: string;
 }): {
   typical: { hour: number; minute: number } | null;
@@ -369,8 +375,14 @@ export function computeTimePattern({
 } {
   const hourly = new Array(24).fill(0);
   const minutes: number[] = [];
-  for (const ts of timestamps) {
-    const local = new Date(ts).toLocaleString("en-CA", {
+  for (const { createdAt, date } of entries) {
+    // Skip non-live check-ins (backfills, later re-checks) — see doc above.
+    const localDate = new Date(createdAt).toLocaleDateString("en-CA", {
+      timeZone: timezone,
+    });
+    if (localDate !== date) continue;
+
+    const local = new Date(createdAt).toLocaleString("en-CA", {
       timeZone: timezone,
       hour: "2-digit",
       minute: "2-digit",
@@ -395,7 +407,7 @@ export function computeTimePattern({
   return {
     typical: { hour: Math.floor(median / 60), minute: median % 60 },
     hourly,
-    total: timestamps.length,
+    total: minutes.length,
   };
 }
 
