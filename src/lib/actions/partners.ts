@@ -10,6 +10,8 @@ export type Partner = {
   id: string;
   display_name: string | null;
   avatar_url: string | null;
+  sharedGoalCount: number; // goals they've shared with me
+  lastActive: string | null; // most recent check-in date on those goals (YYYY-MM-DD)
 };
 
 export type PendingInvite = {
@@ -59,7 +61,73 @@ export async function listPartners(): Promise<Partner[]> {
     .select("id, display_name, avatar_url")
     .in("id", Array.from(partnerIds));
 
-  return (profiles ?? []) as Partner[];
+  // Goals each partner has shared with me, and the most recent check-in on
+  // them — so the partners list can show "N shared · active 2 days ago".
+  const { data: myShares } = await supabase
+    .from("shares")
+    .select("owner_id, goal_id")
+    .eq("viewer_id", user.id)
+    .in("owner_id", Array.from(partnerIds));
+
+  const countByOwner = new Map<string, number>();
+  const ownerByGoal = new Map<string, string>();
+  for (const s of myShares ?? []) {
+    ownerByGoal.set(s.goal_id, s.owner_id);
+    countByOwner.set(s.owner_id, (countByOwner.get(s.owner_id) ?? 0) + 1);
+  }
+
+  const lastByOwner = new Map<string, string>();
+  const sharedGoalIds = Array.from(ownerByGoal.keys());
+  if (sharedGoalIds.length > 0) {
+    const { data: cis } = await supabase
+      .from("check_ins")
+      .select("goal_id, date")
+      .in("goal_id", sharedGoalIds)
+      .order("date", { ascending: false });
+    // Rows arrive newest-first, so the first date seen per owner is their max.
+    for (const ci of cis ?? []) {
+      const owner = ownerByGoal.get(ci.goal_id);
+      if (owner && !lastByOwner.has(owner)) lastByOwner.set(owner, ci.date);
+    }
+  }
+
+  return (profiles ?? []).map((p) => ({
+    ...p,
+    sharedGoalCount: countByOwner.get(p.id) ?? 0,
+    lastActive: lastByOwner.get(p.id) ?? null,
+  })) as Partner[];
+}
+
+/**
+ * For the current user's own goals, map goal_id → display names of the
+ * partners each goal is shared with. Powers the "Shared with X" badge on the
+ * goals list. Goals absent from the map are private.
+ */
+export async function listGoalShares(): Promise<Record<string, string[]>> {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) return {};
+
+  const { data: shares } = await supabase
+    .from("shares")
+    .select("goal_id, viewer_id")
+    .eq("owner_id", user.id);
+  if (!shares || shares.length === 0) return {};
+
+  const viewerIds = Array.from(new Set(shares.map((s) => s.viewer_id)));
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, display_name")
+    .in("id", viewerIds);
+  const nameById = new Map(
+    (profiles ?? []).map((p) => [p.id, p.display_name ?? "a partner"])
+  );
+
+  const byGoal: Record<string, string[]> = {};
+  for (const s of shares) {
+    (byGoal[s.goal_id] ??= []).push(nameById.get(s.viewer_id) ?? "a partner");
+  }
+  return byGoal;
 }
 
 export async function listPendingInvites(): Promise<PendingInvite[]> {

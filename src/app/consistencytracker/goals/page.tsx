@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { listCategories } from "@/lib/actions/categories";
+import { listGoalShares } from "@/lib/actions/partners";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import GoalRowActions from "@/components/goal-row-actions";
 
@@ -26,7 +27,10 @@ export default async function GoalsPage({
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const categories = await listCategories();
+  const [categories, goalShares] = await Promise.all([
+    listCategories(),
+    showArchived ? Promise.resolve({}) : listGoalShares(),
+  ]);
 
   const { data: goals } = await supabase
     .from("goals")
@@ -88,6 +92,7 @@ export default async function GoalsPage({
                 color={cat.color}
                 goals={items}
                 archived={showArchived}
+                shares={goalShares}
               />
             );
           })}
@@ -97,6 +102,7 @@ export default async function GoalsPage({
               color="#9ca3af"
               goals={goalsByCategory.get(null) ?? []}
               archived={showArchived}
+              shares={goalShares}
             />
           )}
         </div>
@@ -127,16 +133,24 @@ export default async function GoalsPage({
   );
 }
 
+function shareLabel(names: string[] | undefined): string | null {
+  if (!names || names.length === 0) return null;
+  if (names.length === 1) return `Shared with ${names[0]}`;
+  return `Shared with ${names[0]} +${names.length - 1}`;
+}
+
 function CategoryGroup({
   name,
   color,
   goals,
   archived,
+  shares,
 }: {
   name: string;
   color: string;
   goals: GoalRow[];
   archived: boolean;
+  shares: Record<string, string[]>;
 }) {
   return (
     <div>
@@ -167,6 +181,12 @@ function CategoryGroup({
                 {targetDaysLabel(g.target_days)}
                 {g.description ? ` · ${g.description}` : ""}
               </p>
+              {shareLabel(shares[g.id]) ? (
+                <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-[color:var(--muted)]">
+                  <span aria-hidden>↗</span>
+                  {shareLabel(shares[g.id])}
+                </p>
+              ) : null}
             </div>
             <GoalRowActions goalId={g.id} archived={archived} />
           </li>

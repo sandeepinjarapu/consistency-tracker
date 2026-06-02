@@ -1,13 +1,17 @@
 import Link from "next/link";
-import { listPartners, listPendingInvites } from "@/lib/actions/partners";
+import { listPartners, listPendingInvites, type Partner } from "@/lib/actions/partners";
+import { getCurrentProfile } from "@/lib/supabase/current-user";
+import { todayIn, daysBetween } from "@/lib/dates";
 import InviteForm from "@/components/invite-form";
 import PendingInviteRow from "@/components/pending-invite-row";
 
 export default async function PartnersPage() {
-  const [partners, pending] = await Promise.all([
+  const [partners, pending, profile] = await Promise.all([
     listPartners(),
     listPendingInvites(),
+    getCurrentProfile(),
   ]);
+  const today = todayIn(profile?.timezone ?? "UTC");
 
   return (
     <section className="space-y-12">
@@ -72,9 +76,14 @@ export default async function PartnersPage() {
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-gray-200" />
                     )}
-                    <p className="text-sm font-medium">
-                      {p.display_name ?? "Unnamed partner"}
-                    </p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {p.display_name ?? "Unnamed partner"}
+                      </p>
+                      <p className="text-xs text-[color:var(--muted)] mt-0.5">
+                        {partnerActivity(p, today)}
+                      </p>
+                    </div>
                   </div>
                   <span className="text-xs text-[color:var(--muted)]">View →</span>
                 </Link>
@@ -85,4 +94,28 @@ export default async function PartnersPage() {
       </div>
     </section>
   );
+}
+
+// A quiet "N shared · active 2 days ago" line. Gentle witness, not surveillance:
+// it's how recently they showed up, never a judgment of how much.
+function partnerActivity(p: Partner, today: string): string {
+  const parts: string[] = [];
+  if (p.sharedGoalCount > 0) {
+    parts.push(`${p.sharedGoalCount} shared goal${p.sharedGoalCount === 1 ? "" : "s"}`);
+  }
+  if (p.lastActive) {
+    const d = daysBetween(p.lastActive, today);
+    parts.push(
+      d <= 0
+        ? "active today"
+        : d === 1
+          ? "active yesterday"
+          : d < 7
+            ? `active ${d} days ago`
+            : d < 14
+              ? "active last week"
+              : `active ${Math.floor(d / 7)} weeks ago`
+    );
+  }
+  return parts.length > 0 ? parts.join(" · ") : "Nothing shared with you yet";
 }
