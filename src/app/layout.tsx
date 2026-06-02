@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        {/*
+          Vercel Speed Insights — loaded via Vercel's first-party script rather
+          than the @vercel/speed-insights npm package, which has a peer-dep
+          conflict with our Vitest/Vite toolchain. The script is served by
+          Vercel only when Speed Insights is enabled for the project (Dashboard
+          → Speed Insights → Enable); it 404s harmlessly in local dev.
+        */}
+        <Script
+          src="/_vercel/speed-insights/script.js"
+          strategy="afterInteractive"
+        />
+      </body>
     </html>
   );
 }
