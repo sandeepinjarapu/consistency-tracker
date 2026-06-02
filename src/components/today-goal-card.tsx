@@ -116,8 +116,18 @@ export default function TodayGoalCard({
 
   const isChecked = optimistic !== null;
 
+  // Calm per-state tint so cards are scannable at a glance, not just by
+  // reading the status text. Pending stays neutral; done/skipped get a soft
+  // wash. No "missed" state here — today can't be missed yet.
+  const stateTint =
+    optimistic?.status === "done"
+      ? "border-green-200 bg-green-50/60"
+      : optimistic?.status === "skipped"
+        ? "border-amber-200 bg-amber-50/60"
+        : "border-[color:var(--border)]";
+
   return (
-    <div className="flex gap-4 border border-[color:var(--border)] rounded-lg px-4 py-3">
+    <div className={`flex gap-4 border rounded-lg px-4 py-3 transition-colors ${stateTint}`}>
       <span
         aria-hidden
         className="w-1 self-stretch rounded-full shrink-0"
