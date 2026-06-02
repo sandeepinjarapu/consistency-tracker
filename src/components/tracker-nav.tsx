@@ -20,14 +20,14 @@ export default function TrackerNav() {
 
   return (
     <nav className="flex items-center justify-between border-b border-[color:var(--border)] mb-10">
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3">
         <Link
           href="/consistencytracker"
-          className="text-sm font-medium tracking-tight pb-4"
+          className="text-sm font-medium tracking-tight pb-4 pr-1"
         >
           Consistency Tracker
         </Link>
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-1">
           {ITEMS.map((item) => {
             const active =
               item.href === "/consistencytracker"
@@ -38,13 +38,22 @@ export default function TrackerNav() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`text-sm transition pb-4 -mb-px border-b-2 ${
-                  active
-                    ? "text-black font-medium border-black"
-                    : "text-[color:var(--muted)] border-transparent hover:text-black hover:border-[color:var(--border)]"
-                }`}
+                className="relative pb-4 group"
               >
-                {item.label}
+                {/* Compact rounded hover fill (GitHub-style affordance) */}
+                <span
+                  className={`block text-sm rounded-md px-3 py-1.5 transition-colors ${
+                    active
+                      ? "text-black font-medium"
+                      : "text-[color:var(--muted)] group-hover:bg-gray-100 group-hover:text-black"
+                  }`}
+                >
+                  {item.label}
+                </span>
+                {/* Active underline, anchored to the nav's bottom line */}
+                {active ? (
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-black" />
+                ) : null}
               </Link>
             );
           })}
