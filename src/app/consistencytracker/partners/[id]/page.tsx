@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { isPartner } from "@/lib/actions/partners";
+import { listMyReactions } from "@/lib/actions/reactions";
 import { addDays, todayIn } from "@/lib/dates";
 import { buildHeatmapCells, computeStats, computeWeeklyMet } from "@/lib/stats";
 import { targetDaysLabel } from "@/lib/target-days-label";
@@ -10,6 +11,7 @@ import { safeExternalUrl } from "@/lib/url";
 import Heatmap from "@/components/heatmap";
 import WeeklyStrip from "@/components/weekly-strip";
 import MarkSharesSeen from "@/components/mark-shares-seen";
+import ReactionButtons from "@/components/reaction-buttons";
 
 type SharedGoal = {
   id: string;
@@ -104,6 +106,10 @@ export default async function PartnerPage({
       checkInsByGoal.get(ci.goal_id)!.push({ date: ci.date, status: ci.status });
     }
   }
+
+  // Which reactions I've already left on this partner's goals.
+  const myReactions: Record<string, true> =
+    goals.length > 0 ? await listMyReactions(partnerId) : {};
 
   return (
     <section className="space-y-10">
@@ -237,6 +243,15 @@ export default async function PartnerPage({
                     targetDays: goal.target_days,
                   }}
                 />
+                <div className="mt-3">
+                  <ReactionButtons
+                    goalId={goal.id}
+                    initial={{
+                      saw: Boolean(myReactions[`${goal.id}:saw`]),
+                      proud: Boolean(myReactions[`${goal.id}:proud`]),
+                    }}
+                  />
+                </div>
               </div>
             );
           })}

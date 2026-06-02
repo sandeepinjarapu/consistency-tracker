@@ -13,6 +13,8 @@ import {
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { listPartners, listSharesForGoal } from "@/lib/actions/partners";
+import { getGoalReactions } from "@/lib/actions/reactions";
+import { REACTION_LABELS, REACTION_EMOJI } from "@/lib/reactions";
 import { buildGCalUrl } from "@/lib/gcal";
 import { safeExternalUrl } from "@/lib/url";
 import Heatmap from "@/components/heatmap";
@@ -20,6 +22,7 @@ import WeeklyStrip from "@/components/weekly-strip";
 import GoalRowActions from "@/components/goal-row-actions";
 import ShareToggles from "@/components/share-toggles";
 import TimeHistogram from "@/components/time-histogram";
+import MarkReactionsSeen from "@/components/mark-reactions-seen";
 import Skeleton from "@/components/skeleton";
 
 export default async function GoalPage({
@@ -309,19 +312,35 @@ async function StatsSection({
 }
 
 async function SharingSection({ goalId }: { goalId: string }) {
-  const [partners, sharedWith] = await Promise.all([
+  const [partners, sharedWith, reactions] = await Promise.all([
     listPartners(),
     listSharesForGoal(goalId),
+    getGoalReactions(goalId),
   ]);
   return (
-    <ShareToggles
-      goalId={goalId}
-      partners={partners.map((p) => ({
-        id: p.id,
-        display_name: p.display_name,
-      }))}
-      sharedWith={sharedWith}
-    />
+    <>
+      <ShareToggles
+        goalId={goalId}
+        partners={partners.map((p) => ({
+          id: p.id,
+          display_name: p.display_name,
+        }))}
+        sharedWith={sharedWith}
+      />
+      {reactions.length > 0 ? (
+        <div className="mt-5">
+          {/* Visiting your own goal = acknowledgement; clears the nav badge. */}
+          <MarkReactionsSeen goalId={goalId} />
+          <ul className="space-y-1 text-xs text-[color:var(--muted)]">
+            {reactions.map((r, i) => (
+              <li key={i}>
+                {REACTION_EMOJI[r.kind]} {r.reactorName} · {REACTION_LABELS[r.kind]}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </>
   );
 }
 
