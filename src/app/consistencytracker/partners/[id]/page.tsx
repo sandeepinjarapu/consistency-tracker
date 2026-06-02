@@ -228,7 +228,15 @@ export default async function PartnerPage({
                     />
                   </div>
                 ) : null}
-                <Heatmap cells={cells} doneColor={color} />
+                <Heatmap
+                  cells={cells}
+                  doneColor={color}
+                  schedule={{
+                    goalStartDate: goalStart,
+                    today,
+                    targetDays: goal.target_days,
+                  }}
+                />
               </div>
             );
           })}
