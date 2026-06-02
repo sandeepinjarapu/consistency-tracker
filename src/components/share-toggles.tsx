@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { setGoalShared } from "@/lib/actions/partners";
 
@@ -16,7 +15,6 @@ export default function ShareToggles({
   partners: Partner[];
   sharedWith: string[];
 }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [local, setLocal] = useState(() => new Set(sharedWith));
 
@@ -29,8 +27,11 @@ export default function ShareToggles({
 
     startTransition(async () => {
       try {
+        // Local state already reflects the change; setGoalShared
+        // revalidates the goal + partner pages for future navigations, so
+        // no router.refresh() is needed here (it would re-render the whole
+        // heavy goal-detail page and freeze the toggles meanwhile).
         await setGoalShared(goalId, partnerId, !currentlyShared);
-        router.refresh();
       } catch {
         // Revert optimistic update on failure
         setLocal(local);
