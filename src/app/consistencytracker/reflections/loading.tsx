@@ -1,17 +1,18 @@
 import Skeleton from "@/components/skeleton";
 
-// Reflections skeleton: header, current-week editor, prior-week cards.
+// Reflections skeleton: real title + subtitle, pulsing editor and cards.
 export default function Loading() {
   return (
-    <section className="space-y-8" aria-busy>
+    <section aria-busy>
       <span className="sr-only">Loading…</span>
-      <div>
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="mt-2 h-4 w-72" />
-      </div>
-      <Skeleton className="h-48 w-full" />
-      <div className="space-y-4">
-        <Skeleton className="h-3 w-32" />
+      <header className="mb-10">
+        <h1 className="text-xl font-light tracking-tight">Weekly reflections</h1>
+        <p className="mt-1 text-sm text-[color:var(--muted)]">
+          Look back, write briefly, move forward. A few sentences each week beats a long entry once a month.
+        </p>
+      </header>
+      <div className="space-y-10">
+        <Skeleton className="h-48 w-full" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
       </div>

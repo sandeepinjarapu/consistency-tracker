@@ -1,11 +1,17 @@
+import Link from "next/link";
 import Skeleton from "@/components/skeleton";
 
-// Goal detail skeleton: back link, header, 5 stat tiles, heatmap, histogram.
+// Goal detail skeleton: real back link, pulsing header/tiles/heatmap/histogram.
 export default function Loading() {
   return (
     <section aria-busy>
       <span className="sr-only">Loading…</span>
-      <Skeleton className="h-3 w-20" />
+      <Link
+        href="/consistencytracker/goals"
+        className="text-xs text-[color:var(--muted)] hover:text-black"
+      >
+        ← All goals
+      </Link>
       <div className="mt-4 mb-8">
         <Skeleton className="h-3 w-40 mb-2" />
         <Skeleton className="h-8 w-64" />
