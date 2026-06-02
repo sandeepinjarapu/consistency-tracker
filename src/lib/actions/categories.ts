@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/current-user";
 import { revalidatePath } from "next/cache";
 
 const PALETTE = [
@@ -29,7 +30,7 @@ export type Category = {
 
 export async function listCategories(): Promise<Category[]> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
 
   // First read

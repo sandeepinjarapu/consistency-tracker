@@ -9,6 +9,7 @@ import {
   computeWeeklyMet,
 } from "@/lib/stats";
 import { targetDaysLabel } from "@/lib/target-days-label";
+import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { listPartners, listSharesForGoal } from "@/lib/actions/partners";
 import { buildGCalUrl } from "@/lib/gcal";
 import { safeExternalUrl } from "@/lib/url";
@@ -26,16 +27,10 @@ export default async function GoalPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("timezone")
-    .eq("id", user.id)
-    .single();
+  const profile = await getCurrentProfile();
   const timezone = profile?.timezone ?? "UTC";
   const today = todayIn(timezone);
 

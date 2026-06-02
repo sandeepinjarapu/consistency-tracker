@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/current-user";
 import { listCategories } from "@/lib/actions/categories";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import GoalRowActions from "@/components/goal-row-actions";
@@ -22,9 +23,7 @@ export default async function GoalsPage({
   const showArchived = sp.archived === "1";
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
 
   const categories = await listCategories();

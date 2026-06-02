@@ -1,22 +1,19 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import TrackerNav from "@/components/tracker-nav";
 import TimezoneSetter from "@/components/timezone-setter";
 import { countUnseenShares } from "@/lib/actions/partners";
+import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 
 export default async function TrackerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, unseenShares] = await Promise.all([
-    supabase.from("profiles").select("timezone").eq("id", user.id).single(),
+  const [profile, unseenShares] = await Promise.all([
+    getCurrentProfile(),
     countUnseenShares(),
   ]);
 

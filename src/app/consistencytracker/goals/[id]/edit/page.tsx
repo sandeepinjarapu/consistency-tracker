@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/current-user";
 import { listCategories } from "@/lib/actions/categories";
 import { getGoal } from "@/lib/actions/goals";
 import { listPartners, listSharesForGoal } from "@/lib/actions/partners";
@@ -12,10 +12,7 @@ export default async function EditGoalPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
 
   const [goal, categories, partners, sharedWith] = await Promise.all([
