@@ -5,6 +5,7 @@ import {
   goalTargetsDay,
   isoWeekStart,
   addDays,
+  daysBetween,
   dateRange,
   dayOfWeekForDateString,
   formatCheckInTime,
@@ -150,5 +151,25 @@ describe("formatTime", () => {
   });
   it("zero-pads minutes", () => {
     expect(formatTime(9, 7)).toBe("9:07am");
+  });
+});
+
+describe("daysBetween", () => {
+  it("is 0 for the same day", () => {
+    expect(daysBetween("2024-03-10", "2024-03-10")).toBe(0);
+  });
+  it("counts forward days as positive", () => {
+    expect(daysBetween("2024-03-10", "2024-03-12")).toBe(2);
+  });
+  it("counts backward days as negative", () => {
+    expect(daysBetween("2024-03-12", "2024-03-10")).toBe(-2);
+  });
+  it("spans months and years", () => {
+    expect(daysBetween("2024-01-01", "2024-02-01")).toBe(31);
+    expect(daysBetween("2023-12-31", "2024-01-01")).toBe(1);
+  });
+  it("is unaffected by DST transitions (US spring-forward)", () => {
+    // 2024-03-10 is a US DST change; calendar-day math must still be 7.
+    expect(daysBetween("2024-03-07", "2024-03-14")).toBe(7);
   });
 });

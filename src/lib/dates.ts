@@ -64,6 +64,18 @@ export function addDays(dateStr: string, days: number): string {
 }
 
 /**
+ * Whole days from `from` to `to` (both YYYY-MM-DD). Positive when `to` is
+ * later. Calendar-day based (UTC midnights), so DST never shifts the count.
+ */
+export function daysBetween(from: string, to: string): number {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  const a = Date.UTC(fy, fm - 1, fd);
+  const b = Date.UTC(ty, tm - 1, td);
+  return Math.round((b - a) / 86_400_000);
+}
+
+/**
  * Inclusive range of YYYY-MM-DD strings between start and end.
  */
 export function dateRange(start: string, end: string): string[] {
