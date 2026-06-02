@@ -131,20 +131,24 @@ export async function getGoalReactions(
   return buildReactionSummaries(rows);
 }
 
-/** Count of unseen reactions across all of the current user's goals. */
-export async function countUnseenReactions(): Promise<number> {
+/**
+ * IDs of the current user's goals that have at least one unseen reaction —
+ * powers the quiet "new reaction" dot on each goal row. Clears per goal via
+ * markGoalReactionsSeen when the owner opens the goal.
+ */
+export async function listGoalsWithUnseenReactions(): Promise<string[]> {
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) return 0;
-  const { count } = await supabase
+  if (!user) return [];
+  const { data } = await supabase
     .from("reactions")
-    .select("*", { count: "exact", head: true })
+    .select("goal_id")
     .eq("owner_id", user.id)
     .is("seen_at", null);
-  return count ?? 0;
+  return Array.from(new Set((data ?? []).map((r) => r.goal_id)));
 }
 
-/** Mark the current user's reactions on a goal as seen (clears the badge). */
+/** Mark the current user's reactions on a goal as seen (clears the dot). */
 export async function markGoalReactionsSeen(goalId: string): Promise<void> {
   const supabase = await createClient();
   const user = await getCurrentUser();

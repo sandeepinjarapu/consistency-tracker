@@ -12,6 +12,7 @@ export type Partner = {
   avatar_url: string | null;
   sharedGoalCount: number; // goals they've shared with me
   lastActive: string | null; // most recent check-in date on those goals (YYYY-MM-DD)
+  hasNewShare: boolean; // a goal they shared with me that I haven't seen yet
 };
 
 export type PendingInvite = {
@@ -65,15 +66,17 @@ export async function listPartners(): Promise<Partner[]> {
   // them — so the partners list can show "N shared · active 2 days ago".
   const { data: myShares } = await supabase
     .from("shares")
-    .select("owner_id, goal_id")
+    .select("owner_id, goal_id, notified_at")
     .eq("viewer_id", user.id)
     .in("owner_id", Array.from(partnerIds));
 
   const countByOwner = new Map<string, number>();
   const ownerByGoal = new Map<string, string>();
+  const newShareByOwner = new Map<string, boolean>();
   for (const s of myShares ?? []) {
     ownerByGoal.set(s.goal_id, s.owner_id);
     countByOwner.set(s.owner_id, (countByOwner.get(s.owner_id) ?? 0) + 1);
+    if (s.notified_at === null) newShareByOwner.set(s.owner_id, true);
   }
 
   const lastByOwner = new Map<string, string>();
@@ -95,6 +98,7 @@ export async function listPartners(): Promise<Partner[]> {
     ...p,
     sharedGoalCount: countByOwner.get(p.id) ?? 0,
     lastActive: lastByOwner.get(p.id) ?? null,
+    hasNewShare: newShareByOwner.get(p.id) ?? false,
   })) as Partner[];
 }
 

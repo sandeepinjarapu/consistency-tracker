@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { listCategories } from "@/lib/actions/categories";
 import { listGoalShares } from "@/lib/actions/partners";
+import { listGoalsWithUnseenReactions } from "@/lib/actions/reactions";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import GoalRowActions from "@/components/goal-row-actions";
 
@@ -27,10 +28,12 @@ export default async function GoalsPage({
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [categories, goalShares] = await Promise.all([
+  const [categories, goalShares, goalsWithNewReactions] = await Promise.all([
     listCategories(),
     showArchived ? Promise.resolve({}) : listGoalShares(),
+    showArchived ? Promise.resolve<string[]>([]) : listGoalsWithUnseenReactions(),
   ]);
+  const newReactionGoals = new Set(goalsWithNewReactions);
 
   const { data: goals } = await supabase
     .from("goals")
@@ -93,6 +96,7 @@ export default async function GoalsPage({
                 goals={items}
                 archived={showArchived}
                 shares={goalShares}
+                newReactionGoals={newReactionGoals}
               />
             );
           })}
@@ -103,6 +107,7 @@ export default async function GoalsPage({
               goals={goalsByCategory.get(null) ?? []}
               archived={showArchived}
               shares={goalShares}
+              newReactionGoals={newReactionGoals}
             />
           )}
         </div>
@@ -145,12 +150,14 @@ function CategoryGroup({
   goals,
   archived,
   shares,
+  newReactionGoals,
 }: {
   name: string;
   color: string;
   goals: GoalRow[];
   archived: boolean;
   shares: Record<string, string[]>;
+  newReactionGoals: Set<string>;
 }) {
   return (
     <div>
@@ -171,12 +178,21 @@ function CategoryGroup({
             className="flex items-center justify-between px-4 py-3"
           >
             <div className="min-w-0 pr-4">
-              <Link
-                href={`/consistencytracker/goals/${g.id}`}
-                className="text-sm font-medium hover:underline"
-              >
-                {g.name}
-              </Link>
+              <span className="inline-flex items-center gap-1.5">
+                <Link
+                  href={`/consistencytracker/goals/${g.id}`}
+                  className="text-sm font-medium hover:underline"
+                >
+                  {g.name}
+                </Link>
+                {newReactionGoals.has(g.id) ? (
+                  <span
+                    className="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"
+                    title="New reaction from a partner"
+                    aria-label="New reaction from a partner"
+                  />
+                ) : null}
+              </span>
               <p className="text-xs text-[color:var(--muted)] mt-0.5">
                 {targetDaysLabel(g.target_days)}
                 {g.description ? ` · ${g.description}` : ""}

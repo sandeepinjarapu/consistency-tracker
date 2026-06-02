@@ -9,51 +9,39 @@ import SignOutButton from "@/app/consistencytracker/sign-out-button";
 const ITEMS = [
   { href: "/consistencytracker/goals", label: "Goals" },
   { href: "/consistencytracker/reflections", label: "Reflections" },
-  { href: "/consistencytracker/partners", label: "Partners", badgeKey: "partners" as const },
+  { href: "/consistencytracker/partners", label: "Partners" },
 ];
 
-export default function TrackerNav({
-  badges,
-}: {
-  badges?: { partners?: number };
-}) {
+export default function TrackerNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center justify-between border-b border-[color:var(--border)] pb-4 mb-10">
+    <nav className="flex items-center justify-between border-b border-[color:var(--border)] mb-10">
       <div className="flex items-center gap-6">
         <Link
           href="/consistencytracker"
-          className="text-sm font-medium tracking-tight"
+          className="text-sm font-medium tracking-tight pb-4"
         >
           Consistency Tracker
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5">
           {ITEMS.map((item) => {
             const active =
               item.href === "/consistencytracker"
                 ? pathname === item.href
                 : pathname.startsWith(item.href);
-            const badgeCount =
-              "badgeKey" in item && item.badgeKey
-                ? badges?.[item.badgeKey] ?? 0
-                : 0;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`text-sm transition inline-flex items-center gap-1.5 ${
+                aria-current={active ? "page" : undefined}
+                className={`text-sm transition pb-4 -mb-px border-b-2 ${
                   active
-                    ? "text-black"
-                    : "text-[color:var(--muted)] hover:text-black"
+                    ? "text-black font-medium border-black"
+                    : "text-[color:var(--muted)] border-transparent hover:text-black hover:border-[color:var(--border)]"
                 }`}
               >
                 {item.label}
-                {badgeCount > 0 ? (
-                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-black text-white text-[10px] font-medium leading-none">
-                    {badgeCount}
-                  </span>
-                ) : null}
               </Link>
             );
           })}
