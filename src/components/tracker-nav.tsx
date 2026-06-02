@@ -20,15 +20,14 @@ export default function TrackerNav() {
 
   return (
     <nav className="mb-10">
-      {/* Top tier: brand wordmark (stacked, logo-like) + sign out */}
-      <div className="flex items-start justify-between">
+      {/* Top tier: brand wordmark + sign out */}
+      <div className="flex items-center justify-between">
         <Link
           href="/consistencytracker"
           aria-label="Consistency Tracker — home"
-          className="leading-[1.05] tracking-tight"
+          className="text-[15px] font-semibold tracking-tight"
         >
-          <span className="block text-[15px] font-semibold">Consistency</span>
-          <span className="block text-[15px] font-semibold">Tracker</span>
+          Consistency Tracker
         </Link>
         <SignOutButton />
       </div>
