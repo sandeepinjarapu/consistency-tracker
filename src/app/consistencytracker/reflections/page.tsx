@@ -7,6 +7,7 @@ import {
   computeWeekStats,
   compareWeeks,
   buildHighlights,
+  buildWeeklyNarrative,
   type WeekStats,
   type WeekTrend,
   type Highlights,
@@ -188,6 +189,7 @@ function WeekCard({
 }) {
   const total = stats.done + stats.skipped + stats.missed;
   const completion = total > 0 ? Math.round((stats.done / total) * 100) : 0;
+  const narrative = buildWeeklyNarrative(stats, trend, highlights);
   const highlightText = formatHighlights(highlights);
 
   return (
@@ -205,6 +207,10 @@ function WeekCard({
           </span>
         ) : null}
       </header>
+
+      {narrative ? (
+        <p className="text-base mb-3 leading-relaxed">{narrative}</p>
+      ) : null}
 
       <p className="text-xs text-[color:var(--muted)] mb-4">
         {total === 0 ? (

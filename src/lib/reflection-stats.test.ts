@@ -3,7 +3,11 @@ import {
   computeWeekStats,
   compareWeeks,
   buildHighlights,
+  buildWeeklyNarrative,
   type WeekStats,
+  type WeekTrend,
+  type Highlights,
+  type GoalWeekStats,
 } from "./reflection-stats";
 
 // Week: Mon 2024-01-15 .. Sun 2024-01-21
@@ -315,5 +319,120 @@ describe("buildHighlights", () => {
       )
     );
     expect(h.weakestDominantReason).toBeNull();
+  });
+});
+
+describe("buildWeeklyNarrative", () => {
+  function ws(done: number, skipped: number, missed: number): WeekStats {
+    return { done, skipped, missed, skipReasons: {}, notes: [], perGoal: [] };
+  }
+  function goalStat(name: string): GoalWeekStats {
+    return {
+      goalId: name.toLowerCase(),
+      goalName: name,
+      targetCount: 7,
+      done: 0,
+      skipped: 0,
+      missed: 0,
+      completion: 0,
+      skipReasons: {},
+      notes: [],
+      dailyStatus: [] as never,
+    };
+  }
+  const noTrend: WeekTrend = {
+    hasPrior: false,
+    completionDelta: null,
+    doneDelta: null,
+    skipDelta: null,
+  };
+  const noHighlights: Highlights = {
+    strongest: null,
+    weakest: null,
+    weakestDominantReason: null,
+  };
+
+  it("returns null when there's no activity", () => {
+    expect(buildWeeklyNarrative(ws(0, 0, 0), null, noHighlights)).toBeNull();
+  });
+
+  it("reports the count of completions (pluralized)", () => {
+    expect(buildWeeklyNarrative(ws(4, 0, 1), null, noHighlights)).toBe(
+      "You showed up 4 times this week."
+    );
+    expect(buildWeeklyNarrative(ws(1, 0, 0), null, noHighlights)).toBe(
+      "You showed up 1 time this week."
+    );
+  });
+
+  it("uses a gentle clause when there were no completions", () => {
+    expect(buildWeeklyNarrative(ws(0, 1, 2), null, noHighlights)).toBe(
+      "A quiet week — no completions logged."
+    );
+  });
+
+  it("names strongest and weakest descriptively", () => {
+    const h: Highlights = {
+      strongest: goalStat("Writing"),
+      weakest: goalStat("Gym"),
+      weakestDominantReason: null,
+    };
+    expect(buildWeeklyNarrative(ws(5, 1, 1), null, h)).toBe(
+      "You showed up 5 times this week. Writing was strongest; Gym slipped."
+    );
+  });
+
+  it("appends a dominant skip reason for the weak goal", () => {
+    const h: Highlights = {
+      strongest: goalStat("Writing"),
+      weakest: goalStat("Gym"),
+      weakestDominantReason: "travel",
+    };
+    expect(buildWeeklyNarrative(ws(5, 3, 0), null, h)).toBe(
+      "You showed up 5 times this week. Writing was strongest; Gym slipped — mostly to travel."
+    );
+  });
+
+  it("omits the reason phrase for 'other'", () => {
+    const h: Highlights = {
+      strongest: goalStat("Writing"),
+      weakest: goalStat("Gym"),
+      weakestDominantReason: "other",
+    };
+    expect(buildWeeklyNarrative(ws(5, 3, 0), null, h)).toBe(
+      "You showed up 5 times this week. Writing was strongest; Gym slipped."
+    );
+  });
+
+  it("uses a single-goal phrasing when only strongest is set", () => {
+    const h: Highlights = {
+      strongest: goalStat("Writing"),
+      weakest: null,
+      weakestDominantReason: null,
+    };
+    expect(buildWeeklyNarrative(ws(3, 0, 0), null, h)).toBe(
+      "You showed up 3 times this week. Writing led the week."
+    );
+  });
+
+  it("adds a trend clause when a prior week is comparable", () => {
+    const up: WeekTrend = { hasPrior: true, completionDelta: 12, doneDelta: 2, skipDelta: 0 };
+    const down: WeekTrend = { hasPrior: true, completionDelta: -8, doneDelta: -1, skipDelta: 1 };
+    const flat: WeekTrend = { hasPrior: true, completionDelta: 0, doneDelta: 0, skipDelta: 0 };
+    expect(buildWeeklyNarrative(ws(4, 0, 0), up, noHighlights)).toBe(
+      "You showed up 4 times this week. A step up from last week."
+    );
+    expect(buildWeeklyNarrative(ws(4, 0, 0), down, noHighlights)).toBe(
+      "You showed up 4 times this week. A quieter week than last."
+    );
+    expect(buildWeeklyNarrative(ws(4, 0, 0), flat, noHighlights)).toBe(
+      "You showed up 4 times this week. On par with last week."
+    );
+  });
+
+  it("ignores trend when there's no comparable prior week", () => {
+    expect(buildWeeklyNarrative(ws(2, 0, 0), noTrend, noHighlights)).toBe(
+      "You showed up 2 times this week."
+    );
   });
 });

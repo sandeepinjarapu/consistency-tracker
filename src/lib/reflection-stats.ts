@@ -287,3 +287,61 @@ export function buildHighlights(stats: WeekStats): Highlights {
 
   return { strongest, weakest, weakestDominantReason };
 }
+
+// Phrasing for a dominant skip reason. "other" is intentionally omitted —
+// we don't editorialize an unspecified reason.
+const NARRATIVE_REASON: Record<string, string> = {
+  travel: " — mostly to travel",
+  illness: " — mostly to illness",
+  mood: " — mostly to low mood",
+};
+
+/**
+ * A humane, descriptive one-liner summarizing the week from data already
+ * computed. Deliberately reflective, never prescriptive: it mirrors what
+ * happened ("you showed up 4 times; writing was strongest") and never tells
+ * the user what to do next. Returns null when there's nothing to reflect on
+ * (no activity) — the card already renders "No check-ins recorded" then.
+ */
+export function buildWeeklyNarrative(
+  stats: WeekStats,
+  trend: WeekTrend | null,
+  highlights: Highlights
+): string | null {
+  const total = stats.done + stats.skipped + stats.missed;
+  if (total === 0) return null;
+
+  const sentences: string[] = [];
+
+  // 1. Showing-up clause.
+  if (stats.done === 0) {
+    sentences.push("A quiet week — no completions logged.");
+  } else {
+    sentences.push(
+      `You showed up ${stats.done} ${stats.done === 1 ? "time" : "times"} this week.`
+    );
+  }
+
+  // 2. Strongest / weakest clause (descriptive, gentle on the weak one).
+  const { strongest, weakest, weakestDominantReason } = highlights;
+  if (strongest && weakest) {
+    const reason = weakestDominantReason
+      ? NARRATIVE_REASON[weakestDominantReason] ?? ""
+      : "";
+    sentences.push(
+      `${strongest.goalName} was strongest; ${weakest.goalName} slipped${reason}.`
+    );
+  } else if (strongest) {
+    sentences.push(`${strongest.goalName} led the week.`);
+  }
+
+  // 3. Trend clause — only when there's a comparable prior week.
+  if (trend?.hasPrior && trend.completionDelta !== null) {
+    if (trend.completionDelta > 0) sentences.push("A step up from last week.");
+    else if (trend.completionDelta < 0)
+      sentences.push("A quieter week than last.");
+    else sentences.push("On par with last week.");
+  }
+
+  return sentences.join(" ");
+}
