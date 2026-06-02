@@ -89,9 +89,9 @@ export default async function GoalPage({
   }>;
 
   const timePattern = computeTimePattern({
-    timestamps: checkIns
+    entries: checkIns
       .filter((c) => c.status === "done")
-      .map((c) => c.created_at),
+      .map((c) => ({ createdAt: c.created_at, date: c.date })),
     timezone,
   });
 
