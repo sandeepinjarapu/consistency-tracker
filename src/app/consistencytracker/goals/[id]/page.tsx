@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, todayIn, formatTime } from "@/lib/dates";
@@ -18,6 +19,7 @@ import WeeklyStrip from "@/components/weekly-strip";
 import GoalRowActions from "@/components/goal-row-actions";
 import ShareToggles from "@/components/share-toggles";
 import TimeHistogram from "@/components/time-histogram";
+import Skeleton from "@/components/skeleton";
 
 export default async function GoalPage({
   params,
@@ -64,60 +66,6 @@ export default async function GoalPage({
   // Date range: past year
   const startDate = addDays(today, -364);
   const goalStartDate = (goal.created_at as string).slice(0, 10);
-
-  const [{ data: checkInsRaw }, partners, sharedWith] = await Promise.all([
-    supabase
-      .from("check_ins")
-      .select("date, status, created_at")
-      .eq("goal_id", id)
-      .gte("date", startDate)
-      .lte("date", today)
-      .order("date", { ascending: true }),
-    listPartners(),
-    listSharesForGoal(id),
-  ]);
-
-  const checkIns = (checkInsRaw ?? []) as Array<{
-    date: string;
-    status: "done" | "skipped";
-    created_at: string;
-  }>;
-
-  const timePattern = computeTimePattern({
-    entries: checkIns
-      .filter((c) => c.status === "done")
-      .map((c) => ({ createdAt: c.created_at, date: c.date })),
-    timezone,
-  });
-
-  const cells = buildHeatmapCells({
-    startDate,
-    endDate: today,
-    targetDays: goal.target_days,
-    checkIns,
-    goalStartDate,
-    todayStr: today,
-    weeklyTarget: goal.weekly_target,
-  });
-
-  const stats = computeStats({
-    startDate: goalStartDate > startDate ? goalStartDate : startDate,
-    endDate: today,
-    targetDays: goal.target_days,
-    checkIns,
-    weeklyTarget: goal.weekly_target,
-  });
-
-  const weeklyMet =
-    goal.weekly_target != null
-      ? computeWeeklyMet({
-          startDate: goalStartDate > startDate ? goalStartDate : startDate,
-          endDate: today,
-          targetDays: goal.target_days,
-          checkIns,
-          weeklyTarget: goal.weekly_target,
-        })
-      : [];
 
   return (
     <section>
@@ -182,6 +130,109 @@ export default async function GoalPage({
         <GoalRowActions goalId={goal.id} archived={!goal.active} />
       </header>
 
+      <Suspense fallback={<StatsSkeleton isCount={isCount} />}>
+        <StatsSection
+          goalId={goal.id}
+          targetDays={goal.target_days}
+          weeklyTarget={goal.weekly_target}
+          startDate={startDate}
+          goalStartDate={goalStartDate}
+          today={today}
+          timezone={timezone}
+          categoryColor={categoryColor}
+          streakUnit={streakUnit}
+        />
+      </Suspense>
+
+      <div className="mt-12 pt-6 border-t border-[color:var(--border)]">
+        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+          Sharing
+        </h3>
+        <Suspense fallback={<Skeleton className="h-12 w-full" />}>
+          <SharingSection goalId={goal.id} />
+        </Suspense>
+      </div>
+    </section>
+  );
+}
+
+// The heavy part: a year of check-ins + stats/heatmap/histogram computation.
+// Streams in behind the header, which paints on the fast goal lookup.
+async function StatsSection({
+  goalId,
+  targetDays,
+  weeklyTarget,
+  startDate,
+  goalStartDate,
+  today,
+  timezone,
+  categoryColor,
+  streakUnit,
+}: {
+  goalId: string;
+  targetDays: number[];
+  weeklyTarget: number | null;
+  startDate: string;
+  goalStartDate: string;
+  today: string;
+  timezone: string;
+  categoryColor: string;
+  streakUnit: string;
+}) {
+  const supabase = await createClient();
+  const { data: checkInsRaw } = await supabase
+    .from("check_ins")
+    .select("date, status, created_at")
+    .eq("goal_id", goalId)
+    .gte("date", startDate)
+    .lte("date", today)
+    .order("date", { ascending: true });
+
+  const checkIns = (checkInsRaw ?? []) as Array<{
+    date: string;
+    status: "done" | "skipped";
+    created_at: string;
+  }>;
+
+  const timePattern = computeTimePattern({
+    entries: checkIns
+      .filter((c) => c.status === "done")
+      .map((c) => ({ createdAt: c.created_at, date: c.date })),
+    timezone,
+  });
+
+  const cells = buildHeatmapCells({
+    startDate,
+    endDate: today,
+    targetDays,
+    checkIns,
+    goalStartDate,
+    todayStr: today,
+    weeklyTarget,
+  });
+
+  const clampStart = goalStartDate > startDate ? goalStartDate : startDate;
+  const stats = computeStats({
+    startDate: clampStart,
+    endDate: today,
+    targetDays,
+    checkIns,
+    weeklyTarget,
+  });
+
+  const weeklyMet =
+    weeklyTarget != null
+      ? computeWeeklyMet({
+          startDate: clampStart,
+          endDate: today,
+          targetDays,
+          checkIns,
+          weeklyTarget,
+        })
+      : [];
+
+  return (
+    <>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
         <Stat label="Current streak" value={`${stats.currentStreak}`} unit={streakUnit} />
         <Stat label="Longest streak" value={`${stats.longestStreak}`} unit={streakUnit} />
@@ -198,14 +249,14 @@ export default async function GoalPage({
         />
       </div>
 
-      {goal.weekly_target != null ? (
+      {weeklyTarget != null ? (
         <div className="mb-8">
           <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
             Weekly target
           </h3>
           <WeeklyStrip
             weeks={weeklyMet}
-            weeklyTarget={goal.weekly_target}
+            weeklyTarget={weeklyTarget}
             doneColor={categoryColor}
           />
         </div>
@@ -215,10 +266,10 @@ export default async function GoalPage({
         cells={cells}
         doneColor={categoryColor}
         editable={{
-          goalId: goal.id,
+          goalId,
           goalStartDate,
           today,
-          targetDays: goal.target_days,
+          targetDays,
         }}
       />
       <p className="mt-2 text-xs text-[color:var(--muted)]">
@@ -235,21 +286,52 @@ export default async function GoalPage({
           color={categoryColor}
         />
       </div>
+    </>
+  );
+}
 
-      <div className="mt-12 pt-6 border-t border-[color:var(--border)]">
-        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-          Sharing
-        </h3>
-        <ShareToggles
-          goalId={goal.id}
-          partners={partners.map((p) => ({
-            id: p.id,
-            display_name: p.display_name,
-          }))}
-          sharedWith={sharedWith}
-        />
+async function SharingSection({ goalId }: { goalId: string }) {
+  const [partners, sharedWith] = await Promise.all([
+    listPartners(),
+    listSharesForGoal(goalId),
+  ]);
+  return (
+    <ShareToggles
+      goalId={goalId}
+      partners={partners.map((p) => ({
+        id: p.id,
+        display_name: p.display_name,
+      }))}
+      sharedWith={sharedWith}
+    />
+  );
+}
+
+function StatsSkeleton({ isCount }: { isCount: boolean }) {
+  return (
+    <div aria-busy>
+      <span className="sr-only">Loading…</span>
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-16 w-full" />
+        ))}
       </div>
-    </section>
+      {isCount ? (
+        <div className="mb-8">
+          <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+            Weekly target
+          </h3>
+          <Skeleton className="h-8 w-full" />
+        </div>
+      ) : null}
+      <Skeleton className="h-28 w-full" />
+      <div className="mt-8">
+        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+          Time of day
+        </h3>
+        <Skeleton className="h-12 w-full" />
+      </div>
+    </div>
   );
 }
 
