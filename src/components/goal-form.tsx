@@ -35,6 +35,7 @@ export default function GoalForm({
   const [categories, setCategories] = useState(initialCategories);
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
+  const [motivation, setMotivation] = useState(initial?.motivation ?? "");
   const [docUrl, setDocUrl] = useState(initial?.doc_url ?? "");
   const [categoryId, setCategoryId] = useState<string | "">(
     initial?.category_id ?? ""
@@ -93,6 +94,7 @@ export default function GoalForm({
     const payload: GoalInput = {
       name,
       description: description || undefined,
+      motivation: motivation || undefined,
       doc_url: docUrl || undefined,
       category_id: categoryId || null,
       target_days: targetDays,
@@ -189,6 +191,18 @@ export default function GoalForm({
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
           maxLength={400}
+          className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black resize-none"
+        />
+      </Field>
+
+      <Field label="Why this matters (optional)" htmlFor="motivation">
+        <textarea
+          id="motivation"
+          value={motivation}
+          onChange={(e) => setMotivation(e.target.value)}
+          rows={2}
+          maxLength={400}
+          placeholder="The reason behind this goal — what keeps you coming back."
           className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black resize-none"
         />
       </Field>

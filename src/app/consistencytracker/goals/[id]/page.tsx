@@ -39,7 +39,7 @@ export default async function GoalPage({
   const { data: goal } = await supabase
     .from("goals")
     .select(
-      "id, name, description, doc_url, target_days, reminder_time, weekly_target, active, created_at, user_id, category:categories(name, color)"
+      "id, name, description, motivation, doc_url, target_days, reminder_time, weekly_target, active, created_at, user_id, category:categories(name, color)"
     )
     .eq("id", id)
     .single();
@@ -92,6 +92,11 @@ export default async function GoalPage({
           {goal.description ? (
             <p className="mt-2 text-sm text-[color:var(--muted)]">
               {goal.description}
+            </p>
+          ) : null}
+          {goal.motivation ? (
+            <p className="mt-2 max-w-prose text-sm italic text-[color:var(--muted)]">
+              “{goal.motivation}”
             </p>
           ) : null}
           <div className="mt-3 flex items-center gap-4 text-xs text-[color:var(--muted)]">

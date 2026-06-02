@@ -39,6 +39,8 @@ create table if not exists public.goals (
   category_id uuid references public.categories(id) on delete set null,
   name text not null,
   description text,
+  -- "Why this matters" — optional motivation/meaning, added 0010
+  motivation text,
   doc_url text,
   -- target_days: 0=Sun, 1=Mon, ..., 6=Sat. Default = every day.
   target_days smallint[] not null default array[0,1,2,3,4,5,6],

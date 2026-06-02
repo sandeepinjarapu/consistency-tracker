@@ -9,6 +9,7 @@ export type Goal = {
   user_id: string;
   name: string;
   description: string | null;
+  motivation: string | null; // "Why this matters" — meaning behind the goal
   doc_url: string | null;
   category_id: string | null;
   target_days: number[];
@@ -22,6 +23,7 @@ export type Goal = {
 export type GoalInput = {
   name: string;
   description?: string;
+  motivation?: string;
   doc_url?: string;
   category_id?: string | null;
   target_days: number[];
@@ -33,6 +35,9 @@ function validate(input: GoalInput): void {
   const name = input.name.trim();
   if (!name) throw new Error("Goal name required");
   if (name.length > 120) throw new Error("Goal name too long");
+  if (input.motivation && input.motivation.length > 400) {
+    throw new Error("Why this matters is too long");
+  }
   if (!Array.isArray(input.target_days) || input.target_days.length === 0) {
     throw new Error("Pick at least one target day");
   }
@@ -58,7 +63,7 @@ function validate(input: GoalInput): void {
 }
 
 const GOAL_COLUMNS =
-  "id, user_id, name, description, doc_url, category_id, target_days, reminder_time, weekly_target, active, archived_at, created_at";
+  "id, user_id, name, description, motivation, doc_url, category_id, target_days, reminder_time, weekly_target, active, archived_at, created_at";
 
 export async function getGoal(id: string): Promise<Goal | null> {
   const supabase = await createClient();
@@ -83,6 +88,7 @@ export async function createGoal(input: GoalInput): Promise<Goal> {
       user_id: user.id,
       name: input.name.trim(),
       description: input.description?.trim() || null,
+      motivation: input.motivation?.trim() || null,
       doc_url: input.doc_url?.trim() || null,
       category_id: input.category_id || null,
       target_days: input.target_days,
@@ -108,6 +114,7 @@ export async function updateGoal(
     .update({
       name: input.name.trim(),
       description: input.description?.trim() || null,
+      motivation: input.motivation?.trim() || null,
       doc_url: input.doc_url?.trim() || null,
       category_id: input.category_id || null,
       target_days: input.target_days,
