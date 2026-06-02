@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, todayIn, formatTime } from "@/lib/dates";
+import { addDays, todayIn, isoWeekStart, formatTime } from "@/lib/dates";
 import {
   buildHeatmapCells,
   buildGoalInsight,
@@ -14,7 +14,7 @@ import { targetDaysLabel } from "@/lib/target-days-label";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { listPartners, listSharesForGoal } from "@/lib/actions/partners";
 import { getGoalReactions } from "@/lib/actions/reactions";
-import { REACTION_LABELS, REACTION_EMOJI } from "@/lib/reactions";
+import { REACTION_EMOJI, reactionSentence } from "@/lib/reactions";
 import { buildGCalUrl } from "@/lib/gcal";
 import { safeExternalUrl } from "@/lib/url";
 import Heatmap from "@/components/heatmap";
@@ -312,11 +312,13 @@ async function StatsSection({
 }
 
 async function SharingSection({ goalId }: { goalId: string }) {
-  const [partners, sharedWith, reactions] = await Promise.all([
+  const [partners, sharedWith, reactions, profile] = await Promise.all([
     listPartners(),
     listSharesForGoal(goalId),
     getGoalReactions(goalId),
+    getCurrentProfile(),
   ]);
+  const currentWeekStart = isoWeekStart(todayIn(profile?.timezone ?? "UTC"));
   return (
     <>
       <ShareToggles
@@ -334,7 +336,7 @@ async function SharingSection({ goalId }: { goalId: string }) {
           <ul className="space-y-1 text-xs text-[color:var(--muted)]">
             {reactions.map((r, i) => (
               <li key={i}>
-                {REACTION_EMOJI[r.kind]} {r.reactorName} · {REACTION_LABELS[r.kind]}
+                {REACTION_EMOJI[r.kind]} {reactionSentence(r, currentWeekStart)}
               </li>
             ))}
           </ul>

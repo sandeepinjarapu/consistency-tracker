@@ -3,13 +3,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { revalidatePath } from "next/cache";
-import type { ReactionKind } from "@/lib/reactions";
-
-export type GoalReaction = {
-  kind: ReactionKind;
-  reactorName: string;
-  createdAt: string;
-};
+import { isoWeekStart, todayIn } from "@/lib/dates";
+import {
+  buildReactionSummaries,
+  type ReactionKind,
+  type ReactionRow,
+  type GoalReactionSummary,
+} from "@/lib/reactions";
 
 /**
  * Toggle a reaction by the current user on a partner's goal. Inserts if it
@@ -33,12 +33,22 @@ export async function toggleReaction(
   if (!goal) throw new Error("Goal not found");
   const ownerId = goal.user_id as string;
 
+  // Bucket the reaction to the current ISO week in the owner's timezone, so it
+  // lines up with the owner's reflection weeks. Computed server-side.
+  const { data: ownerProfile } = await supabase
+    .from("profiles")
+    .select("timezone")
+    .eq("id", ownerId)
+    .single();
+  const weekStart = isoWeekStart(todayIn(ownerProfile?.timezone ?? "UTC"));
+
   const { data: existing } = await supabase
     .from("reactions")
     .select("id")
     .eq("goal_id", goalId)
     .eq("reactor_id", user.id)
     .eq("kind", kind)
+    .eq("week_start_date", weekStart)
     .maybeSingle();
 
   let active: boolean;
@@ -47,9 +57,13 @@ export async function toggleReaction(
     if (error) throw error;
     active = false;
   } else {
-    const { error } = await supabase
-      .from("reactions")
-      .insert({ goal_id: goalId, owner_id: ownerId, reactor_id: user.id, kind });
+    const { error } = await supabase.from("reactions").insert({
+      goal_id: goalId,
+      owner_id: ownerId,
+      reactor_id: user.id,
+      kind,
+      week_start_date: weekStart,
+    });
     if (error && error.code !== "23505") throw error; // ignore double-insert race
     active = true;
   }
@@ -65,7 +79,8 @@ export async function toggleReaction(
  * state.
  */
 export async function listMyReactions(
-  ownerId: string
+  ownerId: string,
+  weekStart: string
 ): Promise<Record<string, true>> {
   const supabase = await createClient();
   const user = await getCurrentUser();
@@ -74,23 +89,28 @@ export async function listMyReactions(
     .from("reactions")
     .select("goal_id, kind")
     .eq("owner_id", ownerId)
-    .eq("reactor_id", user.id);
+    .eq("reactor_id", user.id)
+    .eq("week_start_date", weekStart);
   const out: Record<string, true> = {};
   for (const r of data ?? []) out[`${r.goal_id}:${r.kind}`] = true;
   return out;
 }
 
-/** Reactions left on one of the current user's own goals, with reactor names. */
-export async function getGoalReactions(goalId: string): Promise<GoalReaction[]> {
+/**
+ * Reactions on one of the current user's own goals, aggregated per
+ * (reactor, kind): how many weeks they've reacted and the most recent week.
+ */
+export async function getGoalReactions(
+  goalId: string
+): Promise<GoalReactionSummary[]> {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return [];
   const { data } = await supabase
     .from("reactions")
-    .select("kind, created_at, reactor_id")
+    .select("kind, week_start_date, reactor_id")
     .eq("goal_id", goalId)
-    .eq("owner_id", user.id)
-    .order("created_at", { ascending: false });
+    .eq("owner_id", user.id);
   if (!data || data.length === 0) return [];
 
   const reactorIds = Array.from(new Set(data.map((r) => r.reactor_id)));
@@ -102,11 +122,13 @@ export async function getGoalReactions(goalId: string): Promise<GoalReaction[]> 
     (profiles ?? []).map((p) => [p.id, p.display_name ?? "A partner"])
   );
 
-  return data.map((r) => ({
-    kind: r.kind as ReactionKind,
+  const rows: ReactionRow[] = data.map((r) => ({
+    reactorId: r.reactor_id,
     reactorName: nameById.get(r.reactor_id) ?? "A partner",
-    createdAt: r.created_at as string,
+    kind: r.kind as ReactionKind,
+    weekStart: r.week_start_date as string,
   }));
+  return buildReactionSummaries(rows);
 }
 
 /** Count of unseen reactions across all of the current user's goals. */

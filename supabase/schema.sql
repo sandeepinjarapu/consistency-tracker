@@ -133,9 +133,11 @@ create table if not exists public.reactions (
   owner_id uuid not null references auth.users(id) on delete cascade,
   reactor_id uuid not null references auth.users(id) on delete cascade,
   kind text not null check (kind in ('saw','proud')),
+  -- Monday of the ISO week the reaction applies to — one per kind per week.
+  week_start_date date not null,
   seen_at timestamptz,
   created_at timestamptz not null default now(),
-  unique (goal_id, reactor_id, kind),
+  unique (goal_id, reactor_id, kind, week_start_date),
   check (owner_id <> reactor_id)
 );
 create index if not exists reactions_owner_unseen_idx
