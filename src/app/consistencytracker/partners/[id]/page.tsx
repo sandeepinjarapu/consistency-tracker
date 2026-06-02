@@ -247,7 +247,7 @@ export default async function PartnerPage({
                 />
                 <div className="mt-3">
                   <p className="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1.5">
-                    Let them know you noticed
+                    Let them know you noticed this week
                   </p>
                   <ReactionButtons
                     goalId={goal.id}

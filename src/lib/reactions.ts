@@ -13,6 +13,13 @@ export const REACTION_EMOJI: Record<ReactionKind, string> = {
   proud: "👏",
 };
 
+// Week-scoped button labels — spell out that the reaction is about this week,
+// not the goal as a whole (the buttons sit under a full-year heatmap).
+export const REACTION_WEEK_LABELS: Record<ReactionKind, string> = {
+  saw: "Saw this week",
+  proud: "Proud of this week",
+};
+
 // One reaction occurrence (one kind, one week) from one reactor.
 export type ReactionRow = {
   reactorId: string;
