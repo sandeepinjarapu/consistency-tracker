@@ -3,6 +3,7 @@ import {
   computeStats,
   buildHeatmapCells,
   buildAggregateCells,
+  buildGoalInsight,
   computeTimePattern,
   computeWeeklyMet,
 } from "./stats";
@@ -588,5 +589,72 @@ describe("computeTimePattern", () => {
     // Confirm no slot at index 24 leaked in
     expect((r.hourly as Array<number | undefined>)[24]).toBeUndefined();
     expect(r.typical).toEqual({ hour: 0, minute: 30 });
+  });
+});
+
+describe("buildGoalInsight", () => {
+  const noTime = { typical: null, timedTotal: 0 };
+
+  it("returns null with too little history and no streak", () => {
+    expect(
+      buildGoalInsight({ ...noTime, currentStreak: 0, streakUnit: "days", doneCount: 2 })
+    ).toBeNull();
+  });
+
+  it("states the typical part of day when there's enough timed history", () => {
+    expect(
+      buildGoalInsight({
+        typical: { hour: 8, minute: 30 },
+        timedTotal: 6,
+        currentStreak: 0,
+        streakUnit: "days",
+        doneCount: 6,
+      })
+    ).toBe("You usually do this in the morning.");
+  });
+
+  it("does not state a time pattern with fewer than 4 timed check-ins", () => {
+    expect(
+      buildGoalInsight({
+        typical: { hour: 8, minute: 30 },
+        timedTotal: 3,
+        currentStreak: 0,
+        streakUnit: "days",
+        doneCount: 5,
+      })
+    ).toBeNull();
+  });
+
+  it("reports a running streak with a singular unit", () => {
+    expect(
+      buildGoalInsight({ ...noTime, currentStreak: 5, streakUnit: "days", doneCount: 5 })
+    ).toBe("You're on a 5-day run.");
+    expect(
+      buildGoalInsight({ ...noTime, currentStreak: 3, streakUnit: "weeks", doneCount: 3 })
+    ).toBe("You're on a 3-week run.");
+  });
+
+  it("shows a streak even when overall done-count is small", () => {
+    expect(
+      buildGoalInsight({ ...noTime, currentStreak: 2, streakUnit: "days", doneCount: 2 })
+    ).toBe("You're on a 2-day run.");
+  });
+
+  it("combines time-of-day and streak when both apply", () => {
+    expect(
+      buildGoalInsight({
+        typical: { hour: 2, minute: 10 },
+        timedTotal: 8,
+        currentStreak: 4,
+        streakUnit: "days",
+        doneCount: 12,
+      })
+    ).toBe("You usually do this late at night. You're on a 4-day run.");
+  });
+
+  it("does not show a 1-length streak", () => {
+    expect(
+      buildGoalInsight({ ...noTime, currentStreak: 1, streakUnit: "days", doneCount: 1 })
+    ).toBeNull();
   });
 });
