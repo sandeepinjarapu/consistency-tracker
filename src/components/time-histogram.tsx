@@ -1,3 +1,7 @@
+"use client";
+
+import { HoverTip, useHoverTip } from "./tooltip";
+
 /**
  * 24-bar histogram of check-in times by hour of day. Each bar's height
  * is its hour's share of the max hour's count. Bottom row shows the
@@ -12,6 +16,8 @@ export default function TimeHistogram({
   total: number;
   color: string;
 }) {
+  const { tip, bind } = useHoverTip();
+
   if (total === 0) {
     return (
       <p className="text-xs text-[color:var(--muted)]">
@@ -34,11 +40,12 @@ export default function TimeHistogram({
                 background: count > 0 ? color : "var(--border)",
                 opacity: count > 0 ? 0.85 : 0.4,
               }}
-              title={`${formatHour(hour)} · ${count}`}
+              {...bind(`${formatHour(hour)} · ${count}`)}
             />
           );
         })}
       </div>
+      <HoverTip tip={tip} />
       <div className="flex justify-between mt-1 text-[10px] text-[color:var(--muted)] tabular-nums">
         <span>12a</span>
         <span>6a</span>

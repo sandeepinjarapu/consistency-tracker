@@ -1,4 +1,7 @@
+"use client";
+
 import type { GoalWeekStats, GoalDayStatus } from "@/lib/reflection-stats";
+import { HoverTip, useHoverTip } from "./tooltip";
 
 /**
  * Mini per-goal × day-of-week grid for a single ISO week (Mon..Sun).
@@ -6,6 +9,7 @@ import type { GoalWeekStats, GoalDayStatus } from "@/lib/reflection-stats";
  * square — same visual vocabulary as the year heatmap, week-scaled.
  */
 export default function WeekGrid({ perGoal }: { perGoal: GoalWeekStats[] }) {
+  const { tip, bind } = useHoverTip();
   if (perGoal.length === 0) return null;
 
   return (
@@ -29,7 +33,7 @@ export default function WeekGrid({ perGoal }: { perGoal: GoalWeekStats[] }) {
           key={g.goalId}
           className="grid grid-cols-[1fr_repeat(7,minmax(0,1.25rem))] gap-1 items-center"
         >
-          <div className="text-xs truncate pr-2" title={g.goalName}>
+          <div className="text-xs truncate pr-2" {...bind(g.goalName)}>
             {g.goalName}
           </div>
           {g.dailyStatus.map((s, i) => (
@@ -37,11 +41,12 @@ export default function WeekGrid({ perGoal }: { perGoal: GoalWeekStats[] }) {
               key={i}
               className="h-4 rounded-sm"
               style={{ background: statusColor(s) }}
-              title={`${DAY_TITLES[i]} · ${statusLabel(s)}`}
+              {...bind(`${DAY_TITLES[i]} · ${statusLabel(s)}`)}
             />
           ))}
         </div>
       ))}
+      <HoverTip tip={tip} />
     </div>
   );
 }
