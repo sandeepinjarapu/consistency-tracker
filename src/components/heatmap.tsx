@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, dayOfWeekForDateString } from "@/lib/dates";
 import { backfillCheckIn, clearBackfillCheckIn } from "@/lib/actions/check-ins";
@@ -73,9 +73,20 @@ export default function Heatmap({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
+  // Optimistic per-date status overrides so a clicked cell fills/clears
+  // instantly; reconciles to the server cells on refresh (reverts on failure).
+  const [overrides, addOverride] = useOptimistic(
+    {} as Record<string, CellStatus>,
+    (state, o: { date: string; status: CellStatus }) => ({
+      ...state,
+      [o.date]: o.status,
+    })
+  );
+
   const runBackfill = (cell: HeatmapCell, action: "mark" | "clear") => {
     if (!editable || pending) return;
     startTransition(async () => {
+      addOverride({ date: cell.date, status: action === "mark" ? "done" : "empty" });
       try {
         if (action === "mark") await backfillCheckIn(editable.goalId, cell.date);
         else await clearBackfillCheckIn(editable.goalId, cell.date);
@@ -185,8 +196,14 @@ export default function Heatmap({
 
         {/* Cells */}
         {columns.map((col, ci) =>
-          col.cells.map((cell, ri) => {
-            if (cell === null) return null;
+          col.cells.map((rawCell, ri) => {
+            if (rawCell === null) return null;
+            // Apply optimistic override so a clicked cell reflects instantly.
+            const override = overrides[rawCell.date];
+            const cell =
+              override && override !== rawCell.status
+                ? { ...rawCell, status: override }
+                : rawCell;
             const x = LEFT_GUTTER + ci * COL;
             const y = TOP_GUTTER + ri * ROW;
             const action = editable
