@@ -3,7 +3,7 @@
 import { useOptimistic, useTransition } from "react";
 import { toggleReaction } from "@/lib/actions/reactions";
 import {
-  REACTION_LABELS,
+  REACTION_WEEK_LABELS,
   REACTION_EMOJI as EMOJI,
   type ReactionKind,
 } from "@/lib/reactions";
@@ -54,7 +54,8 @@ export default function ReactionButtons({
               : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black"
           }`}
         >
-          {EMOJI[k]} {REACTION_LABELS[k]}
+          {state[k] ? "✓ " : ""}
+          {EMOJI[k]} {REACTION_WEEK_LABELS[k]}
         </button>
       ))}
     </div>

@@ -110,6 +110,7 @@ export default async function PartnerPage({
   // Which reactions I've already left on this partner's goals this week
   // (reactions are once per goal per ISO week).
   const weekStart = isoWeekStart(today);
+  const weekRange = weekRangeLabel(weekStart);
   const myReactions: Record<string, true> =
     goals.length > 0 ? await listMyReactions(partnerId, weekStart) : {};
 
@@ -247,7 +248,7 @@ export default async function PartnerPage({
                 />
                 <div className="mt-3">
                   <p className="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1.5">
-                    Let them know you noticed
+                    Let them know you noticed · {weekRange}
                   </p>
                   <ReactionButtons
                     goalId={goal.id}
@@ -264,4 +265,19 @@ export default async function PartnerPage({
       )}
     </section>
   );
+}
+
+// "May 25–31" for a Monday weekStart (collapses the month when it doesn't change).
+function weekRangeLabel(weekStart: string): string {
+  const end = addDays(weekStart, 6);
+  const fmt = (d: string, withMonth: boolean) => {
+    const [y, m, day] = d.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, day)).toLocaleDateString("en-US", {
+      month: withMonth ? "short" : undefined,
+      day: "numeric",
+      timeZone: "UTC",
+    });
+  };
+  const sameMonth = weekStart.slice(0, 7) === end.slice(0, 7);
+  return `${fmt(weekStart, true)}–${fmt(end, !sameMonth)}`;
 }
