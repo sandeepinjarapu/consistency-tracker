@@ -19,47 +19,52 @@ export default function TrackerNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center justify-between border-b border-[color:var(--border)] mb-10">
-      <div className="flex items-center gap-3">
+    <nav className="mb-10">
+      {/* Top tier: brand wordmark (stacked, logo-like) + sign out */}
+      <div className="flex items-start justify-between">
         <Link
           href="/consistencytracker"
-          className="text-sm font-medium tracking-tight pb-4 pr-1"
+          aria-label="Consistency Tracker — home"
+          className="leading-[1.05] tracking-tight"
         >
-          Consistency Tracker
+          <span className="block text-[15px] font-semibold">Consistency</span>
+          <span className="block text-[15px] font-semibold">Tracker</span>
         </Link>
-        <div className="flex items-center gap-1">
-          {ITEMS.map((item) => {
-            const active =
-              item.href === "/consistencytracker"
-                ? pathname === item.href
-                : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className="relative pb-4 group"
-              >
-                {/* Compact rounded hover fill (GitHub-style affordance) */}
-                <span
-                  className={`block text-sm rounded-md px-3 py-1.5 transition-colors ${
-                    active
-                      ? "text-black font-medium"
-                      : "text-[color:var(--muted)] group-hover:bg-gray-100 group-hover:text-black"
-                  }`}
-                >
-                  {item.label}
-                </span>
-                {/* Active underline, anchored to the nav's bottom line */}
-                {active ? (
-                  <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-black" />
-                ) : null}
-              </Link>
-            );
-          })}
-        </div>
+        <SignOutButton />
       </div>
-      <SignOutButton />
+
+      {/* Bottom tier: the tab bar */}
+      <div className="mt-5 flex items-center gap-1 border-b border-[color:var(--border)]">
+        {ITEMS.map((item) => {
+          const active =
+            item.href === "/consistencytracker"
+              ? pathname === item.href
+              : pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              className="relative pb-3 group"
+            >
+              {/* Compact rounded hover fill (GitHub-style affordance) */}
+              <span
+                className={`block text-sm rounded-md px-3 py-1.5 transition-colors ${
+                  active
+                    ? "text-black font-medium"
+                    : "text-[color:var(--muted)] group-hover:bg-gray-100 group-hover:text-black"
+                }`}
+              >
+                {item.label}
+              </span>
+              {/* Active underline, anchored to the tab bar's bottom line */}
+              {active ? (
+                <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-black" />
+              ) : null}
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }
