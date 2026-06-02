@@ -4,9 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import SignOutButton from "@/app/consistencytracker/sign-out-button";
 
-// The "Consistency Tracker" logo on the left IS the home/Today link, so
-// we don't repeat Today here. Standard pattern (GitHub, Linear, Notion).
+// "Consistency Tracker" on the left is the brand wordmark — it links home as
+// a shortcut but is NOT a tab (no active state), the standard pattern
+// (GitHub, Linear, Stripe). The dashboard gets its own "Today" tab so every
+// destination is represented consistently and the home view can show active.
 const ITEMS = [
+  { href: "/consistencytracker", label: "Today" },
   { href: "/consistencytracker/goals", label: "Goals" },
   { href: "/consistencytracker/reflections", label: "Reflections" },
   { href: "/consistencytracker/partners", label: "Partners" },
