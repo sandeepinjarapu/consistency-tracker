@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { cache, Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { todayIn, dayOfWeekIn, addDays, isoWeekStart } from "@/lib/dates";
 import { buildAggregateCells, computeStats } from "@/lib/stats";
 import TodayGoalCard from "@/components/today-goal-card";
 import Heatmap from "@/components/heatmap";
+import Skeleton from "@/components/skeleton";
 import type { CheckIn } from "@/lib/actions/check-ins";
 
 type GoalRow = {
@@ -17,38 +19,56 @@ type GoalRow = {
   category: { name: string | null; color: string | null } | null;
 };
 
-export default async function TodayView() {
+// Active goals are needed by both the Today and Year sections. cache() dedupes
+// the query across both Suspense boundaries within the same request.
+const getActiveGoals = cache(async (): Promise<GoalRow[]> => {
   const user = await getCurrentUser();
-  if (!user) return null;
+  if (!user) return [];
   const supabase = await createClient();
+  const { data } = await supabase
+    .from("goals")
+    .select(
+      "id, name, description, target_days, weekly_target, created_at, category:categories(name, color)"
+    )
+    .eq("user_id", user.id)
+    .eq("active", true)
+    .order("created_at", { ascending: true });
+  return (data ?? []).map((g) => ({
+    ...g,
+    category: Array.isArray(g.category) ? g.category[0] ?? null : g.category,
+  })) as GoalRow[];
+});
 
-  // Profile and goals are independent — fetch them together.
-  const [profile, { data: rawGoals }] = await Promise.all([
+export default function TodayView() {
+  return (
+    <section className="space-y-12">
+      <Suspense fallback={<TodaySkeleton />}>
+        <TodaySection />
+      </Suspense>
+      <Suspense fallback={<YearSkeleton />}>
+        <YearSection />
+      </Suspense>
+    </section>
+  );
+}
+
+// Greeting + today's check-in cards. Fetches only the current week's check-ins
+// (small) so it paints without waiting on the full-year aggregate.
+async function TodaySection() {
+  const [profile, goals] = await Promise.all([
     getCurrentProfile(),
-    supabase
-      .from("goals")
-      .select(
-        "id, name, description, target_days, weekly_target, created_at, category:categories(name, color)"
-      )
-      .eq("user_id", user.id)
-      .eq("active", true)
-      .order("created_at", { ascending: true }),
+    getActiveGoals(),
   ]);
 
   const timezone = profile?.timezone ?? "UTC";
   const today = todayIn(timezone);
   const dow = dayOfWeekIn(timezone);
-  const yearStart = addDays(today, -364);
-
-  const goals: GoalRow[] = (rawGoals ?? []).map((g) => ({
-    ...g,
-    category: Array.isArray(g.category) ? g.category[0] ?? null : g.category,
-  })) as GoalRow[];
+  const firstName = profile?.display_name?.split(" ")[0];
 
   if (goals.length === 0) {
     return (
-      <section>
-        <Header timezone={timezone} firstName={profile?.display_name?.split(" ")[0]} />
+      <div>
+        <Header timezone={timezone} firstName={firstName} />
         <div className="border border-dashed border-[color:var(--border)] rounded-lg p-10 text-center">
           <p className="text-sm text-[color:var(--muted)] mb-4">
             No goals yet. Start with one small habit you can do most days.
@@ -60,23 +80,24 @@ export default async function TodayView() {
             Create your first goal
           </Link>
         </div>
-      </section>
+      </div>
     );
   }
 
-  // Today's goals + check-ins
   const goalsToday = goals.filter((g) => g.target_days.includes(dow));
   const goalIds = goals.map((g) => g.id);
+  const weekStart = isoWeekStart(today);
+  const prevWeekStart = addDays(weekStart, -7);
 
-  // Year check-ins (heatmap + streaks) and the prior-week reflection lookup
-  // (banner) are independent — fetch them together.
-  const prevWeekStart = addDays(isoWeekStart(today), -7);
-  const [{ data: yearCheckInsRaw }, { data: prevReflection }] = await Promise.all([
+  // This-week check-ins (today summary + count-goal pace) and the prior-week
+  // reflection lookup (banner) are independent — fetch them together.
+  const supabase = await createClient();
+  const [{ data: weekCheckInsRaw }, { data: prevReflection }] = await Promise.all([
     supabase
       .from("check_ins")
       .select("id, goal_id, date, status, skip_reason, note, created_at")
       .in("goal_id", goalIds)
-      .gte("date", yearStart)
+      .gte("date", weekStart)
       .lte("date", today),
     supabase
       .from("weekly_reflections")
@@ -85,19 +106,117 @@ export default async function TodayView() {
       .maybeSingle(),
   ]);
 
-  const yearCheckIns = (yearCheckInsRaw ?? []) as Array<
+  const weekCheckIns = (weekCheckInsRaw ?? []) as Array<
     CheckIn & { goal_id: string }
   >;
   const showReflectionBanner = !prevReflection;
 
-  const todayCheckIns = yearCheckIns.filter((c) => c.date === today);
+  const todayCheckIns = weekCheckIns.filter((c) => c.date === today);
   const checkInByGoal = new Map(todayCheckIns.map((c) => [c.goal_id, c]));
 
   const doneCount = todayCheckIns.filter((c) => c.status === "done").length;
   const skippedCount = todayCheckIns.filter((c) => c.status === "skipped").length;
   const remaining = goalsToday.length - doneCount - skippedCount;
 
-  // Aggregate heatmap
+  // doneThisWeek (for count-goal pace) only depends on the current week.
+  const paceByGoal = new Map<string, number>();
+  for (const g of goalsToday) {
+    if (g.weekly_target == null) continue;
+    const stats = computeStats({
+      startDate: g.created_at.slice(0, 10),
+      endDate: today,
+      targetDays: g.target_days,
+      checkIns: weekCheckIns
+        .filter((c) => c.goal_id === g.id)
+        .map((c) => ({ date: c.date, status: c.status })),
+      weeklyTarget: g.weekly_target,
+    });
+    paceByGoal.set(g.id, stats.doneThisWeek ?? 0);
+  }
+
+  return (
+    <div>
+      <Header
+        timezone={timezone}
+        firstName={firstName}
+        summary={
+          goalsToday.length > 0
+            ? `${doneCount} of ${goalsToday.length} done${
+                skippedCount > 0 ? `, ${skippedCount} skipped` : ""
+              }${remaining > 0 ? `, ${remaining} left` : ""}`
+            : "Nothing scheduled today."
+        }
+      />
+
+      {goalsToday.length === 0 ? null : (
+        <div className="space-y-2 mt-6">
+          {goalsToday.map((g) => {
+            const paceLabel =
+              g.weekly_target != null
+                ? (paceByGoal.get(g.id) ?? 0) >= g.weekly_target
+                  ? `✓ ${g.weekly_target} of ${g.weekly_target} this week`
+                  : `${paceByGoal.get(g.id) ?? 0} of ${g.weekly_target} this week`
+                : undefined;
+            return (
+              <TodayGoalCard
+                key={g.id}
+                goalId={g.id}
+                name={g.name}
+                description={g.description}
+                categoryColor={g.category?.color ?? "#9ca3af"}
+                date={today}
+                timezone={timezone}
+                checkIn={checkInByGoal.get(g.id) ?? null}
+                paceLabel={paceLabel}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {showReflectionBanner ? (
+        <Link
+          href="/consistencytracker/reflections"
+          className="mt-6 block border border-[color:var(--border)] rounded-lg px-4 py-3 hover:bg-gray-50 transition"
+        >
+          <p className="text-sm font-medium">Reflect on last week →</p>
+          <p className="text-xs text-[color:var(--muted)] mt-0.5">
+            Continue · Stop · Improve. A few sentences keeps the loop honest.
+          </p>
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+// Full-year aggregate heatmap + all-goals list with all-time streaks. Heavier
+// (a year of check-ins) so it streams in after the Today section.
+async function YearSection() {
+  const [profile, goals] = await Promise.all([
+    getCurrentProfile(),
+    getActiveGoals(),
+  ]);
+  if (goals.length === 0) return null;
+
+  const timezone = profile?.timezone ?? "UTC";
+  const today = todayIn(timezone);
+  const yearStart = addDays(today, -364);
+  const goalIds = goals.map((g) => g.id);
+
+  const supabase = await createClient();
+  const { data: yearCheckInsRaw } = await supabase
+    .from("check_ins")
+    .select("goal_id, date, status")
+    .in("goal_id", goalIds)
+    .gte("date", yearStart)
+    .lte("date", today);
+
+  const yearCheckIns = (yearCheckInsRaw ?? []) as Array<{
+    goal_id: string;
+    date: string;
+    status: "done" | "skipped";
+  }>;
+
   const aggregateCells = buildAggregateCells({
     startDate: yearStart,
     endDate: today,
@@ -108,14 +227,9 @@ export default async function TodayView() {
       created_at: g.created_at,
       weekly_target: g.weekly_target,
     })),
-    checkIns: yearCheckIns.map((c) => ({
-      goal_id: c.goal_id,
-      date: c.date,
-      status: c.status,
-    })),
+    checkIns: yearCheckIns,
   });
 
-  // Per-goal streaks for the goal list
   const goalRows = goals.map((g) => {
     const goalCheckIns = yearCheckIns
       .filter((c) => c.goal_id === g.id)
@@ -129,65 +243,9 @@ export default async function TodayView() {
     });
     return { goal: g, stats };
   });
-  const statsByGoal = new Map(
-    goalRows.map(({ goal, stats }) => [goal.id, stats])
-  );
 
   return (
-    <section className="space-y-12">
-      <div>
-        <Header
-          timezone={timezone}
-          firstName={profile?.display_name?.split(" ")[0]}
-          summary={
-            goalsToday.length > 0
-              ? `${doneCount} of ${goalsToday.length} done${
-                  skippedCount > 0 ? `, ${skippedCount} skipped` : ""
-                }${remaining > 0 ? `, ${remaining} left` : ""}`
-              : "Nothing scheduled today."
-          }
-        />
-
-        {goalsToday.length === 0 ? null : (
-          <div className="space-y-2 mt-6">
-            {goalsToday.map((g) => {
-              const gStats = statsByGoal.get(g.id);
-              const paceLabel =
-                g.weekly_target != null
-                  ? (gStats?.doneThisWeek ?? 0) >= g.weekly_target
-                    ? `✓ ${g.weekly_target} of ${g.weekly_target} this week`
-                    : `${gStats?.doneThisWeek ?? 0} of ${g.weekly_target} this week`
-                  : undefined;
-              return (
-                <TodayGoalCard
-                  key={g.id}
-                  goalId={g.id}
-                  name={g.name}
-                  description={g.description}
-                  categoryColor={g.category?.color ?? "#9ca3af"}
-                  date={today}
-                  timezone={timezone}
-                  checkIn={checkInByGoal.get(g.id) ?? null}
-                  paceLabel={paceLabel}
-                />
-              );
-            })}
-          </div>
-        )}
-
-        {showReflectionBanner ? (
-          <Link
-            href="/consistencytracker/reflections"
-            className="mt-6 block border border-[color:var(--border)] rounded-lg px-4 py-3 hover:bg-gray-50 transition"
-          >
-            <p className="text-sm font-medium">Reflect on last week →</p>
-            <p className="text-xs text-[color:var(--muted)] mt-0.5">
-              Continue · Stop · Improve. A few sentences keeps the loop honest.
-            </p>
-          </Link>
-        ) : null}
-      </div>
-
+    <>
       <div>
         <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
           Past year — all goals combined
@@ -241,7 +299,37 @@ export default async function TodayView() {
           ))}
         </ul>
       </div>
-    </section>
+    </>
+  );
+}
+
+function TodaySkeleton() {
+  return (
+    <div aria-busy>
+      <span className="sr-only">Loading…</span>
+      <Skeleton className="h-6 w-44" />
+      <Skeleton className="mt-2 h-4 w-64" />
+      <div className="space-y-2 mt-6">
+        <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-14 w-full" />
+      </div>
+    </div>
+  );
+}
+
+function YearSkeleton() {
+  return (
+    <>
+      <div aria-busy>
+        <Skeleton className="h-3 w-48 mb-3" />
+        <Skeleton className="h-28 w-full" />
+      </div>
+      <div aria-busy>
+        <Skeleton className="h-3 w-24 mb-3" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    </>
   );
 }
 
