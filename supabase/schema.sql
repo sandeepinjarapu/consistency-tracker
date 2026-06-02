@@ -106,6 +106,7 @@ create table if not exists public.partner_invites (
 );
 create index if not exists invites_inviter_idx on public.partner_invites(inviter_id);
 create index if not exists invites_email_idx on public.partner_invites(lower(invitee_email));
+create index if not exists invites_accepted_by_idx on public.partner_invites(accepted_by);
 
 -- weekly_reflections: one entry per (user, ISO-week)
 create table if not exists public.weekly_reflections (
