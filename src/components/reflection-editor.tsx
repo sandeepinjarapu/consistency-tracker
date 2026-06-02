@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { upsertReflection, type Reflection } from "@/lib/actions/reflections";
 
 export default function ReflectionEditor({
@@ -11,7 +10,6 @@ export default function ReflectionEditor({
   weekStartDate: string;
   initial: Reflection | null;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +35,12 @@ export default function ReflectionEditor({
           visibility,
         });
         setSavedAt(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
-        router.refresh();
+        // No router.refresh(): the editor's own state already shows the saved
+        // text, and nothing else on the reflections page derives from
+        // reflection content (week stats come from check-ins). upsertReflection
+        // already revalidatePath()s the dashboard banner for cross-page sync.
+        // A refresh here would re-fetch a year of check-ins + recompute every
+        // week for no visible change.
       } catch (e) {
         setError(e instanceof Error ? e.message : "Couldn't save reflection");
       }
