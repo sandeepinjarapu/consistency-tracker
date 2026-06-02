@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   markDone,
@@ -46,6 +46,25 @@ export default function TodayGoalCard({
   const [savingNote, startNoteTransition] = useTransition();
   const skipMenuRef = useRef<HTMLDivElement>(null);
 
+  // Reflect the action in the UI immediately; reconciles to the server prop
+  // when the background router.refresh() lands (and reverts on failure).
+  const [optimistic, setOptimistic] = useOptimistic(checkIn);
+
+  function optimisticRow(
+    status: "done" | "skipped",
+    reason: SkipReason | null
+  ): CheckIn {
+    return {
+      id: checkIn?.id ?? "optimistic",
+      goal_id: goalId,
+      date,
+      status,
+      skip_reason: reason,
+      note: checkIn?.note ?? null,
+      created_at: new Date().toISOString(),
+    };
+  }
+
   // Close the Skip dropdown on outside click or Escape
   useEffect(() => {
     if (!showSkipMenu) return;
@@ -68,14 +87,16 @@ export default function TodayGoalCard({
     };
   }, [showSkipMenu]);
 
-  function run(fn: () => Promise<void>) {
+  function run(fn: () => Promise<void>, next: CheckIn | null) {
     setShowSkipMenu(false);
     startTransition(async () => {
+      setOptimistic(next);
       try {
         await fn();
         router.refresh();
       } catch {
-        // swallow — RLS errors shouldn't occur for own goals
+        // swallow — RLS errors shouldn't occur for own goals. On failure we
+        // skip the refresh, so the optimistic value reverts to the prop.
       }
     });
   }
@@ -93,7 +114,7 @@ export default function TodayGoalCard({
     setEditingNote(false);
   }
 
-  const isChecked = checkIn !== null;
+  const isChecked = optimistic !== null;
 
   return (
     <div className="flex gap-4 border border-[color:var(--border)] rounded-lg px-4 py-3">
@@ -119,35 +140,35 @@ export default function TodayGoalCard({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 relative">
-            {checkIn?.status === "done" ? (
+            {optimistic?.status === "done" ? (
               <>
                 <span className="text-xs">
                   <span className="text-green-700 font-medium">✓ Done</span>
                   <span className="text-[color:var(--muted)] ml-1">
-                    · {formatCheckInTime(checkIn.created_at, timezone)}
+                    · {formatCheckInTime(optimistic.created_at, timezone)}
                   </span>
                 </span>
                 <button
-                  onClick={() => run(() => unmark(goalId, date))}
+                  onClick={() => run(() => unmark(goalId, date), null)}
                   disabled={pending}
                   className="text-xs text-[color:var(--muted)] hover:text-black disabled:opacity-50"
                 >
                   Undo
                 </button>
               </>
-            ) : checkIn?.status === "skipped" ? (
+            ) : optimistic?.status === "skipped" ? (
               <>
                 <span className="text-xs">
                   <span className="text-amber-700 font-medium">
                     ⏭ Skipped
-                    {checkIn.skip_reason ? ` · ${REASON_LABELS[checkIn.skip_reason]}` : ""}
+                    {optimistic.skip_reason ? ` · ${REASON_LABELS[optimistic.skip_reason]}` : ""}
                   </span>
                   <span className="text-[color:var(--muted)] ml-1">
-                    · {formatCheckInTime(checkIn.created_at, timezone)}
+                    · {formatCheckInTime(optimistic.created_at, timezone)}
                   </span>
                 </span>
                 <button
-                  onClick={() => run(() => unmark(goalId, date))}
+                  onClick={() => run(() => unmark(goalId, date), null)}
                   disabled={pending}
                   className="text-xs text-[color:var(--muted)] hover:text-black disabled:opacity-50"
                 >
@@ -157,7 +178,7 @@ export default function TodayGoalCard({
             ) : (
               <>
                 <button
-                  onClick={() => run(() => markDone(goalId, date))}
+                  onClick={() => run(() => markDone(goalId, date), optimisticRow("done", null))}
                   disabled={pending}
                   className="text-xs border border-[color:var(--border)] rounded-md px-3 py-1.5 hover:border-black hover:bg-gray-50 disabled:opacity-50"
                 >
@@ -176,7 +197,7 @@ export default function TodayGoalCard({
                       {(Object.keys(REASON_LABELS) as SkipReason[]).map((r) => (
                         <button
                           key={r}
-                          onClick={() => run(() => markSkipped(goalId, date, r))}
+                          onClick={() => run(() => markSkipped(goalId, date, r), optimisticRow("skipped", r))}
                           className="block w-full text-left text-xs px-3 py-1.5 hover:bg-gray-50"
                         >
                           {REASON_LABELS[r]}
