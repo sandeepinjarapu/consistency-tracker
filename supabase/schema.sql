@@ -126,6 +126,22 @@ create table if not exists public.weekly_reflections (
 );
 create index if not exists reflections_user_idx on public.weekly_reflections(user_id, week_start_date desc);
 
+-- reactions: gentle "Saw it" / "Proud" from a viewer on a shared goal — added 0011
+create table if not exists public.reactions (
+  id uuid primary key default gen_random_uuid(),
+  goal_id uuid not null references public.goals(id) on delete cascade,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  reactor_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null check (kind in ('saw','proud')),
+  seen_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (goal_id, reactor_id, kind),
+  check (owner_id <> reactor_id)
+);
+create index if not exists reactions_owner_unseen_idx
+  on public.reactions(owner_id) where seen_at is null;
+create index if not exists reactions_reactor_idx on public.reactions(reactor_id);
+
 -- =====================================================================
 -- TRIGGERS
 -- =====================================================================
@@ -181,6 +197,7 @@ alter table public.check_ins           enable row level security;
 alter table public.shares              enable row level security;
 alter table public.partner_invites     enable row level security;
 alter table public.weekly_reflections  enable row level security;
+alter table public.reactions           enable row level security;
 
 -- profiles: any authenticated user can read any profile (just name + avatar).
 -- Users can only modify their own row.
@@ -318,3 +335,37 @@ create policy "reflections: write own" on public.weekly_reflections
   for all to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- reactions: owner + reactor can read; reactor inserts only on goals shared
+-- with them; reactor deletes own; owner updates (to mark seen). See 0011.
+drop policy if exists "reactions: read involved" on public.reactions;
+create policy "reactions: read involved" on public.reactions
+  for select to authenticated
+  using (auth.uid() = owner_id or auth.uid() = reactor_id);
+
+drop policy if exists "reactions: reactor insert" on public.reactions;
+create policy "reactions: reactor insert" on public.reactions
+  for insert to authenticated
+  with check (
+    auth.uid() = reactor_id
+    and exists (
+      select 1 from public.goals g
+      where g.id = reactions.goal_id and g.user_id = reactions.owner_id
+    )
+    and exists (
+      select 1 from public.shares s
+      where s.goal_id = reactions.goal_id
+        and s.owner_id = reactions.owner_id
+        and s.viewer_id = auth.uid()
+    )
+  );
+
+drop policy if exists "reactions: reactor delete" on public.reactions;
+create policy "reactions: reactor delete" on public.reactions
+  for delete to authenticated using (auth.uid() = reactor_id);
+
+drop policy if exists "reactions: owner mark seen" on public.reactions;
+create policy "reactions: owner mark seen" on public.reactions
+  for update to authenticated
+  using (auth.uid() = owner_id)
+  with check (auth.uid() = owner_id);
