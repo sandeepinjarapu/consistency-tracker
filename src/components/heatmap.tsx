@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, dayOfWeekForDateString } from "@/lib/dates";
 import { backfillCheckIn, clearBackfillCheckIn } from "@/lib/actions/check-ins";
@@ -82,6 +82,25 @@ export default function Heatmap({
       [o.date]: o.status,
     })
   );
+
+  // Custom tooltip: the native SVG <title> has a long, browser-controlled
+  // show-delay. Track the hovered cell and render our own near-instant
+  // tooltip instead. ~120ms delay avoids flicker when sweeping across cells.
+  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(
+    null
+  );
+  const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showTip = (x: number, y: number, text: string) => {
+    if (tipTimer.current) clearTimeout(tipTimer.current);
+    tipTimer.current = setTimeout(() => setTip({ x, y, text }), 120);
+  };
+  const hideTip = () => {
+    if (tipTimer.current) clearTimeout(tipTimer.current);
+    setTip(null);
+  };
+  useEffect(() => () => {
+    if (tipTimer.current) clearTimeout(tipTimer.current);
+  }, []);
 
   const runBackfill = (cell: HeatmapCell, action: "mark" | "clear") => {
     if (!editable || pending) return;
@@ -214,6 +233,9 @@ export default function Heatmap({
                 })
               : null;
             const baseTip = cell.tooltip ?? tooltipFor(cell);
+            const tipText = action
+              ? `${baseTip} — click to ${action === "clear" ? "undo" : "log"}`
+              : baseTip;
             return (
               <rect
                 key={`${ci}-${ri}`}
@@ -224,18 +246,17 @@ export default function Heatmap({
                 rx={2}
                 ry={2}
                 fill={colorFor(cell)}
+                aria-label={tipText}
                 style={action ? { cursor: "pointer" } : undefined}
                 onClick={action ? () => runBackfill(cell, action) : undefined}
-              >
-                <title>
-                  {action
-                    ? `${baseTip} — click to ${action === "clear" ? "undo" : "log"}`
-                    : baseTip}
-                </title>
-              </rect>
+                onMouseEnter={() => showTip(x, y, tipText)}
+                onMouseLeave={hideTip}
+              />
             );
           })
         )}
+
+        {tip ? <CellTooltip {...tip} svgWidth={width} /> : null}
       </svg>
       </HeatmapScroller>
 
@@ -248,6 +269,46 @@ export default function Heatmap({
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Near-instant SVG tooltip rendered above (or below, near the top rows) the
+ * hovered cell. Width is estimated from text length; the box is clamped to
+ * stay within the SVG. pointer-events disabled so it never steals hover.
+ */
+function CellTooltip({
+  x,
+  y,
+  text,
+  svgWidth,
+}: {
+  x: number;
+  y: number;
+  text: string;
+  svgWidth: number;
+}) {
+  const charW = 6.1;
+  const padX = 7;
+  const h = 18;
+  const w = Math.ceil(text.length * charW) + padX * 2;
+  const cx = x + CELL / 2;
+  const rectX = Math.max(2, Math.min(cx - w / 2, svgWidth - w - 2));
+  const below = y - (h + 6) < TOP_GUTTER;
+  const rectY = below ? y + CELL + 6 : y - h - 6;
+  return (
+    <g pointerEvents="none">
+      <rect x={rectX} y={rectY} width={w} height={h} rx={4} ry={4} fill="#0a0a0a" opacity={0.92} />
+      <text
+        x={rectX + w / 2}
+        y={rectY + 13}
+        fontSize={11}
+        fill="#ffffff"
+        textAnchor="middle"
+      >
+        {text}
+      </text>
+    </g>
   );
 }
 
