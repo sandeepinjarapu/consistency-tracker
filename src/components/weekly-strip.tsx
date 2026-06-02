@@ -1,4 +1,7 @@
+"use client";
+
 import type { WeekMet } from "@/lib/stats";
+import { HoverTip, useHoverTip } from "./tooltip";
 
 /**
  * Compact per-week history for a count goal: one vertical bar per ISO week,
@@ -17,6 +20,7 @@ export default function WeeklyStrip({
   doneColor?: string;
   max?: number;
 }) {
+  const { tip, bind } = useHoverTip();
   const shown = weeks.slice(-max);
   if (shown.length === 0) return null;
 
@@ -39,7 +43,7 @@ export default function WeeklyStrip({
           return (
             <span
               key={w.weekStart}
-              title={`Week of ${formatWeek(w.weekStart)} · ${w.done}/${weeklyTarget} · ${state}`}
+              {...bind(`Week of ${formatWeek(w.weekStart)} · ${w.done}/${weeklyTarget} · ${state}`)}
               className="relative h-7 w-3.5 rounded-sm overflow-hidden bg-[color:var(--border)]"
             >
               <span
@@ -58,6 +62,7 @@ export default function WeeklyStrip({
       <p className="mt-2 text-[10px] text-[color:var(--muted)]">
         Each bar is a week — a full bar means you hit {weeklyTarget}× that week.
       </p>
+      <HoverTip tip={tip} />
     </div>
   );
 }
