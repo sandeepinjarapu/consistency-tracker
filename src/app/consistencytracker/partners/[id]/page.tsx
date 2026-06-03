@@ -241,7 +241,7 @@ export default async function PartnerPage({
                   </div>
                 ) : null}
                 <p className="text-xs text-[color:var(--muted)] mb-2">
-                  Each square is a day. Green means done.
+                  Each square is a day. A solid square means done.
                 </p>
                 <Heatmap
                   cells={cells}
