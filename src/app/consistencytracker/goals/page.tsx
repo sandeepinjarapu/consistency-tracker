@@ -276,7 +276,9 @@ function CategoryGroup({
         </h2>
       </div>
       <ul className="border border-[color:var(--border)] rounded-lg divide-y divide-[color:var(--border)]">
-        {goals.map((g) => (
+        {goals.map((g) => {
+          const share = shareTitle(shares[g.id]);
+          return (
           <li
             key={g.id}
             className="relative flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
@@ -292,13 +294,20 @@ function CategoryGroup({
                 >
                   {g.name}
                 </Link>
-                {shareTitle(shares[g.id]) ? (
+                {share ? (
                   <span
-                    className="relative z-10 inline-flex text-[color:var(--muted)]"
-                    title={shareTitle(shares[g.id]) ?? undefined}
-                    aria-label={shareTitle(shares[g.id]) ?? undefined}
+                    className="group relative z-10 inline-flex text-[color:var(--muted)]"
+                    aria-label={share}
                   >
                     <ShareIcon />
+                    {/* Custom tooltip: native title has a ~500ms browser delay;
+                        this shows in ~100ms on hover. */}
+                    <span
+                      role="tooltip"
+                      className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-[#0a0a0a] px-2 py-1 text-[11px] text-white opacity-0 transition-opacity duration-100 group-hover:opacity-100"
+                    >
+                      {share}
+                    </span>
                   </span>
                 ) : null}
                 {newReactionGoals.has(g.id) ? (
@@ -318,7 +327,8 @@ function CategoryGroup({
               <GoalRowMenu goalId={g.id} archived={archived} />
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );
