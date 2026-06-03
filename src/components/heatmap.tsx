@@ -187,7 +187,10 @@ export default function Heatmap({
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label="Consistency heatmap"
-        style={pending ? { opacity: 0.6 } : undefined}
+        // overflow visible so the hover tooltip isn't clipped by a narrow grid
+        // (e.g. the compact all-goals summary). The enclosing scroller is far
+        // wider than a compact grid, so the tooltip simply spills into it.
+        style={{ overflow: "visible", ...(pending ? { opacity: 0.6 } : {}) }}
       >
         {/* Month labels */}
         {monthLabels.map((m, i) => {
@@ -299,7 +302,14 @@ function CellTooltip({
   const h = 18;
   const w = Math.ceil(text.length * charW) + padX * 2;
   const cx = x + CELL / 2;
-  const rectX = Math.max(2, Math.min(cx - w / 2, svgWidth - w - 2));
+  // When the grid is wide enough to hold the tooltip, clamp it inside (no
+  // overflow). When it isn't (a compact grid), center on the cell and let it
+  // spill right — the SVG uses overflow:visible so it stays readable.
+  const rightBound = svgWidth - w - 2;
+  const rectX =
+    rightBound >= 2
+      ? Math.max(2, Math.min(cx - w / 2, rightBound))
+      : Math.max(2, cx - w / 2);
   const below = y - (h + 6) < TOP_GUTTER;
   const rectY = below ? y + CELL + 6 : y - h - 6;
   return (
