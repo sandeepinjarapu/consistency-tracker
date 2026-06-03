@@ -1,4 +1,4 @@
-import { addDays, dayOfWeekForDateString, isoWeekStart, formatTime } from "./dates";
+import { addDays, dayOfWeekForDateString, isoWeekStart } from "./dates";
 import type { HeatmapCell, CellStatus } from "@/components/heatmap";
 
 type RawCheckIn = { date: string; status: "done" | "skipped" };
@@ -411,6 +411,20 @@ export function computeTimePattern({
   };
 }
 
+// A median time is a single point, so "around 3:34pm" implies a precision we
+// don't have. Express it as the hour-long window it falls in instead.
+function hourRangeLabel(hour: number): string {
+  const clock = (h: number) => {
+    const x = ((h % 24) + 24) % 24;
+    return { n: x % 12 === 0 ? 12 : x % 12, p: x < 12 ? "am" : "pm" };
+  };
+  const a = clock(hour);
+  const b = clock(hour + 1);
+  return a.p === b.p
+    ? `between ${a.n} and ${b.n}${a.p}`
+    : `between ${a.n}${a.p} and ${b.n}${b.p}`;
+}
+
 function partOfDay(hour: number): string {
   if (hour < 5) return "late at night";
   if (hour < 12) return "in the morning";
@@ -442,9 +456,8 @@ export function buildGoalInsight({
   const parts: string[] = [];
   if (typical && timedTotal >= 4) {
     parts.push(
-      `You usually do this ${partOfDay(typical.hour)}, around ${formatTime(
-        typical.hour,
-        typical.minute
+      `You usually do this ${partOfDay(typical.hour)}, ${hourRangeLabel(
+        typical.hour
       )}.`
     );
   }

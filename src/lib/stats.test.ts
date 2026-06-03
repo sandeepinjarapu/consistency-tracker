@@ -610,7 +610,7 @@ describe("buildGoalInsight", () => {
         streakUnit: "days",
         doneCount: 6,
       })
-    ).toBe("You usually do this in the morning, around 8:30am.");
+    ).toBe("You usually do this in the morning, between 8 and 9am.");
   });
 
   it("does not state a time pattern with fewer than 4 timed check-ins", () => {
@@ -649,7 +649,7 @@ describe("buildGoalInsight", () => {
         streakUnit: "days",
         doneCount: 12,
       })
-    ).toBe("You usually do this late at night, around 2:10am. You're on a 4-day run.");
+    ).toBe("You usually do this late at night, between 2 and 3am. You're on a 4-day run.");
   });
 
   it("does not show a 1-length streak", () => {
