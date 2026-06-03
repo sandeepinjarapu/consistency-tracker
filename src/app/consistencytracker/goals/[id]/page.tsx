@@ -67,7 +67,8 @@ export default async function GoalPage({
     : targetDaysLabel(goal.target_days);
   const streakUnit = isCount ? "weeks" : "days";
 
-  // Date range: past year
+  // Date range: past year (stats). The heatmap uses a compact recent window
+  // computed inside StatsSection.
   const startDate = addDays(today, -364);
   const goalStartDate = (goal.created_at as string).slice(0, 10);
 
@@ -210,8 +211,16 @@ async function StatsSection({
     timezone,
   });
 
+  // Compact recent window (~12 weeks, trimmed so it never starts before the
+  // goal) so the heatmap stays legible and doesn't auto-scroll a full year.
+  // Stats below still span `startDate` (the year), so all-time numbers are
+  // unaffected.
+  const twelveWeeksAgo = addDays(today, -83);
+  const heatmapStart =
+    goalStartDate > twelveWeeksAgo ? goalStartDate : twelveWeeksAgo;
+
   const cells = buildHeatmapCells({
-    startDate,
+    startDate: heatmapStart,
     endDate: today,
     targetDays,
     checkIns,
@@ -283,6 +292,9 @@ async function StatsSection({
         </div>
       ) : null}
 
+      <p className="text-xs text-[color:var(--muted)] mb-2">
+        Each square is a day. Green means done; grey is a scheduled day you missed.
+      </p>
       <Heatmap
         cells={cells}
         doneColor={categoryColor}
