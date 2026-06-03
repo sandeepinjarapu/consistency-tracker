@@ -139,6 +139,18 @@ export default async function GoalPage({
         <GoalRowActions goalId={goal.id} archived={!goal.active} />
       </header>
 
+      {/* Sharing sits high on the page — partner accountability is central to
+          the product, so who a goal is shared with should be visible at a
+          glance, not buried below the stats. */}
+      <div className="mb-10 pb-6 border-b border-[color:var(--border)]">
+        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+          Sharing
+        </h3>
+        <Suspense fallback={<Skeleton className="h-6 w-full" />}>
+          <SharingSection goalId={goal.id} />
+        </Suspense>
+      </div>
+
       <Suspense fallback={<StatsSkeleton isCount={isCount} />}>
         <StatsSection
           goalId={goal.id}
@@ -152,15 +164,6 @@ export default async function GoalPage({
           streakUnit={streakUnit}
         />
       </Suspense>
-
-      <div className="mt-12 pt-6 border-t border-[color:var(--border)]">
-        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-          Sharing
-        </h3>
-        <Suspense fallback={<Skeleton className="h-12 w-full" />}>
-          <SharingSection goalId={goal.id} />
-        </Suspense>
-      </div>
     </section>
   );
 }
