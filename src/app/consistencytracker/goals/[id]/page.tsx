@@ -283,6 +283,9 @@ async function StatsSection({
         </div>
       ) : null}
 
+      <p className="text-xs text-[color:var(--muted)] mb-2">
+        Each square is a day. Green means done; grey is a scheduled day you missed.
+      </p>
       <Heatmap
         cells={cells}
         doneColor={categoryColor}
