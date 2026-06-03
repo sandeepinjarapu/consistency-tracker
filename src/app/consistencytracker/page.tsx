@@ -5,6 +5,7 @@ import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { todayIn, dayOfWeekIn, addDays, isoWeekStart } from "@/lib/dates";
 import { computeStats } from "@/lib/stats";
 import { computeTodayBanner } from "@/lib/today-banner";
+import { computeGoalRowState, type GoalRowState } from "@/lib/today-goal-row";
 import TodayGoalCard from "@/components/today-goal-card";
 import Skeleton from "@/components/skeleton";
 import type { CheckIn } from "@/lib/actions/check-ins";
@@ -274,7 +275,23 @@ async function AllGoalsSection() {
       checkIns: goalCheckIns,
       weeklyTarget: g.weekly_target,
     });
-    return { goal: g, stats };
+    const doneDates = goalCheckIns
+      .filter((c) => c.status === "done")
+      .map((c) => c.date);
+    const lastDone = doneDates.length
+      ? doneDates.reduce((a, b) => (a > b ? a : b))
+      : null;
+    const rowState = computeGoalRowState({
+      currentStreak: stats.currentStreak,
+      streakUnit: stats.streakUnit,
+      doneCount: stats.doneCount,
+      targetDays: g.target_days,
+      weeklyTarget: g.weekly_target,
+      lastDone,
+      createdAt: g.created_at,
+      today,
+    });
+    return { goal: g, rowState };
   });
 
   return (
@@ -283,7 +300,7 @@ async function AllGoalsSection() {
           All goals
         </h2>
         <ul className="border border-[color:var(--border)] rounded-lg divide-y divide-[color:var(--border)]">
-          {goalRows.map(({ goal, stats }) => (
+          {goalRows.map(({ goal, rowState }) => (
             <li key={goal.id}>
               <Link
                 href={`/consistencytracker/goals/${goal.id}`}
@@ -299,13 +316,12 @@ async function AllGoalsSection() {
                     <p className="text-sm font-medium truncate">{goal.name}</p>
                     <p className="text-xs text-[color:var(--muted)] mt-0.5">
                       {goal.category?.name ?? "Uncategorized"}
+                      {rowState.nudge ? ` · ${nudgeText(rowState.nudge)}` : ""}
                     </p>
                   </div>
                 </div>
                 <div className="text-xs text-[color:var(--muted)] shrink-0 ml-4">
-                  {stats.currentStreak > 0
-                    ? `${stats.currentStreak} ${stats.streakUnit} streak`
-                    : `${Math.round(stats.completionRate * 100)}% all-time`}
+                  {rowState.metric}
                   <span className="ml-2">→</span>
                 </div>
               </Link>
@@ -372,6 +388,23 @@ function Header({
       </p>
     </header>
   );
+}
+
+// Compose the calm re-engagement copy from the row state.
+function nudgeText(nudge: NonNullable<GoalRowState["nudge"]>): string {
+  const d = shortDate(nudge.since);
+  return nudge.kind === "resume"
+    ? `last done ${d}, pick it back up?`
+    : `added ${d}, want to start?`;
+}
+
+function shortDate(d: string): string {
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, day)).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 function greeting(timezone: string): string {
