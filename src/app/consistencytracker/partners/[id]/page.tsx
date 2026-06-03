@@ -65,6 +65,9 @@ export default async function PartnerPage({
   const partnerTz = partnerProfile.timezone ?? "UTC";
   const today = todayIn(partnerTz);
   const yearStart = addDays(today, -364);
+  // The heatmap shows a compact recent window (last ~12 weeks, trimmed to the
+  // goal's start); stats below still span the year.
+  const twelveWeeksAgo = addDays(today, -83);
 
   // RLS will filter to only goals shared with the current user
   const { data: rawGoals } = await supabase
@@ -159,7 +162,7 @@ export default async function PartnerPage({
             const checkIns = checkInsByGoal.get(goal.id) ?? [];
             const goalStart = goal.created_at.slice(0, 10);
             const cells = buildHeatmapCells({
-              startDate: yearStart,
+              startDate: goalStart > twelveWeeksAgo ? goalStart : twelveWeeksAgo,
               endDate: today,
               targetDays: goal.target_days,
               checkIns,
