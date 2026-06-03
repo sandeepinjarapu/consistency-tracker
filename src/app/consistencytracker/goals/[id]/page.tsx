@@ -294,7 +294,7 @@ async function StatsSection({
       ) : null}
 
       <p className="text-xs text-[color:var(--muted)] mb-2">
-        Each square is a day. A solid square means done; a pale one is a scheduled day you missed.
+        Each square is a day. Click one to log or undo a check-in — this week, or up to 2 days into the next.
       </p>
       <Heatmap
         cells={cells}
@@ -306,9 +306,6 @@ async function StatsSection({
           targetDays,
         }}
       />
-      <p className="mt-2 text-xs text-[color:var(--muted)]">
-        Click a day to log or undo a check-in — this week, or up to 2 days into the new week.
-      </p>
 
       {timePattern.total >= 4 ? (
         <div className="mt-8">

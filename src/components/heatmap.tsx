@@ -274,7 +274,6 @@ export default function Heatmap({
 
       {!hideLegend && (
         <div className="mt-2 flex items-center gap-4 text-[10px] text-[color:var(--muted)]">
-          <LegendDot color={COLOR.empty} label="Off-day" />
           <LegendDot color={COLOR.missed} label="Missed" />
           <LegendDot color={COLOR.skipped} label="Skipped" />
           <LegendDot color={doneColor} label="Done" />
