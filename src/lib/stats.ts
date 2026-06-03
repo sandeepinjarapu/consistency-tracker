@@ -1,4 +1,4 @@
-import { addDays, dayOfWeekForDateString, isoWeekStart } from "./dates";
+import { addDays, dayOfWeekForDateString, isoWeekStart, formatTime } from "./dates";
 import type { HeatmapCell, CellStatus } from "@/components/heatmap";
 
 type RawCheckIn = { date: string; status: "done" | "skipped" };
@@ -441,7 +441,12 @@ export function buildGoalInsight({
 }): string | null {
   const parts: string[] = [];
   if (typical && timedTotal >= 4) {
-    parts.push(`You usually do this ${partOfDay(typical.hour)}.`);
+    parts.push(
+      `You usually do this ${partOfDay(typical.hour)}, around ${formatTime(
+        typical.hour,
+        typical.minute
+      )}.`
+    );
   }
   if (currentStreak >= 2) {
     const unit = streakUnit.replace(/s$/, "");
