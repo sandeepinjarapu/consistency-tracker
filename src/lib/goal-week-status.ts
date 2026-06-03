@@ -1,3 +1,5 @@
+import { addDays, dayOfWeekForDateString } from "@/lib/dates";
+
 /**
  * The goal-detail page's primary status: "where am I this week?" — not an
  * all-time dashboard. For frequency (count) goals the unit is progress toward
@@ -33,7 +35,12 @@ export function computeWeekStatus(i: WeekStatusInput): WeekStatus {
       ? "Target met for this week."
       : "Every scheduled day done this week.";
   } else if (i.doneThisWeek === 0) {
-    note = "Nothing logged yet this week.";
+    // A blank week shouldn't read as failure. If there's earlier history this
+    // is a fresh start; for a brand-new goal it's a gentle invitation.
+    note =
+      i.doneCount > 0
+        ? "Fresh week — earlier check-ins still count."
+        : "Nothing logged yet — today's a good place to start.";
   } else {
     note = i.isCount
       ? `${i.total - i.doneThisWeek} more to go this week.`
@@ -55,6 +62,60 @@ export function computeWeekStatus(i: WeekStatusInput): WeekStatus {
     streakLine = "no streak yet";
   }
 
-  const secondary = `${i.doneCount} done in total · ${streakLine}`;
+  const secondary =
+    i.doneCount === 0
+      ? "No check-ins yet — your history starts here."
+      : `${i.doneCount} done in total · ${streakLine}`;
   return { headline, note, secondary };
+}
+
+const WEEKDAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/**
+ * A small at-a-glance progress row for "this week". For specific-day goals each
+ * slot is a scheduled weekday (labeled), filled as it's logged; for frequency
+ * goals it's N anonymous slots (= weekly target), filled left-to-right by the
+ * number done so far. Pure so it can be unit-tested independent of rendering.
+ */
+export type WeekSlot = {
+  /** Weekday abbreviation for specific-day goals; null for count slots. */
+  label: string | null;
+  state: "done" | "today" | "upcoming" | "missed" | "empty";
+};
+
+export type WeekSlotsInput = {
+  isCount: boolean;
+  weekStart: string; // ISO Monday of the current week
+  today: string;
+  // Specific-day goals:
+  targetDays: number[];
+  doneDates: string[]; // ISO dates done this week
+  // Count goals:
+  weeklyTarget: number;
+  doneThisWeek: number;
+};
+
+export function computeWeekSlots(i: WeekSlotsInput): WeekSlot[] {
+  if (i.isCount) {
+    const filled = Math.min(i.doneThisWeek, i.weeklyTarget);
+    return Array.from({ length: i.weeklyTarget }, (_, idx) => ({
+      label: null,
+      state: idx < filled ? "done" : "empty",
+    }));
+  }
+
+  const done = new Set(i.doneDates);
+  const slots: WeekSlot[] = [];
+  for (let d = 0; d < 7; d++) {
+    const date = addDays(i.weekStart, d);
+    const weekday = dayOfWeekForDateString(date);
+    if (!i.targetDays.includes(weekday)) continue;
+    let state: WeekSlot["state"];
+    if (done.has(date)) state = "done";
+    else if (date === i.today) state = "today";
+    else if (date < i.today) state = "missed";
+    else state = "upcoming";
+    slots.push({ label: WEEKDAY_ABBR[weekday], state });
+  }
+  return slots;
 }

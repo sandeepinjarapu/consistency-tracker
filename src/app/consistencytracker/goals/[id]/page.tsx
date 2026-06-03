@@ -9,7 +9,7 @@ import {
   formatTime,
   dayOfWeekForDateString,
 } from "@/lib/dates";
-import { computeWeekStatus } from "@/lib/goal-week-status";
+import { computeWeekStatus, computeWeekSlots } from "@/lib/goal-week-status";
 import {
   buildHeatmapCells,
   buildGoalInsight,
@@ -26,6 +26,7 @@ import { buildGCalUrl } from "@/lib/gcal";
 import { safeExternalUrl } from "@/lib/url";
 import CalendarReminder from "@/components/calendar-reminder";
 import Heatmap from "@/components/heatmap";
+import WeekProgress from "@/components/week-progress";
 import WeeklyStrip from "@/components/weekly-strip";
 import GoalRowActions from "@/components/goal-row-actions";
 import ShareToggles from "@/components/share-toggles";
@@ -267,9 +268,10 @@ async function StatsSection({
   // denominator is the weekly target; for specific-day goals it's the number
   // of scheduled days in the current ISO week.
   const weekStart = isoWeekStart(today);
-  const doneThisWeek = checkIns.filter(
-    (c) => c.status === "done" && c.date >= weekStart && c.date <= today
-  ).length;
+  const doneDatesThisWeek = checkIns
+    .filter((c) => c.status === "done" && c.date >= weekStart && c.date <= today)
+    .map((c) => c.date);
+  const doneThisWeek = doneDatesThisWeek.length;
   let total = weeklyTarget ?? 0;
   if (weeklyTarget == null) {
     for (let d = 0; d < 7; d++) {
@@ -287,6 +289,15 @@ async function StatsSection({
     streakUnit,
     doneCount: stats.doneCount,
   });
+  const weekSlots = computeWeekSlots({
+    isCount: weeklyTarget != null,
+    weekStart,
+    today,
+    targetDays,
+    doneDates: doneDatesThisWeek,
+    weeklyTarget: weeklyTarget ?? 0,
+    doneThisWeek,
+  });
 
   return (
     <>
@@ -298,7 +309,10 @@ async function StatsSection({
           {weekStatus.headline}
         </p>
         <p className="mt-1 text-sm">{weekStatus.note}</p>
-        <p className="mt-2 text-xs text-[color:var(--muted)]">
+        <div className="mt-3">
+          <WeekProgress slots={weekSlots} doneColor={categoryColor} />
+        </div>
+        <p className="mt-3 text-xs text-[color:var(--muted)]">
           {weekStatus.secondary}
         </p>
       </div>
