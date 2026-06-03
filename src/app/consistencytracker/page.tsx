@@ -303,9 +303,15 @@ async function AllGoalsSection() {
                   </div>
                 </div>
                 <div className="text-xs text-[color:var(--muted)] shrink-0 ml-4">
+                  {/* Concrete, beginner-friendly progress — a streak, else a
+                      plain done-count, else neutral "Just added". The raw
+                      completion % (cryptic on a young goal) lives on the goal
+                      detail page, where it can be labelled. */}
                   {stats.currentStreak > 0
                     ? `${stats.currentStreak} ${stats.streakUnit} streak`
-                    : `${Math.round(stats.completionRate * 100)}% all-time`}
+                    : stats.doneCount > 0
+                      ? `${stats.doneCount} done`
+                      : "Just added"}
                   <span className="ml-2">→</span>
                 </div>
               </Link>
