@@ -3,9 +3,9 @@ import { cache, Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { todayIn, dayOfWeekIn, addDays, isoWeekStart } from "@/lib/dates";
-import { buildAggregateCells, computeStats } from "@/lib/stats";
+import { computeStats } from "@/lib/stats";
+import { computeTodayBanner } from "@/lib/today-banner";
 import TodayGoalCard from "@/components/today-goal-card";
-import Heatmap from "@/components/heatmap";
 import Skeleton from "@/components/skeleton";
 import type { CheckIn } from "@/lib/actions/check-ins";
 
@@ -45,8 +45,8 @@ export default function TodayView() {
       <Suspense fallback={<TodaySkeleton />}>
         <TodaySection />
       </Suspense>
-      <Suspense fallback={<YearSkeleton />}>
-        <YearSection />
+      <Suspense fallback={<AllGoalsSkeleton />}>
+        <AllGoalsSection />
       </Suspense>
     </section>
   );
@@ -89,27 +89,61 @@ async function TodaySection() {
   const weekStart = isoWeekStart(today);
   const prevWeekStart = addDays(weekStart, -7);
 
-  // This-week check-ins (today summary + count-goal pace) and the prior-week
-  // reflection lookup (banner) are independent — fetch them together.
+  // Fetch the last two ISO weeks of check-ins (this week powers the today
+  // summary + count-goal pace; both weeks feed the contextual banner gate),
+  // the reflections for those two weeks, and the single most-recent check-in
+  // (the drop-off anchor) — all independent, so run them together.
   const supabase = await createClient();
-  const [{ data: weekCheckInsRaw }, { data: prevReflection }] = await Promise.all([
+  const [
+    { data: twoWeekRaw },
+    { data: reflectionRows },
+    { data: lastCheckInRows },
+  ] = await Promise.all([
     supabase
       .from("check_ins")
       .select("id, goal_id, date, status, skip_reason, note, created_at")
       .in("goal_id", goalIds)
-      .gte("date", weekStart)
+      .gte("date", prevWeekStart)
       .lte("date", today),
     supabase
       .from("weekly_reflections")
-      .select("id")
-      .eq("week_start_date", prevWeekStart)
-      .maybeSingle(),
+      .select("week_start_date")
+      .in("week_start_date", [prevWeekStart, weekStart]),
+    supabase
+      .from("check_ins")
+      .select("date")
+      .in("goal_id", goalIds)
+      .order("date", { ascending: false })
+      .limit(1),
   ]);
 
-  const weekCheckIns = (weekCheckInsRaw ?? []) as Array<
+  const twoWeekCheckIns = (twoWeekRaw ?? []) as Array<
     CheckIn & { goal_id: string }
   >;
-  const showReflectionBanner = !prevReflection;
+  const weekCheckIns = twoWeekCheckIns.filter((c) => c.date >= weekStart);
+
+  // Contextual banner: reflect-on-the-week (gated on activity + day) or a
+  // gentle drop-off nudge after a ≥2-week lapse. See computeTodayBanner.
+  const reflectedWeeks = new Set(
+    (reflectionRows ?? []).map((r) => r.week_start_date)
+  );
+  const lastCheckInDate = lastCheckInRows?.[0]?.date ?? null;
+  const earliestGoalDate = goals.reduce(
+    (min, g) => {
+      const d = g.created_at.slice(0, 10);
+      return d < min ? d : min;
+    },
+    today
+  );
+  const banner = computeTodayBanner({
+    dow,
+    today,
+    currentWeekHasCheckIn: weekCheckIns.length > 0,
+    lastWeekHasCheckIn: twoWeekCheckIns.some((c) => c.date < weekStart),
+    currentWeekReflected: reflectedWeeks.has(weekStart),
+    lastWeekReflected: reflectedWeeks.has(prevWeekStart),
+    anchorDate: lastCheckInDate ?? earliestGoalDate,
+  });
 
   const todayCheckIns = weekCheckIns.filter((c) => c.date === today);
   const checkInByGoal = new Map(todayCheckIns.map((c) => [c.goal_id, c]));
@@ -174,24 +208,36 @@ async function TodaySection() {
         </div>
       )}
 
-      {showReflectionBanner ? (
+      {banner.kind === "reflect" ? (
         <Link
           href="/consistencytracker/reflections"
           className="mt-6 block border border-[color:var(--border)] rounded-lg px-4 py-3 hover:bg-gray-50 transition"
         >
-          <p className="text-sm font-medium">Reflect on last week →</p>
+          <p className="text-sm font-medium">
+            Reflect on {banner.period === "this" ? "this" : "last"} week →
+          </p>
           <p className="text-xs text-[color:var(--muted)] mt-0.5">
             Continue · Stop · Improve. A few sentences keeps the loop honest.
           </p>
         </Link>
+      ) : banner.kind === "dropoff" ? (
+        <div className="mt-6 border border-[color:var(--border)] rounded-lg px-4 py-3">
+          <p className="text-sm font-medium">
+            It&rsquo;s been {banner.weeks} weeks since your last check-in.
+          </p>
+          <p className="text-xs text-[color:var(--muted)] mt-0.5">
+            No pressure — pick one goal and begin again. Starting is the whole game.
+          </p>
+        </div>
       ) : null}
     </div>
   );
 }
 
-// Full-year aggregate heatmap + all-goals list with all-time streaks. Heavier
-// (a year of check-ins) so it streams in after the Today section.
-async function YearSection() {
+// All-goals list with all-time streaks. The familiar "streak" framing lives on
+// Today; the GitHub-style heatmap (less legible to new users) now lives on the
+// Goals page, where it appears only once there's history to show.
+async function AllGoalsSection() {
   const [profile, goals] = await Promise.all([
     getCurrentProfile(),
     getActiveGoals(),
@@ -217,19 +263,6 @@ async function YearSection() {
     status: "done" | "skipped";
   }>;
 
-  const aggregateCells = buildAggregateCells({
-    startDate: yearStart,
-    endDate: today,
-    todayStr: today,
-    goals: goals.map((g) => ({
-      id: g.id,
-      target_days: g.target_days,
-      created_at: g.created_at,
-      weekly_target: g.weekly_target,
-    })),
-    checkIns: yearCheckIns,
-  });
-
   const goalRows = goals.map((g) => {
     const goalCheckIns = yearCheckIns
       .filter((c) => c.goal_id === g.id)
@@ -245,25 +278,6 @@ async function YearSection() {
   });
 
   return (
-    <>
-      <div>
-        <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-          Past year — all goals combined
-        </h2>
-        <Heatmap cells={aggregateCells} hideLegend />
-        <div className="mt-2 flex items-center gap-2 text-[10px] text-[color:var(--muted)]">
-          <span>Less</span>
-          {["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"].map((c) => (
-            <span
-              key={c}
-              className="inline-block rounded-sm"
-              style={{ width: 11, height: 11, background: c }}
-            />
-          ))}
-          <span>More</span>
-        </div>
-      </div>
-
       <div>
         <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
           All goals
@@ -299,7 +313,6 @@ async function YearSection() {
           ))}
         </ul>
       </div>
-    </>
   );
 }
 
@@ -318,36 +331,17 @@ function TodaySkeleton() {
   );
 }
 
-// The section headings and the heatmap legend never change with data, so
-// render them as real text while only the data widgets (grid, rows) pulse.
-function YearSkeleton() {
+// The heading never changes with data, so render it as real text while only
+// the goal rows pulse.
+function AllGoalsSkeleton() {
   return (
-    <>
-      <div aria-busy>
-        <span className="sr-only">Loading…</span>
-        <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-          Past year — all goals combined
-        </h2>
-        <Skeleton className="h-28 w-full" />
-        <div className="mt-2 flex items-center gap-2 text-[10px] text-[color:var(--muted)]">
-          <span>Less</span>
-          {["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"].map((c) => (
-            <span
-              key={c}
-              className="inline-block rounded-sm"
-              style={{ width: 11, height: 11, background: c }}
-            />
-          ))}
-          <span>More</span>
-        </div>
-      </div>
-      <div aria-busy>
-        <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-          All goals
-        </h2>
-        <Skeleton className="h-40 w-full" />
-      </div>
-    </>
+    <div aria-busy>
+      <span className="sr-only">Loading…</span>
+      <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+        All goals
+      </h2>
+      <Skeleton className="h-40 w-full" />
+    </div>
   );
 }
 

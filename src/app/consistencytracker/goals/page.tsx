@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/current-user";
+import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { listCategories } from "@/lib/actions/categories";
 import { listGoalShares } from "@/lib/actions/partners";
 import { listGoalsWithUnseenReactions } from "@/lib/actions/reactions";
 import { targetDaysLabel } from "@/lib/target-days-label";
+import { buildAggregateCells } from "@/lib/stats";
+import { todayIn, addDays } from "@/lib/dates";
 import GoalRowActions from "@/components/goal-row-actions";
+import Heatmap from "@/components/heatmap";
 
 type GoalRow = {
   id: string;
@@ -14,6 +17,8 @@ type GoalRow = {
   category_id: string | null;
   target_days: number[];
   active: boolean;
+  created_at: string;
+  weekly_target: number | null;
 };
 
 export default async function GoalsPage({
@@ -37,7 +42,9 @@ export default async function GoalsPage({
 
   const { data: goals } = await supabase
     .from("goals")
-    .select("id, name, description, category_id, target_days, active")
+    .select(
+      "id, name, description, category_id, target_days, active, created_at, weekly_target"
+    )
     .eq("user_id", user.id)
     .eq("active", !showArchived)
     .order("created_at", { ascending: true });
@@ -47,6 +54,57 @@ export default async function GoalsPage({
     const key = g.category_id ?? null;
     if (!goalsByCategory.has(key)) goalsByCategory.set(key, []);
     goalsByCategory.get(key)!.push(g);
+  }
+
+  // All-goals heatmap summary (active view only). A compact recent window —
+  // the last ~12 weeks, trimmed so it never starts before the first goal — so
+  // it fits without horizontal scrolling and stays legible for newcomers. It
+  // appears only once there's a check-in to show, so a brand-new user isn't
+  // greeted by an empty grid they can't yet read.
+  let heatmapCells: Awaited<ReturnType<typeof buildAggregateCells>> | null = null;
+  if (!showArchived && (goals ?? []).length > 0) {
+    const activeGoals = goals as GoalRow[];
+    const profile = await getCurrentProfile();
+    const today = todayIn(profile?.timezone ?? "UTC");
+    const earliest = activeGoals.reduce(
+      (min, g) => {
+        const d = g.created_at.slice(0, 10);
+        return d < min ? d : min;
+      },
+      today
+    );
+    const twelveWeeksAgo = addDays(today, -83);
+    const rangeStart = earliest > twelveWeeksAgo ? earliest : twelveWeeksAgo;
+
+    const { data: ciRaw } = await supabase
+      .from("check_ins")
+      .select("goal_id, date, status")
+      .in(
+        "goal_id",
+        activeGoals.map((g) => g.id)
+      )
+      .gte("date", rangeStart)
+      .lte("date", today);
+    const checkIns = (ciRaw ?? []) as Array<{
+      goal_id: string;
+      date: string;
+      status: "done" | "skipped";
+    }>;
+
+    if (checkIns.length > 0) {
+      heatmapCells = buildAggregateCells({
+        startDate: rangeStart,
+        endDate: today,
+        todayStr: today,
+        goals: activeGoals.map((g) => ({
+          id: g.id,
+          target_days: g.target_days,
+          created_at: g.created_at,
+          weekly_target: g.weekly_target,
+        })),
+        checkIns,
+      });
+    }
   }
 
   // Always count archived for the "view archived" link visibility
@@ -80,6 +138,29 @@ export default async function GoalsPage({
           </Link>
         )}
       </header>
+
+      {heatmapCells ? (
+        <div className="mb-10">
+          <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-1">
+            Recent activity — all goals
+          </h2>
+          <p className="text-xs text-[color:var(--muted)] mb-3">
+            Each square is a day. The greener it is, the more you did.
+          </p>
+          <Heatmap cells={heatmapCells} hideLegend />
+          <div className="mt-2 flex items-center gap-2 text-[10px] text-[color:var(--muted)]">
+            <span>Less</span>
+            {["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"].map((c) => (
+              <span
+                key={c}
+                className="inline-block rounded-sm"
+                style={{ width: 11, height: 11, background: c }}
+              />
+            ))}
+            <span>More</span>
+          </div>
+        </div>
+      ) : null}
 
       {empty ? (
         <EmptyState showArchived={showArchived} />
