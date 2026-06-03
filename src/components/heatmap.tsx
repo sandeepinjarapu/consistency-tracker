@@ -45,12 +45,12 @@ const DAY_LABELS_SHOWN: Record<number, string> = {
 
 /**
  * GitHub-style heatmap. Renders a 7×N grid of cells where each column is
- * an ISO week and each row is a day of week (Sunday on top, Saturday on
- * bottom).
+ * an ISO week and each row is a day of week (Monday on top, Sunday on
+ * bottom — matching the app's Monday-based ISO weeks).
  *
  * Pass an array of cells covering whatever date range you want — the
  * component will pad with `empty` cells on the left so the first column
- * starts on a Sunday.
+ * starts on a Monday.
  */
 export type HeatmapEditable = {
   goalId: string;
@@ -136,13 +136,16 @@ export default function Heatmap({
   const firstDate = cells[0].date;
   const lastDate = cells[cells.length - 1].date;
 
-  // Pad start so column 0 begins on Sunday
-  const firstDow = dayOfWeekForDateString(firstDate);
-  const gridStart = addDays(firstDate, -firstDow);
+  // Monday-based week: rows run Mon (top) → Sun (bottom), matching the app's
+  // ISO-week logic everywhere else (isoWeekStart, weekly strip, reflections).
+  // Row index 0=Mon … 6=Sun.
+  const mondayRow = (dow: number) => (dow + 6) % 7;
 
-  // Pad end so the last column ends on Saturday (so columns are uniform)
-  const lastDow = dayOfWeekForDateString(lastDate);
-  const gridEnd = addDays(lastDate, 6 - lastDow);
+  // Pad start so column 0 begins on Monday
+  const gridStart = addDays(firstDate, -mondayRow(dayOfWeekForDateString(firstDate)));
+
+  // Pad end so the last column ends on Sunday (so columns are uniform)
+  const gridEnd = addDays(lastDate, 6 - mondayRow(dayOfWeekForDateString(lastDate)));
 
   // Build grid columns
   const columns: { weekStart: string; cells: (HeatmapCell | null)[] }[] = [];
@@ -209,12 +212,12 @@ export default function Heatmap({
           );
         })}
 
-        {/* Day-of-week labels */}
+        {/* Day-of-week labels (positioned by Monday-based row) */}
         {Object.entries(DAY_LABELS_SHOWN).map(([dow, label]) => (
           <text
             key={dow}
             x={0}
-            y={TOP_GUTTER + parseInt(dow, 10) * ROW + CELL - 2}
+            y={TOP_GUTTER + mondayRow(parseInt(dow, 10)) * ROW + CELL - 2}
             fontSize={9}
             fill="#9ca3af"
           >
