@@ -14,6 +14,7 @@ export type Goal = {
   category_id: string | null;
   target_days: number[];
   reminder_time: string | null; // "HH:MM:SS" from Postgres TIME
+  calendar_added_at: string | null; // when the owner last exported to GCal
   weekly_target: number | null; // null = specific-day goal; N = "N times per week"
   active: boolean;
   archived_at: string | null;
@@ -63,7 +64,7 @@ function validate(input: GoalInput): void {
 }
 
 const GOAL_COLUMNS =
-  "id, user_id, name, description, motivation, doc_url, category_id, target_days, reminder_time, weekly_target, active, archived_at, created_at";
+  "id, user_id, name, description, motivation, doc_url, category_id, target_days, reminder_time, calendar_added_at, weekly_target, active, archived_at, created_at";
 
 export async function getGoal(id: string): Promise<Goal | null> {
   const supabase = await createClient();
@@ -131,6 +132,18 @@ export async function archiveGoal(id: string): Promise<void> {
   const { error } = await supabase
     .from("goals")
     .update({ active: false, archived_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+  revalidatePath("/consistencytracker", "layout");
+}
+
+// Record that the owner clicked "Add to Google Calendar". RLS scopes the
+// update to the owner. This is a one-time export marker, not calendar sync.
+export async function markCalendarAdded(id: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("goals")
+    .update({ calendar_added_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
   revalidatePath("/consistencytracker", "layout");

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, todayIn, isoWeekStart } from "@/lib/dates";
+import { addDays, todayIn, isoWeekStart, formatTime } from "@/lib/dates";
 import {
   buildHeatmapCells,
   buildGoalInsight,
@@ -17,6 +17,7 @@ import { getGoalReactions } from "@/lib/actions/reactions";
 import { REACTION_EMOJI, reactionSentence } from "@/lib/reactions";
 import { buildGCalUrl } from "@/lib/gcal";
 import { safeExternalUrl } from "@/lib/url";
+import CalendarReminder from "@/components/calendar-reminder";
 import Heatmap from "@/components/heatmap";
 import WeeklyStrip from "@/components/weekly-strip";
 import GoalRowActions from "@/components/goal-row-actions";
@@ -43,7 +44,7 @@ export default async function GoalPage({
   const { data: goal } = await supabase
     .from("goals")
     .select(
-      "id, name, description, motivation, doc_url, target_days, reminder_time, weekly_target, active, created_at, user_id, category:categories(name, color)"
+      "id, name, description, motivation, doc_url, target_days, reminder_time, calendar_added_at, weekly_target, active, created_at, user_id, category:categories(name, color)"
     )
     .eq("id", id)
     .single();
@@ -117,20 +118,18 @@ export default async function GoalPage({
             ) : null}
             {!isCount ? (
               goal.reminder_time ? (
-                <a
-                  href={buildGCalUrl({
+                <CalendarReminder
+                  goalId={goal.id}
+                  gcalUrl={buildGCalUrl({
                     name: goal.name,
                     description: goal.description,
                     reminderTime: goal.reminder_time,
                     targetDays: goal.target_days,
                     timezone,
                   })}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-black"
-                >
-                  Add to Google Calendar ↗
-                </a>
+                  reminderLabel={formatReminder(goal.reminder_time)}
+                  addedAt={goal.calendar_added_at}
+                />
               ) : (
                 <span>No reminder set · <a href={`/consistencytracker/goals/${goal.id}/edit`} className="underline hover:text-black">add one</a></span>
               )
@@ -139,6 +138,18 @@ export default async function GoalPage({
         </div>
         <GoalRowActions goalId={goal.id} archived={!goal.active} />
       </header>
+
+      {/* Sharing sits high on the page — partner accountability is central to
+          the product, so who a goal is shared with should be visible at a
+          glance, not buried below the stats. */}
+      <div className="mb-10 pb-6 border-b border-[color:var(--border)]">
+        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+          Sharing
+        </h3>
+        <Suspense fallback={<Skeleton className="h-6 w-full" />}>
+          <SharingSection goalId={goal.id} />
+        </Suspense>
+      </div>
 
       <Suspense fallback={<StatsSkeleton isCount={isCount} />}>
         <StatsSection
@@ -153,15 +164,6 @@ export default async function GoalPage({
           streakUnit={streakUnit}
         />
       </Suspense>
-
-      <div className="mt-12 pt-6 border-t border-[color:var(--border)]">
-        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-          Sharing
-        </h3>
-        <Suspense fallback={<Skeleton className="h-12 w-full" />}>
-          <SharingSection goalId={goal.id} />
-        </Suspense>
-      </div>
     </section>
   );
 }
@@ -386,6 +388,12 @@ function StatsSkeleton({ isCount }: { isCount: boolean }) {
 // Singularize a plural unit ("days"/"weeks") when the value is exactly 1.
 function pluralUnit(n: number, unit: string): string {
   return n === 1 ? unit.replace(/s$/, "") : unit;
+}
+
+// "09:00:00" (Postgres TIME) → "9:00am".
+function formatReminder(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  return formatTime(h, m);
 }
 
 function Stat({
