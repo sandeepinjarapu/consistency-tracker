@@ -256,13 +256,16 @@ function CategoryGroup({
         {goals.map((g) => (
           <li
             key={g.id}
-            className="flex items-center justify-between px-4 py-3"
+            className="relative flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
           >
             <div className="min-w-0 pr-4">
               <span className="inline-flex items-center gap-1.5">
+                {/* Stretched link: the ::after overlay makes the whole row
+                    open the goal, while the actions below sit on a higher
+                    layer and stay independently clickable. */}
                 <Link
                   href={`/consistencytracker/goals/${g.id}`}
-                  className="text-sm font-medium hover:underline"
+                  className="text-sm font-medium hover:underline after:absolute after:inset-0 after:content-['']"
                 >
                   {g.name}
                 </Link>
@@ -285,7 +288,9 @@ function CategoryGroup({
                 </p>
               ) : null}
             </div>
-            <GoalRowActions goalId={g.id} archived={archived} />
+            <div className="relative z-10 shrink-0">
+              <GoalRowActions goalId={g.id} archived={archived} />
+            </div>
           </li>
         ))}
       </ul>
