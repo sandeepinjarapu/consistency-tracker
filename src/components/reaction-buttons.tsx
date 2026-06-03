@@ -3,7 +3,7 @@
 import { useOptimistic, useTransition } from "react";
 import { toggleReaction } from "@/lib/actions/reactions";
 import {
-  REACTION_WEEK_LABELS,
+  REACTION_LABELS,
   REACTION_EMOJI as EMOJI,
   type ReactionKind,
 } from "@/lib/reactions";
@@ -12,14 +12,17 @@ const KINDS: ReactionKind[] = ["saw", "proud"];
 
 /**
  * Two gentle toggle buttons ("Saw it" / "Proud") a viewer can leave on a
- * partner's shared goal. Optimistic so the toggle feels instant; reconciles
- * to the server prop on the background refresh (reverts on failure).
+ * partner's shared goal for a given week. Optimistic so the toggle feels
+ * instant; reconciles to the server prop on the background refresh (reverts on
+ * failure).
  */
 export default function ReactionButtons({
   goalId,
+  weekStart,
   initial,
 }: {
   goalId: string;
+  weekStart: string;
   initial: Record<ReactionKind, boolean>;
 }) {
   const [pending, startTransition] = useTransition();
@@ -32,7 +35,7 @@ export default function ReactionButtons({
     startTransition(async () => {
       setState(kind);
       try {
-        await toggleReaction(goalId, kind);
+        await toggleReaction(goalId, kind, weekStart);
       } catch {
         // best-effort — on failure the optimistic flip reverts to the prop
       }
@@ -55,7 +58,7 @@ export default function ReactionButtons({
           }`}
         >
           {state[k] ? "✓ " : ""}
-          {EMOJI[k]} {REACTION_WEEK_LABELS[k]}
+          {EMOJI[k]} {REACTION_LABELS[k]}
         </button>
       ))}
     </div>
