@@ -7,7 +7,7 @@ import { listGoalsWithUnseenReactions } from "@/lib/actions/reactions";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { buildAggregateCells } from "@/lib/stats";
 import { todayIn, addDays } from "@/lib/dates";
-import GoalRowActions from "@/components/goal-row-actions";
+import GoalRowMenu from "@/components/goal-row-menu";
 import Heatmap from "@/components/heatmap";
 
 type GoalRow = {
@@ -219,10 +219,33 @@ export default async function GoalsPage({
   );
 }
 
-function shareLabel(names: string[] | undefined): string | null {
+// Full partner list for the share icon's hover tooltip.
+function shareTitle(names: string[] | undefined): string | null {
   if (!names || names.length === 0) return null;
-  if (names.length === 1) return `Shared with ${names[0]}`;
-  return `Shared with ${names[0]} +${names.length - 1}`;
+  return `Shared with ${names.join(", ")}`;
+}
+
+// Small "people" glyph marking a shared goal; the partner name(s) are revealed
+// on hover via the wrapping element's title.
+function ShareIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="9" cy="7" r="3" />
+      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+      <path d="M16 5a3 3 0 0 1 0 6" />
+      <path d="M21 20c0-2.3-1.4-4.3-3.5-5.2" />
+    </svg>
+  );
 }
 
 function CategoryGroup({
@@ -261,14 +284,23 @@ function CategoryGroup({
             <div className="min-w-0 pr-4">
               <span className="inline-flex items-center gap-1.5">
                 {/* Stretched link: the ::after overlay makes the whole row
-                    open the goal, while the actions below sit on a higher
-                    layer and stay independently clickable. */}
+                    open the goal, while the icon/menu below sit on a higher
+                    layer and stay independently hoverable/clickable. */}
                 <Link
                   href={`/consistencytracker/goals/${g.id}`}
                   className="text-sm font-medium hover:underline after:absolute after:inset-0 after:content-['']"
                 >
                   {g.name}
                 </Link>
+                {shareTitle(shares[g.id]) ? (
+                  <span
+                    className="relative z-10 inline-flex text-[color:var(--muted)]"
+                    title={shareTitle(shares[g.id]) ?? undefined}
+                    aria-label={shareTitle(shares[g.id]) ?? undefined}
+                  >
+                    <ShareIcon />
+                  </span>
+                ) : null}
                 {newReactionGoals.has(g.id) ? (
                   <span
                     className="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"
@@ -281,15 +313,9 @@ function CategoryGroup({
                 {targetDaysLabel(g.target_days)}
                 {g.description ? ` · ${g.description}` : ""}
               </p>
-              {shareLabel(shares[g.id]) ? (
-                <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-[color:var(--muted)]">
-                  <span aria-hidden>↗</span>
-                  {shareLabel(shares[g.id])}
-                </p>
-              ) : null}
             </div>
             <div className="relative z-10 shrink-0">
-              <GoalRowActions goalId={g.id} archived={archived} />
+              <GoalRowMenu goalId={g.id} archived={archived} />
             </div>
           </li>
         ))}
