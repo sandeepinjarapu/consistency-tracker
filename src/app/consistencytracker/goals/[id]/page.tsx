@@ -2,7 +2,14 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, todayIn, isoWeekStart, formatTime } from "@/lib/dates";
+import {
+  addDays,
+  todayIn,
+  isoWeekStart,
+  formatTime,
+  dayOfWeekForDateString,
+} from "@/lib/dates";
+import { computeWeekStatus } from "@/lib/goal-week-status";
 import {
   buildHeatmapCells,
   buildGoalInsight,
@@ -259,26 +266,51 @@ async function StatsSection({
     doneCount: stats.doneCount,
   });
 
+  // "Where am I this week?" — the page's primary status. For count goals the
+  // denominator is the weekly target; for specific-day goals it's the number
+  // of scheduled days in the current ISO week.
+  const weekStart = isoWeekStart(today);
+  const doneThisWeek = checkIns.filter(
+    (c) => c.status === "done" && c.date >= weekStart && c.date <= today
+  ).length;
+  let total = weeklyTarget ?? 0;
+  if (weeklyTarget == null) {
+    for (let d = 0; d < 7; d++) {
+      if (targetDays.includes(dayOfWeekForDateString(addDays(weekStart, d)))) {
+        total++;
+      }
+    }
+  }
+  const weekStatus = computeWeekStatus({
+    doneThisWeek,
+    total,
+    isCount: weeklyTarget != null,
+    currentStreak: stats.currentStreak,
+    longestStreak: stats.longestStreak,
+    streakUnit,
+    doneCount: stats.doneCount,
+  });
+
   return (
     <>
-      {insight ? (
-        <p className="text-sm mb-6 leading-relaxed">{insight}</p>
-      ) : null}
-
-      <div className="grid grid-cols-2 gap-4 mb-10 max-w-md">
-        <Stat
-          label="Streak"
-          value={`${stats.currentStreak}`}
-          unit={pluralUnit(stats.currentStreak, streakUnit)}
-          sub={`best ${stats.longestStreak} ${pluralUnit(stats.longestStreak, streakUnit)}`}
-        />
-        <Stat
-          label="Done"
-          value={`${stats.doneCount}`}
-          unit={`/ ${stats.doneCount + stats.skippedCount + stats.missedCount}`}
-          sub={stats.skippedCount > 0 ? `${stats.skippedCount} skipped` : undefined}
-        />
+      <div className="mb-8">
+        <p className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-1">
+          This week
+        </p>
+        <p className="text-3xl font-light tracking-tight">
+          {weekStatus.headline}
+        </p>
+        <p className="mt-1 text-sm">{weekStatus.note}</p>
+        <p className="mt-2 text-xs text-[color:var(--muted)]">
+          {weekStatus.secondary}
+        </p>
       </div>
+
+      {insight ? (
+        <p className="text-sm mb-10 leading-relaxed text-[color:var(--muted)]">
+          {insight}
+        </p>
+      ) : null}
 
       {weeklyTarget != null ? (
         <div className="mb-8">
@@ -358,10 +390,9 @@ function StatsSkeleton({ isCount }: { isCount: boolean }) {
   return (
     <div aria-busy>
       <span className="sr-only">Loading…</span>
-      <div className="grid grid-cols-2 gap-4 mb-10 max-w-md">
-        {[0, 1].map((i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
+      <div className="mb-8 space-y-2">
+        <Skeleton className="h-9 w-24" />
+        <Skeleton className="h-4 w-40" />
       </div>
       {isCount ? (
         <div className="mb-8">
@@ -382,44 +413,8 @@ function StatsSkeleton({ isCount }: { isCount: boolean }) {
   );
 }
 
-// Singularize a plural unit ("days"/"weeks") when the value is exactly 1.
-function pluralUnit(n: number, unit: string): string {
-  return n === 1 ? unit.replace(/s$/, "") : unit;
-}
-
 // "09:00:00" (Postgres TIME) → "9:00am".
 function formatReminder(time: string): string {
   const [h, m] = time.split(":").map(Number);
   return formatTime(h, m);
-}
-
-function Stat({
-  label,
-  value,
-  unit,
-  sub,
-}: {
-  label: string;
-  value: string;
-  unit?: string;
-  sub?: string;
-}) {
-  return (
-    <div className="border border-[color:var(--border)] rounded-lg p-4">
-      <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
-        {label}
-      </p>
-      <p className="mt-1 text-xl font-light">
-        {value}
-        {unit ? (
-          <span className="ml-1 text-xs text-[color:var(--muted)] font-normal">
-            {unit}
-          </span>
-        ) : null}
-      </p>
-      {sub ? (
-        <p className="mt-0.5 text-xs text-[color:var(--muted)]">{sub}</p>
-      ) : null}
-    </div>
-  );
 }
