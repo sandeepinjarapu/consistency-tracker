@@ -24,10 +24,10 @@ export default function GoalRowActions({
   }
 
   return (
-    <div className="flex items-center gap-1 text-xs">
+    <div className="flex items-center gap-3 text-xs">
       <Link
         href={`/consistencytracker/goals/${goalId}/edit`}
-        className="rounded px-2 py-1.5 text-[color:var(--muted)] hover:bg-gray-100 hover:text-black"
+        className="text-[color:var(--muted)] hover:text-black"
       >
         Edit
       </Link>
@@ -35,7 +35,7 @@ export default function GoalRowActions({
         type="button"
         onClick={handleArchive}
         disabled={pending}
-        className="rounded px-2 py-1.5 text-[color:var(--muted)] hover:bg-gray-100 hover:text-black disabled:opacity-50"
+        className="text-[color:var(--muted)] hover:text-black disabled:opacity-50"
       >
         {pending ? "…" : archived ? "Unarchive" : "Archive"}
       </button>
