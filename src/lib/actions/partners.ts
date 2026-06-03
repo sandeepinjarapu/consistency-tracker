@@ -6,6 +6,11 @@ import { getCurrentUser } from "@/lib/supabase/current-user";
 import { sendInviteEmail } from "@/lib/email";
 import { revalidatePath } from "next/cache";
 
+// A goal can be shared with at most this many partners — accountability is
+// about a few close people, not an audience. (Non-exported: this is a
+// "use server" module, which may only export async functions.)
+const MAX_SHARES_PER_GOAL = 10;
+
 export type Partner = {
   id: string;
   display_name: string | null;
@@ -365,6 +370,18 @@ export async function setGoalShared(
   if (!partnered) throw new Error("Not a partner");
 
   if (shared) {
+    // Enforce the per-goal sharing cap before adding a new viewer.
+    const { count } = await supabase
+      .from("shares")
+      .select("*", { count: "exact", head: true })
+      .eq("owner_id", user.id)
+      .eq("goal_id", goalId);
+    if ((count ?? 0) >= MAX_SHARES_PER_GOAL) {
+      throw new Error(
+        `You can share a goal with up to ${MAX_SHARES_PER_GOAL} partners.`
+      );
+    }
+
     const { error } = await supabase
       .from("shares")
       .insert({ owner_id: user.id, viewer_id: partnerId, goal_id: goalId });
