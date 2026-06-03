@@ -219,10 +219,14 @@ export default async function GoalsPage({
   );
 }
 
-// Full partner list for the share icon's hover tooltip.
+// Tooltip text for the share icon: up to 3 names, then "and N others".
 function shareTitle(names: string[] | undefined): string | null {
   if (!names || names.length === 0) return null;
-  return `Shared with ${names.join(", ")}`;
+  if (names.length <= 3) return `Shared with ${names.join(", ")}`;
+  const rest = names.length - 3;
+  return `Shared with ${names.slice(0, 3).join(", ")} and ${rest} other${
+    rest === 1 ? "" : "s"
+  }`;
 }
 
 // Small "people" glyph marking a shared goal; the partner name(s) are revealed
@@ -277,7 +281,8 @@ function CategoryGroup({
       </div>
       <ul className="border border-[color:var(--border)] rounded-lg divide-y divide-[color:var(--border)]">
         {goals.map((g) => {
-          const share = shareTitle(shares[g.id]);
+          const shareNames = shares[g.id] ?? [];
+          const share = shareTitle(shareNames);
           return (
           <li
             key={g.id}
@@ -296,15 +301,21 @@ function CategoryGroup({
                 </Link>
                 {share ? (
                   <span
-                    className="group relative z-10 inline-flex text-[color:var(--muted)]"
+                    className="group relative z-10 inline-flex items-center gap-0.5 text-[color:var(--muted)]"
                     aria-label={share}
                   >
                     <ShareIcon />
+                    {shareNames.length > 1 ? (
+                      <span className="text-[10px] leading-none">
+                        {shareNames.length}
+                      </span>
+                    ) : null}
                     {/* Custom tooltip: native title has a ~500ms browser delay;
-                        this shows in ~100ms on hover. */}
+                        this shows in ~100ms on hover. Wraps (max-width) so a
+                        long list doesn't run off-screen. */}
                     <span
                       role="tooltip"
-                      className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-[#0a0a0a] px-2 py-1 text-[11px] text-white opacity-0 transition-opacity duration-100 group-hover:opacity-100"
+                      className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 w-max max-w-[12rem] -translate-x-1/2 rounded bg-[#0a0a0a] px-2 py-1 text-left text-[11px] leading-snug text-white opacity-0 transition-opacity duration-100 group-hover:opacity-100"
                     >
                       {share}
                     </span>
