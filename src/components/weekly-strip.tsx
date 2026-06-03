@@ -29,7 +29,7 @@ export default function WeeklyStrip({
       <div
         className="flex items-end gap-1"
         role="img"
-        aria-label="Weekly target history"
+        aria-label="Week-by-week history"
       >
         {shown.map((w) => {
           const pct = Math.min(w.done / weeklyTarget, 1);

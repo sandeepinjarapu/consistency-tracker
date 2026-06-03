@@ -13,6 +13,7 @@ const freq: WeekStatusInput = {
   longestStreak: 0,
   streakUnit: "weeks",
   doneCount: 12,
+  missedSoFar: 0,
 };
 
 const specific: WeekStatusInput = {
@@ -23,6 +24,7 @@ const specific: WeekStatusInput = {
   longestStreak: 0,
   streakUnit: "days",
   doneCount: 1,
+  missedSoFar: 0,
 };
 
 describe("computeWeekStatus — headline + note", () => {
@@ -48,6 +50,31 @@ describe("computeWeekStatus — headline + note", () => {
     const s = computeWeekStatus({ ...freq, doneThisWeek: 0, doneCount: 0 });
     expect(s.note).toBe("Nothing logged yet — today's a good place to start.");
     expect(s.secondary).toBe("No check-ins yet — your history starts here.");
+  });
+
+  it("specific-day, week underway with missed days, points to days left", () => {
+    // Wed of a Mon–Fri week, Mon+Tue missed, nothing done → 3 scheduled left.
+    expect(
+      computeWeekStatus({ ...specific, doneThisWeek: 0, missedSoFar: 2 }).note
+    ).toBe("Still time this week — 3 scheduled days left.");
+  });
+
+  it("specific-day, one scheduled day left, reads singular", () => {
+    expect(
+      computeWeekStatus({ ...specific, doneThisWeek: 0, missedSoFar: 4 }).note
+    ).toBe("Still time this week — 1 scheduled day left.");
+  });
+
+  it("specific-day, week over with nothing done, stays factual", () => {
+    expect(
+      computeWeekStatus({ ...specific, doneThisWeek: 0, missedSoFar: 5 }).note
+    ).toBe("No check-ins this week.");
+  });
+
+  it("a blank week is only 'fresh' before any scheduled day is missed", () => {
+    expect(
+      computeWeekStatus({ ...specific, doneThisWeek: 0, missedSoFar: 0 }).note
+    ).toBe("Fresh week — earlier check-ins still count.");
   });
 
   it("specific-day, partial week", () => {
