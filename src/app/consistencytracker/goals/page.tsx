@@ -289,52 +289,52 @@ function CategoryGroup({
             className="relative flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
           >
             <div className="min-w-0 pr-4">
-              <span className="inline-flex items-center gap-1.5">
-                {/* Stretched link: the ::after overlay makes the whole row
-                    open the goal, while the icon/menu below sit on a higher
-                    layer and stay independently hoverable/clickable. */}
-                <Link
-                  href={`/consistencytracker/goals/${g.id}`}
-                  className="text-sm font-medium hover:underline after:absolute after:inset-0 after:content-['']"
-                >
-                  {g.name}
-                </Link>
-                {share ? (
-                  <span
-                    className="group relative z-10 inline-flex items-center gap-0.5 text-[color:var(--muted)]"
-                    aria-label={share}
-                  >
-                    <ShareIcon />
-                    {shareNames.length > 1 ? (
-                      <span className="text-[10px] leading-none">
-                        {shareNames.length}
-                      </span>
-                    ) : null}
-                    {/* Custom tooltip: native title has a ~500ms browser delay;
-                        this shows in ~100ms on hover. Wraps (max-width) so a
-                        long list doesn't run off-screen. */}
-                    <span
-                      role="tooltip"
-                      className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 w-max max-w-[12rem] -translate-x-1/2 rounded bg-[#0a0a0a] px-2 py-1 text-left text-[11px] leading-snug text-white opacity-0 transition-opacity duration-100 group-hover:opacity-100"
-                    >
-                      {share}
-                    </span>
-                  </span>
-                ) : null}
-                {newReactionGoals.has(g.id) ? (
-                  <span
-                    className="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"
-                    title="New reaction from a partner"
-                    aria-label="New reaction from a partner"
-                  />
-                ) : null}
-              </span>
+              {/* Stretched link: the ::after overlay makes the whole row open
+                  the goal, while the right-side cluster sits on a higher layer
+                  and stays independently hoverable/clickable. */}
+              <Link
+                href={`/consistencytracker/goals/${g.id}`}
+                className="text-sm font-medium hover:underline after:absolute after:inset-0 after:content-['']"
+              >
+                {g.name}
+              </Link>
               <p className="text-xs text-[color:var(--muted)] mt-0.5">
                 {targetDaysLabel(g.target_days)}
                 {g.description ? ` · ${g.description}` : ""}
               </p>
             </div>
-            <div className="relative z-10 shrink-0">
+            {/* Right-side meta cluster: aligned on every row so it's scannable
+                and doesn't shift with the goal name's length. */}
+            <div className="relative z-10 flex shrink-0 items-center gap-2">
+              {newReactionGoals.has(g.id) ? (
+                <span
+                  className="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"
+                  title="New reaction from a partner"
+                  aria-label="New reaction from a partner"
+                />
+              ) : null}
+              {share ? (
+                <span
+                  className="group relative inline-flex items-center gap-0.5 text-[color:var(--muted)]"
+                  aria-label={share}
+                >
+                  <ShareIcon />
+                  {shareNames.length > 1 ? (
+                    <span className="text-[10px] leading-none">
+                      {shareNames.length}
+                    </span>
+                  ) : null}
+                  {/* Custom tooltip: native title has a ~500ms browser delay;
+                      this shows in ~100ms on hover. Anchored right (the icon is
+                      near the row's right edge) and wraps so it stays on-screen. */}
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none absolute right-0 top-full z-20 mt-1 w-max max-w-[12rem] rounded bg-[#0a0a0a] px-2 py-1 text-left text-[11px] leading-snug text-white opacity-0 transition-opacity duration-100 group-hover:opacity-100"
+                  >
+                    {share}
+                  </span>
+                </span>
+              ) : null}
               <GoalRowMenu goalId={g.id} archived={archived} />
             </div>
           </li>
