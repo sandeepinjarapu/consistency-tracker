@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, todayIn, isoWeekStart, formatTime } from "@/lib/dates";
+import { addDays, todayIn, isoWeekStart } from "@/lib/dates";
 import {
   buildHeatmapCells,
   buildGoalInsight,
@@ -263,20 +263,15 @@ async function StatsSection({
         <p className="text-sm mb-6 leading-relaxed">{insight}</p>
       ) : null}
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
-        <Stat label="Current streak" value={`${stats.currentStreak}`} unit={streakUnit} />
-        <Stat label="Longest streak" value={`${stats.longestStreak}`} unit={streakUnit} />
+      <div className="grid grid-cols-3 gap-4 mb-10">
+        <Stat
+          label="Streak"
+          value={`${stats.currentStreak}`}
+          unit={pluralUnit(stats.currentStreak, streakUnit)}
+          sub={`best ${stats.longestStreak} ${pluralUnit(stats.longestStreak, streakUnit)}`}
+        />
         <Stat label="Done" value={`${stats.doneCount}`} unit={`/ ${stats.doneCount + stats.skippedCount + stats.missedCount}`} />
         <Stat label="Completion" value={`${Math.round(stats.completionRate * 100)}%`} unit={stats.skippedCount > 0 ? `(${stats.skippedCount} skipped)` : ""} />
-        <Stat
-          label="Typical"
-          value={
-            timePattern.typical
-              ? formatTime(timePattern.typical.hour, timePattern.typical.minute)
-              : "—"
-          }
-          unit={timePattern.total > 0 ? "median" : ""}
-        />
       </div>
 
       {weeklyTarget != null ? (
@@ -309,16 +304,14 @@ async function StatsSection({
         Click a day to log or undo a check-in — this week, or up to 2 days into the new week.
       </p>
 
-      <div className="mt-8">
-        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-          Time of day
-        </h3>
-        <TimeHistogram
-          hourly={timePattern.hourly}
-          total={timePattern.total}
-          color={categoryColor}
-        />
-      </div>
+      {timePattern.total >= 4 ? (
+        <div className="mt-8">
+          <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+            Time of day
+          </h3>
+          <TimeHistogram hourly={timePattern.hourly} color={categoryColor} />
+        </div>
+      ) : null}
     </>
   );
 }
@@ -362,8 +355,8 @@ function StatsSkeleton({ isCount }: { isCount: boolean }) {
   return (
     <div aria-busy>
       <span className="sr-only">Loading…</span>
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-10">
-        {[0, 1, 2, 3, 4].map((i) => (
+      <div className="grid grid-cols-3 gap-4 mb-10">
+        {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-16 w-full" />
         ))}
       </div>
@@ -386,7 +379,22 @@ function StatsSkeleton({ isCount }: { isCount: boolean }) {
   );
 }
 
-function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {
+// Singularize a plural unit ("days"/"weeks") when the value is exactly 1.
+function pluralUnit(n: number, unit: string): string {
+  return n === 1 ? unit.replace(/s$/, "") : unit;
+}
+
+function Stat({
+  label,
+  value,
+  unit,
+  sub,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  sub?: string;
+}) {
   return (
     <div className="border border-[color:var(--border)] rounded-lg p-4">
       <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
@@ -400,6 +408,9 @@ function Stat({ label, value, unit }: { label: string; value: string; unit?: str
           </span>
         ) : null}
       </p>
+      {sub ? (
+        <p className="mt-0.5 text-xs text-[color:var(--muted)]">{sub}</p>
+      ) : null}
     </div>
   );
 }
