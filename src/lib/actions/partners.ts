@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { sendInviteEmail } from "@/lib/email";
+import { evaluateInviteAcceptance } from "@/lib/invite-acceptance";
 import { revalidatePath } from "next/cache";
 
 // A goal can be shared with at most this many partners — accountability is
@@ -224,10 +225,21 @@ export async function revokeInvite(inviteId: string): Promise<void> {
  * Accept an invite by its token. Uses service-role to look up the invite
  * (the token in the URL is the proof of intent — we don't want RLS to
  * block lookup based on who's signed in).
+ *
+ * Acceptance is bound to the invited email: if the signed-in account's email
+ * differs, the caller gets `email_mismatch` (with the invited address) and
+ * must re-call with `confirmMismatch` once the user has acknowledged it. This
+ * keeps a leaked link from being silently claimed by the wrong account while
+ * still allowing the legitimate cross-email case (invited at one address,
+ * signed in with another).
  */
 export async function acceptInvite(
-  token: string
-): Promise<{ ok: true; partnerId: string } | { ok: false; reason: string }> {
+  token: string,
+  confirmMismatch = false
+): Promise<
+  | { ok: true; partnerId: string }
+  | { ok: false; reason: string; invitedEmail?: string }
+> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, reason: "not_signed_in" };
 
@@ -239,10 +251,18 @@ export async function acceptInvite(
     .eq("token", token)
     .single();
 
-  if (lookupErr || !invite) return { ok: false, reason: "not_found" };
-  if (invite.accepted_at) return { ok: false, reason: "already_accepted" };
-  if (new Date(invite.expires_at) < new Date()) return { ok: false, reason: "expired" };
-  if (invite.inviter_id === user.id) return { ok: false, reason: "cannot_self_accept" };
+  const decision = evaluateInviteAcceptance({
+    invite: lookupErr ? null : invite,
+    userId: user.id,
+    userEmail: user.email ?? null,
+    confirmedMismatch: confirmMismatch,
+    now: new Date(),
+  });
+  if (!decision.ok) {
+    return decision.reason === "email_mismatch"
+      ? { ok: false, reason: "email_mismatch", invitedEmail: decision.invitedEmail }
+      : { ok: false, reason: decision.reason };
+  }
 
   // Idempotent: even if these two are already partnered via another
   // accepted invite, we just mark this invite accepted so it clears from
@@ -250,11 +270,11 @@ export async function acceptInvite(
   const { error: updateErr } = await service
     .from("partner_invites")
     .update({ accepted_at: new Date().toISOString(), accepted_by: user.id })
-    .eq("id", invite.id);
+    .eq("id", invite!.id);
   if (updateErr) return { ok: false, reason: "update_failed" };
 
   revalidatePath("/consistencytracker", "layout");
-  return { ok: true, partnerId: invite.inviter_id };
+  return { ok: true, partnerId: invite!.inviter_id };
 }
 
 /**
