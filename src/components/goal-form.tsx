@@ -134,6 +134,23 @@ export default function GoalForm({
         />
       </Field>
 
+      {/* Intent leads, right under the name — the "why" is what brings
+          someone back, so it shouldn't hide among the config fields. */}
+      <Field label="Why this matters" htmlFor="motivation">
+        <textarea
+          id="motivation"
+          value={motivation}
+          onChange={(e) => setMotivation(e.target.value)}
+          rows={3}
+          maxLength={400}
+          placeholder="When this gets hard, what should this goal remind you of?"
+          className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black resize-none"
+        />
+        <p className="mt-1 text-xs text-[color:var(--muted)]">
+          Optional — but it&apos;s what you&apos;ll see on this goal when showing up feels hard.
+        </p>
+      </Field>
+
       <Field label="Category" htmlFor="category">
         <div className="flex items-center gap-2">
           <select
@@ -191,18 +208,6 @@ export default function GoalForm({
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
           maxLength={400}
-          className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black resize-none"
-        />
-      </Field>
-
-      <Field label="Why this matters (optional)" htmlFor="motivation">
-        <textarea
-          id="motivation"
-          value={motivation}
-          onChange={(e) => setMotivation(e.target.value)}
-          rows={2}
-          maxLength={400}
-          placeholder="The reason behind this goal — what keeps you coming back."
           className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black resize-none"
         />
       </Field>
