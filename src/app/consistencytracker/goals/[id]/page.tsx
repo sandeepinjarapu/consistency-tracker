@@ -263,15 +263,19 @@ async function StatsSection({
         <p className="text-sm mb-6 leading-relaxed">{insight}</p>
       ) : null}
 
-      <div className="grid grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-2 gap-4 mb-10 max-w-md">
         <Stat
           label="Streak"
           value={`${stats.currentStreak}`}
           unit={pluralUnit(stats.currentStreak, streakUnit)}
           sub={`best ${stats.longestStreak} ${pluralUnit(stats.longestStreak, streakUnit)}`}
         />
-        <Stat label="Done" value={`${stats.doneCount}`} unit={`/ ${stats.doneCount + stats.skippedCount + stats.missedCount}`} />
-        <Stat label="Completion" value={`${Math.round(stats.completionRate * 100)}%`} unit={stats.skippedCount > 0 ? `(${stats.skippedCount} skipped)` : ""} />
+        <Stat
+          label="Done"
+          value={`${stats.doneCount}`}
+          unit={`/ ${stats.doneCount + stats.skippedCount + stats.missedCount}`}
+          sub={stats.skippedCount > 0 ? `${stats.skippedCount} skipped` : undefined}
+        />
       </div>
 
       {weeklyTarget != null ? (
@@ -355,8 +359,8 @@ function StatsSkeleton({ isCount }: { isCount: boolean }) {
   return (
     <div aria-busy>
       <span className="sr-only">Loading…</span>
-      <div className="grid grid-cols-3 gap-4 mb-10">
-        {[0, 1, 2].map((i) => (
+      <div className="grid grid-cols-2 gap-4 mb-10 max-w-md">
+        {[0, 1].map((i) => (
           <Skeleton key={i} className="h-16 w-full" />
         ))}
       </div>
