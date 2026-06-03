@@ -18,6 +18,12 @@ export type WeekStatusInput = {
   /** "days" | "weeks" (plural). */
   streakUnit: string;
   doneCount: number;
+  /**
+   * Scheduled days this week that have already passed without a check-in.
+   * Specific-day goals only; 0 for count goals (no per-day schedule). Used to
+   * decide whether a blank week can still honestly be called "fresh".
+   */
+  missedSoFar: number;
 };
 
 export type WeekStatus = {
@@ -35,12 +41,24 @@ export function computeWeekStatus(i: WeekStatusInput): WeekStatus {
       ? "Target met for this week."
       : "Every scheduled day done this week.";
   } else if (i.doneThisWeek === 0) {
-    // A blank week shouldn't read as failure. If there's earlier history this
-    // is a fresh start; for a brand-new goal it's a gentle invitation.
-    note =
-      i.doneCount > 0
-        ? "Fresh week — earlier check-ins still count."
-        : "Nothing logged yet — today's a good place to start.";
+    // A blank week shouldn't read as failure — but "fresh" only holds while the
+    // week genuinely is. Once scheduled days have passed unlogged, claiming a
+    // clean slate contradicts the missed days the slot row already shows, so
+    // pivot to what's still actionable.
+    if (i.missedSoFar > 0) {
+      const remaining = i.total - i.missedSoFar; // scheduled days today-or-later
+      note =
+        remaining > 0
+          ? `Still time this week — ${remaining} scheduled ${
+              remaining === 1 ? "day" : "days"
+            } left.`
+          : "No check-ins this week.";
+    } else {
+      note =
+        i.doneCount > 0
+          ? "Fresh week — earlier check-ins still count."
+          : "Nothing logged yet — today's a good place to start.";
+    }
   } else {
     note = i.isCount
       ? `${i.total - i.doneThisWeek} more to go this week.`

@@ -280,15 +280,6 @@ async function StatsSection({
       }
     }
   }
-  const weekStatus = computeWeekStatus({
-    doneThisWeek,
-    total,
-    isCount: weeklyTarget != null,
-    currentStreak: stats.currentStreak,
-    longestStreak: stats.longestStreak,
-    streakUnit,
-    doneCount: stats.doneCount,
-  });
   const weekSlots = computeWeekSlots({
     isCount: weeklyTarget != null,
     weekStart,
@@ -297,6 +288,19 @@ async function StatsSection({
     doneDates: doneDatesThisWeek,
     weeklyTarget: weeklyTarget ?? 0,
     doneThisWeek,
+  });
+  // Scheduled days already gone by unlogged — derived from the same slots so
+  // the headline copy and the slot row never disagree.
+  const missedSoFar = weekSlots.filter((s) => s.state === "missed").length;
+  const weekStatus = computeWeekStatus({
+    doneThisWeek,
+    total,
+    isCount: weeklyTarget != null,
+    currentStreak: stats.currentStreak,
+    longestStreak: stats.longestStreak,
+    streakUnit,
+    doneCount: stats.doneCount,
+    missedSoFar,
   });
 
   return (
