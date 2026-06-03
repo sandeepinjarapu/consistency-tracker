@@ -317,19 +317,6 @@ async function StatsSection({
         </p>
       </div>
 
-      {weeklyTarget != null ? (
-        <div className="mb-10">
-          <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-            Weekly target
-          </h3>
-          <WeeklyStrip
-            weeks={weeklyMet}
-            weeklyTarget={weeklyTarget}
-            doneColor={categoryColor}
-          />
-        </div>
-      ) : null}
-
       <div className="mb-10">
         <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
           Recent activity
@@ -348,6 +335,21 @@ async function StatsSection({
           }}
         />
       </div>
+
+      {/* Week-by-week trend sits in the history zone, after the daily heatmap —
+          not next to the "X of 5" headline, which already covers this week. */}
+      {weeklyTarget != null ? (
+        <div className="mb-10">
+          <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+            Week by week
+          </h3>
+          <WeeklyStrip
+            weeks={weeklyMet}
+            weeklyTarget={weeklyTarget}
+            doneColor={categoryColor}
+          />
+        </div>
+      ) : null}
 
       {/* Pattern — what the app has noticed. Comes last (status → proof →
           pattern), and the insight sentence narrates the time-of-day chart. */}
@@ -409,15 +411,15 @@ function StatsSkeleton({ isCount }: { isCount: boolean }) {
         <Skeleton className="h-9 w-24" />
         <Skeleton className="h-4 w-40" />
       </div>
+      <Skeleton className="h-28 w-full" />
       {isCount ? (
-        <div className="mb-8">
+        <div className="mt-8">
           <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-            Weekly target
+            Week by week
           </h3>
           <Skeleton className="h-8 w-full" />
         </div>
       ) : null}
-      <Skeleton className="h-28 w-full" />
       <div className="mt-8">
         <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
           Time of day
