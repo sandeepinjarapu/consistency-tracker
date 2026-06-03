@@ -45,6 +45,29 @@ export async function getReflection(weekStartDate: string): Promise<Reflection |
   return (data ?? null) as Reflection | null;
 }
 
+/**
+ * A partner's reflections that they've marked `partner`-visible, for the given
+ * weeks. Read with the normal (RLS-enforced) client: the "reflections: read
+ * own or partner" policy only returns visibility='partner' rows when the owner
+ * has shared at least one goal with the caller, so this can't surface a
+ * private reflection even though visibility is also filtered here in app code.
+ */
+export async function getPartnerReflections(
+  ownerId: string,
+  weekStarts: string[]
+): Promise<Reflection[]> {
+  if (weekStarts.length === 0) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("weekly_reflections")
+    .select(COLS)
+    .eq("user_id", ownerId)
+    .eq("visibility", "partner")
+    .in("week_start_date", weekStarts)
+    .order("week_start_date", { ascending: false });
+  return (data ?? []) as Reflection[];
+}
+
 export async function upsertReflection(input: ReflectionInput): Promise<void> {
   const supabase = await createClient();
   const {
