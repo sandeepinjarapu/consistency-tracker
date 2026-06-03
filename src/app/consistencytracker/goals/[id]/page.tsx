@@ -147,13 +147,10 @@ export default async function GoalPage({
       </header>
 
       {/* Sharing sits high on the page — partner accountability is central to
-          the product, so who a goal is shared with should be visible at a
-          glance, not buried below the stats. */}
-      <div className="mb-10 pb-6 border-b border-[color:var(--border)]">
-        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-          Sharing
-        </h3>
-        <Suspense fallback={<Skeleton className="h-6 w-full" />}>
+          the product — but as a light status row, not a heavy module: no
+          uppercase section header, just "Shared with … · Manage". */}
+      <div className="mb-8 pb-5 border-b border-[color:var(--border)]">
+        <Suspense fallback={<Skeleton className="h-5 w-48" />}>
           <SharingSection goalId={goal.id} />
         </Suspense>
       </div>
@@ -306,14 +303,8 @@ async function StatsSection({
         </p>
       </div>
 
-      {insight ? (
-        <p className="text-sm mb-10 leading-relaxed text-[color:var(--muted)]">
-          {insight}
-        </p>
-      ) : null}
-
       {weeklyTarget != null ? (
-        <div className="mb-8">
+        <div className="mb-10">
           <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
             Weekly target
           </h3>
@@ -325,22 +316,32 @@ async function StatsSection({
         </div>
       ) : null}
 
-      <p className="text-xs text-[color:var(--muted)] mb-2">
-        Each square is a day. Click one to log or undo a check-in — this week, or up to 2 days into the next.
-      </p>
-      <Heatmap
-        cells={cells}
-        doneColor={categoryColor}
-        editable={{
-          goalId,
-          goalStartDate,
-          today,
-          targetDays,
-        }}
-      />
+      <div className="mb-10">
+        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
+          Recent activity
+        </h3>
+        <p className="text-xs text-[color:var(--muted)] mb-2">
+          Each square is a day. Click one to log or undo a check-in — this week, or up to 2 days into the next.
+        </p>
+        <Heatmap
+          cells={cells}
+          doneColor={categoryColor}
+          editable={{
+            goalId,
+            goalStartDate,
+            today,
+            targetDays,
+          }}
+        />
+      </div>
 
+      {/* Pattern — what the app has noticed. Comes last (status → proof →
+          pattern), and the insight sentence narrates the time-of-day chart. */}
+      {insight ? (
+        <p className="text-sm leading-relaxed mb-6">{insight}</p>
+      ) : null}
       {timePattern.total >= 4 ? (
-        <div className="mt-8">
+        <div>
           <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
             Time of day
           </h3>
