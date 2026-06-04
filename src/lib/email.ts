@@ -154,7 +154,7 @@ function weeklyHtml({
       const skipped = g.skipped > 0 ? ` <span style="color:#92400e;">· ${g.skipped} skipped</span>` : "";
       return `<tr>
         <td style="padding: 6px 12px 6px 0; font-size: 14px; color: #0a0a0a;">${escapeHtml(g.name)}</td>
-        <td style="padding: 6px 0; font-size: 14px; color: #374151; text-align: right; white-space: nowrap;">${g.done} / ${g.target} <span style="color:#9ca3af;">· ${pct}%</span>${skipped}</td>
+        <td style="padding: 6px 0; font-size: 14px; color: #374151; text-align: right; white-space: nowrap;">${g.done} / ${g.target} this week <span style="color:#9ca3af;">· ${pct}%</span>${skipped}</td>
       </tr>`;
     })
     .join("");
@@ -168,7 +168,7 @@ function weeklyHtml({
       <a href="${ctaUrl}" style="display: inline-block; background: #0a0a0a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-size: 14px;">${ctaLabel}</a>
     </p>
     <p style="font-size: 11px; color: #9ca3af; margin-top: 24px;">
-      Sent once a week (Sundays). You can manage partners in the app.
+      Sent once a week (Mondays). You can manage partners in the app.
     </p>
   </body>
 </html>`;
@@ -193,7 +193,7 @@ function weeklyText({
   const lines = goals.map((g) => {
     const pct = g.target > 0 ? Math.round((g.done / g.target) * 100) : 0;
     const skipped = g.skipped > 0 ? ` (${g.skipped} skipped)` : "";
-    return `  • ${g.name}: ${g.done}/${g.target} · ${pct}%${skipped}`;
+    return `  • ${g.name}: ${g.done}/${g.target} this week · ${pct}%${skipped}`;
   });
   return [
     `${self ? "Your" : `${ownerName}'s`} week (${weekLabel}):`,

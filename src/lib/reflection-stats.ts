@@ -24,6 +24,12 @@ export type GoalWeekStats = {
   skipped: number;
   missed: number;
   completion: number; // done / targetCount, 0..1 (0 if no targets this week)
+  // A count goal's *first* week, when the goal was created after that week's
+  // Monday: it never had a full week to hit its quota, so it's grace — excluded
+  // from completion scoring (its check-ins still show as evidence). Specific
+  // goals don't need this: their targetCount already only counts eligible days
+  // on/after creation. Absent/false means "score normally".
+  partial?: boolean;
   skipReasons: Record<string, number>;
   notes: Array<{ date: string; note: string }>;
   dailyStatus: GoalDayStatus[]; // length 7, indexed Mon..Sun
@@ -163,6 +169,7 @@ export function computeWeekStats({
       skipped,
       missed,
       completion,
+      partial: isCount && goalStart > start,
       skipReasons,
       notes,
       dailyStatus,
@@ -213,10 +220,23 @@ export function reflectionCompletionRate(stats: WeekStats): number {
   let done = 0;
   let target = 0;
   for (const g of stats.perGoal) {
+    if (g.partial) continue; // count goal's partial first week is grace
     done += Math.min(g.done, g.targetCount);
     target += g.targetCount;
   }
   return target > 0 ? done / target : 0;
+}
+
+/**
+ * Whether the week has at least one goal whose target should be scored. Drives
+ * (a) whether a completed week is worth surfacing on the Reflections page and
+ * (b) whether to show a completion %. A count goal with zero check-ins still
+ * counts (an unmet quota is a meaningful week to reflect on), but a count
+ * goal's partial first week is grace — it doesn't make a week scoreable on its
+ * own, though its check-ins still show as evidence.
+ */
+export function weekHasScoreableTarget(stats: WeekStats): boolean {
+  return stats.perGoal.some((g) => g.targetCount > 0 && !g.partial);
 }
 
 /**
@@ -272,7 +292,7 @@ export type Highlights = {
  *  - If there's just one eligible goal, only strongest is returned.
  */
 export function buildHighlights(stats: WeekStats): Highlights {
-  const eligible = stats.perGoal.filter((g) => g.targetCount > 0);
+  const eligible = stats.perGoal.filter((g) => g.targetCount > 0 && !g.partial);
   if (eligible.length === 0) {
     return { strongest: null, weakest: null, weakestDominantReason: null };
   }

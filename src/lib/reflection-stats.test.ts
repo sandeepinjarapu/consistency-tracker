@@ -5,6 +5,7 @@ import {
   buildHighlights,
   buildWeeklyNarrative,
   reflectionCompletionRate,
+  weekHasScoreableTarget,
   type WeekStats,
   type WeekTrend,
   type Highlights,
@@ -280,6 +281,92 @@ describe("reflectionCompletionRate", () => {
         perGoal: [],
       })
     ).toBe(0);
+  });
+
+  it("excludes a count goal's partial first week (grace)", () => {
+    const stats = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [
+        // created Thursday of this week → it never had a full week for its quota
+        { id: "c1", name: "Gym", target_days: ALL, created_at: "2024-01-18T00:00:00Z", weekly_target: 5 },
+      ],
+      checkIns: [
+        { goal_id: "c1", date: "2024-01-18", status: "done", skip_reason: null, note: null },
+        { goal_id: "c1", date: "2024-01-19", status: "done", skip_reason: null, note: null },
+      ],
+    });
+    // The only goal is a partial-first count week → excluded → denominator 0.
+    expect(reflectionCompletionRate(stats)).toBe(0);
+  });
+
+  it("a partial-first count goal doesn't drag a week with a full goal", () => {
+    const allDone = ["15", "16", "17", "18", "19", "20", "21"].map((d) => ({
+      goal_id: "g1",
+      date: `2024-01-${d}`,
+      status: "done" as const,
+      skip_reason: null,
+      note: null,
+    }));
+    const stats = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [
+        goal("g1", "Writing"), // full specific goal, done every day → 7/7
+        { id: "c1", name: "Gym", target_days: ALL, created_at: "2024-01-18T00:00:00Z", weekly_target: 5 },
+      ],
+      checkIns: [
+        ...allDone,
+        { goal_id: "c1", date: "2024-01-19", status: "done", skip_reason: null, note: null },
+      ],
+    });
+    // g1 = 7/7; c1 partial → excluded. Aggregate stays 1.0.
+    expect(reflectionCompletionRate(stats)).toBe(1);
+  });
+});
+
+describe("weekHasScoreableTarget", () => {
+  const ALL = [0, 1, 2, 3, 4, 5, 6];
+
+  it("true for a count goal with zero check-ins across a full week", () => {
+    const stats = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [
+        { id: "c1", name: "Gym", target_days: ALL, created_at: "2024-01-01T00:00:00Z", weekly_target: 5 },
+      ],
+      checkIns: [],
+    });
+    // No day-level activity, but an unmet weekly quota is worth surfacing.
+    expect(stats.done + stats.skipped + stats.missed).toBe(0);
+    expect(weekHasScoreableTarget(stats)).toBe(true);
+  });
+
+  it("false when the only goal is a count goal's partial first week", () => {
+    const stats = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [
+        { id: "c1", name: "Gym", target_days: ALL, created_at: "2024-01-18T00:00:00Z", weekly_target: 5 },
+      ],
+      checkIns: [],
+    });
+    expect(weekHasScoreableTarget(stats)).toBe(false);
+  });
+
+  it("true for a normal specific-day week", () => {
+    const stats = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [goal("g1", "Writing")],
+      checkIns: [],
+    });
+    expect(weekHasScoreableTarget(stats)).toBe(true);
+  });
+
+  it("false when there are no goals", () => {
+    const stats = computeWeekStats({ ...WEEK, today: TODAY_AFTER_WEEK, goals: [], checkIns: [] });
+    expect(weekHasScoreableTarget(stats)).toBe(false);
   });
 });
 
