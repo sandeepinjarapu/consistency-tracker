@@ -357,7 +357,7 @@ function WeekDetailBody({
           <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
             In your own words
           </h3>
-          <ul className="space-y-1 text-sm">
+          <ul className="space-y-1 text-sm max-w-prose">
             {stats.notes.map((n, i) => (
               <li key={i} className="text-[color:var(--muted)]">
                 <span className="italic">&ldquo;{n.note}&rdquo;</span> —{" "}
@@ -392,12 +392,12 @@ function WeekDetailBody({
         initial={reflection}
         continueHint={
           strongest
-            ? `${strongest.goalName} is working — what's making it click?`
+            ? `${strongest.goalName} is working. What's making it click?`
             : undefined
         }
         improveHint={
           weakest
-            ? `${weakest.goalName} is the hard one — what would help?`
+            ? `${weakest.goalName} is the hard one. What would help?`
             : undefined
         }
       />

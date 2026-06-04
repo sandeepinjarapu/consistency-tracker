@@ -123,14 +123,14 @@ export default function ShareToggles({
           return (
             <label
               key={p.id}
-              className={`${tapTargetRow} gap-2 text-sm cursor-pointer hover:text-black text-[color:var(--muted)]`}
+              className={`${tapTargetRow} gap-3 px-2 -mx-2 rounded text-sm cursor-pointer hover:bg-gray-50 text-[color:var(--muted)]`}
             >
               <input
                 type="checkbox"
                 checked={shared}
                 onChange={() => toggle(p.id)}
                 disabled={pending}
-                className="w-5 h-5 rounded border-[color:var(--border)]"
+                className="w-[18px] h-[18px] rounded border-[color:var(--border)] accent-black"
               />
               <span className={shared ? "text-black" : ""}>
                 {p.display_name ?? "Partner"}
@@ -143,7 +143,7 @@ export default function ShareToggles({
         type="button"
         onClick={() => setEditing(false)}
         aria-expanded
-        className={`${tapTarget} px-2 text-xs underline text-[color:var(--muted)] hover:text-black`}
+        className={`${tapTarget} px-4 text-xs rounded-md border border-[color:var(--border)] text-[color:var(--muted)] hover:border-black hover:text-black`}
       >
         Done
       </button>

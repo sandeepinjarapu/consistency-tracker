@@ -7,8 +7,8 @@ import { tapTarget } from "@/lib/ui";
 export default function ReflectionEditor({
   weekStartDate,
   initial,
-  continueHint = "What worked this week — keep doing it.",
-  improveHint = "Small change for next week.",
+  continueHint = "What worked this week?",
+  improveHint = "One small change for next week?",
 }: {
   weekStartDate: string;
   initial: Reflection | null;
@@ -65,7 +65,7 @@ export default function ReflectionEditor({
       />
       <Prompt
         label="Stop"
-        hint="What got in the way — cut it."
+        hint="What got in the way this week?"
         value={stopText}
         onChange={setStopText}
         placeholder="Scrolling Twitter before bed killed sleep…"

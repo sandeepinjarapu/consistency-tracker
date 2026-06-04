@@ -364,14 +364,14 @@ export default function GoalForm({
                   })}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs underline text-[color:var(--muted)] hover:text-black"
+                  className={`${tapTarget} text-xs underline text-[color:var(--muted)] hover:text-black`}
                 >
                   Add to Google Calendar ↗
                 </a>
                 <button
                   type="button"
                   onClick={() => setReminderTime("")}
-                  className="text-xs text-[color:var(--muted)] hover:text-black"
+                  className={`${tapTarget} px-2 text-xs text-[color:var(--muted)] hover:text-black`}
                 >
                   Clear
                 </button>

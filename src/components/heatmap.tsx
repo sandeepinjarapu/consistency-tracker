@@ -15,9 +15,9 @@ export type HeatmapCell = {
   tooltip?: string;
 };
 
-const CELL = 11; // px
+const CELL = 13; // px
 const GAP = 3; // px
-const COL = CELL + GAP; // 14
+const COL = CELL + GAP; // 16
 const ROW = CELL + GAP;
 const LEFT_GUTTER = 28; // for day labels
 const TOP_GUTTER = 18; // for month labels
