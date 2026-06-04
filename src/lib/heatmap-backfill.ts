@@ -51,3 +51,55 @@ export function backfillAction(
   if (!isBackfillable(cell.date, opts)) return null;
   return cell.status === "done" || cell.status === "skipped" ? "clear" : "mark";
 }
+
+const WEEKDAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_ABBR = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** A single editable day in the "Catch up" list, ready to render. */
+export type CatchUpDay = {
+  date: string; // YYYY-MM-DD
+  label: string; // "Today" or a weekday abbr ("Tue")
+  dateLabel: string; // "Jun 4"
+  status: "done" | "skipped" | "empty"; // "empty" = not logged
+  action: "mark" | "clear"; // never null — only editable days are returned
+};
+
+/**
+ * The days the owner can still log or correct, newest first — the data behind
+ * the "Catch up" editor on the goal detail page. Exactly the days the heatmap
+ * used to make clickable (same `isBackfillable` window: this ISO week plus the
+ * 2-day grace), but surfaced as an explicit, finger-friendly list instead of a
+ * tiny tap target. Pure so it can be unit-tested independent of rendering.
+ */
+export function recentEditableDays(opts: {
+  goalStartDate: string;
+  today: string;
+  targetDays: number[];
+  /** Logged statuses keyed by ISO date; absent date = not logged. */
+  statusByDate: Record<string, "done" | "skipped">;
+}): CatchUpDay[] {
+  const { goalStartDate, today, targetDays, statusByDate } = opts;
+  const window: BackfillWindow = { goalStartDate, today, targetDays };
+  const out: CatchUpDay[] = [];
+  // Walk back from today; the window is at most a week, so this is bounded.
+  // Stop once we step before the goal start (nothing earlier can be editable).
+  for (let i = 0; i >= -9; i--) {
+    const date = addDays(today, i);
+    if (date < goalStartDate) break;
+    if (!isBackfillable(date, window)) continue;
+    const logged = statusByDate[date] as "done" | "skipped" | undefined;
+    const dow = dayOfWeekForDateString(date);
+    const [, m, d] = date.split("-");
+    out.push({
+      date,
+      label: date === today ? "Today" : WEEKDAY_ABBR[dow],
+      dateLabel: `${MONTH_ABBR[parseInt(m, 10) - 1]} ${parseInt(d, 10)}`,
+      status: logged ?? "empty",
+      action: logged === undefined ? "mark" : "clear",
+    });
+  }
+  return out;
+}

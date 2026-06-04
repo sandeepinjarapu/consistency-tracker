@@ -24,8 +24,10 @@ import { getGoalReactions } from "@/lib/actions/reactions";
 import { REACTION_EMOJI, reactionSentence } from "@/lib/reactions";
 import { buildGCalUrl } from "@/lib/gcal";
 import { safeExternalUrl } from "@/lib/url";
+import { recentEditableDays } from "@/lib/heatmap-backfill";
 import CalendarReminder from "@/components/calendar-reminder";
 import Heatmap from "@/components/heatmap";
+import CatchUp from "@/components/catch-up";
 import WeekProgress from "@/components/week-progress";
 import WeeklyStrip from "@/components/weekly-strip";
 import GoalRowActions from "@/components/goal-row-actions";
@@ -303,6 +305,18 @@ async function StatsSection({
     missedSoFar,
   });
 
+  // The days still open to logging/correction (this ISO week + the 2-day
+  // grace). Powers the "Catch up" editor — the finger-friendly replacement for
+  // tapping tiny heatmap cells. Same window the heatmap used to make editable.
+  const statusByDate: Record<string, "done" | "skipped"> = {};
+  for (const c of checkIns) statusByDate[c.date] = c.status;
+  const catchUpDays = recentEditableDays({
+    goalStartDate,
+    today,
+    targetDays,
+    statusByDate,
+  });
+
   return (
     <>
       <div className="mb-8">
@@ -321,22 +335,27 @@ async function StatsSection({
         </p>
       </div>
 
+      {catchUpDays.length > 0 ? (
+        <div className="mb-10">
+          <CatchUp
+            goalId={goalId}
+            days={catchUpDays}
+            doneColor={categoryColor}
+          />
+        </div>
+      ) : null}
+
       <div className="mb-10">
         <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
           Recent activity
         </h3>
         <p className="text-xs text-[color:var(--muted)] mb-2">
-          Each square is a day. Click one to log or undo a check-in — this week, or up to 2 days into the next.
+          Each square is a day — your record of showing up.
         </p>
         <Heatmap
           cells={cells}
           doneColor={categoryColor}
-          editable={{
-            goalId,
-            goalStartDate,
-            today,
-            targetDays,
-          }}
+          schedule={{ goalStartDate, today, targetDays }}
         />
       </div>
 

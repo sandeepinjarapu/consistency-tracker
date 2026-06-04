@@ -132,7 +132,7 @@ export default async function GoalsPage({
         {!showArchived && (
           <Link
             href="/consistencytracker/goals/new"
-            className="bg-black text-white text-sm rounded-md px-4 py-2 hover:bg-gray-800"
+            className="shrink-0 whitespace-nowrap bg-black text-white text-sm rounded-md px-4 py-2 hover:bg-gray-800"
           >
             + Add goal
           </Link>

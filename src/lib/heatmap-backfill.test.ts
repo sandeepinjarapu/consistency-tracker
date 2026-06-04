@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { backfillAction, isBackfillable } from "./heatmap-backfill";
+import {
+  backfillAction,
+  isBackfillable,
+  recentEditableDays,
+} from "./heatmap-backfill";
 
 // Reference calendar (2024): Mon 01-15 … Sun 01-21 is one ISO week;
 // the next week is Mon 01-22 … Sun 01-28.
@@ -119,5 +123,66 @@ describe("isBackfillable (shared client/server predicate)", () => {
   it("honors the 2-day grace into the previous week", () => {
     expect(isBackfillable("2024-01-20", { ...base, today: "2024-01-22" })).toBe(true); // prior Sat on Mon
     expect(isBackfillable("2024-01-20", { ...base, today: "2024-01-23" })).toBe(false); // prior Sat not on Tue
+  });
+});
+
+describe("recentEditableDays", () => {
+  // today = Fri 2024-01-19; weekday goal. Window is Mon 01-15 → Fri 01-19.
+  const base = {
+    goalStartDate: "2024-01-01",
+    today: "2024-01-19",
+    targetDays: WEEKDAYS,
+  };
+
+  it("returns the eligible window newest-first with status + action", () => {
+    const days = recentEditableDays({
+      ...base,
+      statusByDate: { "2024-01-16": "done", "2024-01-18": "skipped" },
+    });
+    expect(days.map((d) => d.date)).toEqual([
+      "2024-01-19",
+      "2024-01-18",
+      "2024-01-17",
+      "2024-01-16",
+      "2024-01-15",
+    ]);
+    expect(days[0]).toMatchObject({
+      label: "Today",
+      dateLabel: "Jan 19",
+      status: "empty",
+      action: "mark",
+    });
+    expect(days[1]).toMatchObject({ label: "Thu", status: "skipped", action: "clear" });
+    expect(days[3]).toMatchObject({ label: "Tue", status: "done", action: "clear" });
+  });
+
+  it("excludes off-window weekdays and days before the goal started", () => {
+    const days = recentEditableDays({
+      goalStartDate: "2024-01-17", // goal born Wed
+      today: "2024-01-19",
+      targetDays: WEEKDAYS,
+      statusByDate: {},
+    });
+    expect(days.map((d) => d.date)).toEqual([
+      "2024-01-19",
+      "2024-01-18",
+      "2024-01-17",
+    ]);
+  });
+
+  it("honors the 2-day grace into the previous week (Monday)", () => {
+    // today = Mon 2024-01-22, daily goal. Editable: Mon 22, Sun 21, Sat 20
+    // (prior Fri 19 is already locked).
+    const days = recentEditableDays({
+      goalStartDate: "2024-01-01",
+      today: "2024-01-22",
+      targetDays: ALL_DAYS,
+      statusByDate: {},
+    });
+    expect(days.map((d) => d.date)).toEqual([
+      "2024-01-22",
+      "2024-01-21",
+      "2024-01-20",
+    ]);
   });
 });
