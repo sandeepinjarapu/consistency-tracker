@@ -143,7 +143,7 @@ export default function GoalForm({
             Why this matters
           </label>
           <p className="mt-1 mb-2 text-xs text-[color:var(--muted)]">
-            The reason you&apos;ll come back to on the hard days. Optional, but it&apos;s what makes a goal stick.
+            Optional, but it&apos;s the line you&apos;ll come back to when showing up feels hard.
           </p>
           <textarea
             id="motivation"
