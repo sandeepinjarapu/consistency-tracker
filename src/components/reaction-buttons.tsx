@@ -2,6 +2,7 @@
 
 import { useOptimistic, useTransition } from "react";
 import { toggleReaction } from "@/lib/actions/reactions";
+import { tapTarget } from "@/lib/ui";
 import {
   REACTION_LABELS,
   REACTION_EMOJI as EMOJI,
@@ -51,7 +52,7 @@ export default function ReactionButtons({
           onClick={() => toggle(k)}
           disabled={pending}
           aria-pressed={state[k]}
-          className={`text-xs rounded-full border px-3 py-1 transition disabled:opacity-50 ${
+          className={`${tapTarget} text-xs rounded-full border px-4 transition disabled:opacity-50 ${
             state[k]
               ? "border-black bg-black text-white"
               : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black"

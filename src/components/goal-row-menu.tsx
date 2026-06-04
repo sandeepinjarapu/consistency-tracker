@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { archiveGoal, unarchiveGoal } from "@/lib/actions/goals";
+import { tapTargetIcon, tapTargetRow } from "@/lib/ui";
 
 /**
  * Secondary row actions for a goal, collapsed into a quiet "⋯" overflow menu
@@ -55,20 +56,20 @@ export default function GoalRowMenu({
         aria-expanded={open}
         aria-label="Goal actions"
         onClick={() => setOpen((o) => !o)}
-        className="rounded px-1.5 py-1 text-base leading-none text-[color:var(--muted)] hover:bg-gray-100 hover:text-black"
+        className={`${tapTargetIcon} rounded text-base leading-none text-[color:var(--muted)] hover:bg-gray-100 hover:text-black`}
       >
         ⋯
       </button>
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-32 rounded-md border border-[color:var(--border)] bg-white py-1 shadow-md"
+          className="absolute right-0 z-20 mt-1 w-40 rounded-md border border-[color:var(--border)] bg-white py-1 shadow-md"
         >
           <Link
             role="menuitem"
             href={`/consistencytracker/goals/${goalId}/edit`}
             onClick={() => setOpen(false)}
-            className="block px-3 py-1.5 text-xs hover:bg-gray-50"
+            className={`${tapTargetRow} px-3 text-xs hover:bg-gray-50`}
           >
             Edit
           </Link>
@@ -77,7 +78,7 @@ export default function GoalRowMenu({
             role="menuitem"
             onClick={handleArchive}
             disabled={pending}
-            className="block w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 disabled:opacity-50"
+            className={`${tapTargetRow} w-full px-3 text-left text-xs hover:bg-gray-50 disabled:opacity-50`}
           >
             {pending ? "…" : archived ? "Unarchive" : "Archive"}
           </button>

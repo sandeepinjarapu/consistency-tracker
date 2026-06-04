@@ -4,6 +4,13 @@ import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { backfillCheckIn, clearBackfillCheckIn } from "@/lib/actions/check-ins";
 import type { CatchUpDay } from "@/lib/heatmap-backfill";
+import { tapTarget } from "@/lib/ui";
+
+const STATUS_LABEL: Record<"done" | "skipped" | "empty", string> = {
+  done: "Done",
+  skipped: "Skipped",
+  empty: "Not logged",
+};
 
 /**
  * "Catch up": the finger-friendly editor for recent days. Replaces the old
@@ -81,14 +88,14 @@ export default function CatchUp({
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-[color:var(--muted)] capitalize">
-                  {status === "empty" ? "Not logged" : status}
+                <span className="text-xs text-[color:var(--muted)]">
+                  {STATUS_LABEL[status]}
                 </span>
                 <button
                   type="button"
                   onClick={() => run({ ...day, status, action })}
                   disabled={pending}
-                  className={`text-xs rounded-full px-4 min-h-[44px] border transition disabled:opacity-50 ${
+                  className={`${tapTarget} text-xs rounded-full px-4 border transition disabled:opacity-50 ${
                     action === "mark"
                       ? "text-white border-transparent"
                       : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black hover:text-black"
@@ -105,7 +112,7 @@ export default function CatchUp({
         })}
       </ul>
       <p className="mt-2 text-xs text-[color:var(--muted)]">
-        You can update this week and the last couple of days. Older days lock in.
+        Update any day from this week or the last couple of days. Older days lock in.
       </p>
     </div>
   );

@@ -11,6 +11,7 @@ import {
   type GoalInput,
 } from "@/lib/actions/goals";
 import { buildGCalUrl } from "@/lib/gcal";
+import { tapTarget } from "@/lib/ui";
 
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 const PRESETS: Array<{ label: string; days: number[] }> = [
@@ -157,7 +158,7 @@ export default function GoalForm({
             id="category"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="flex-1 border border-[color:var(--border)] rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:border-black"
+            className="flex-1 min-h-[44px] border border-[color:var(--border)] rounded-md px-3 text-sm bg-white focus:outline-none focus:border-black"
           >
             <option value="">Uncategorized</option>
             {categories.map((c) => (
@@ -169,7 +170,7 @@ export default function GoalForm({
           <button
             type="button"
             onClick={() => setShowNewCategory((s) => !s)}
-            className="text-xs text-[color:var(--muted)] hover:text-black px-2 py-2"
+            className={`${tapTarget} text-xs text-[color:var(--muted)] hover:text-black px-3`}
           >
             {showNewCategory ? "Cancel" : "+ New"}
           </button>
@@ -193,7 +194,7 @@ export default function GoalForm({
               type="button"
               onClick={handleAddCategory}
               disabled={creatingCategory || !newCategoryName.trim()}
-              className="text-sm border border-[color:var(--border)] rounded-md px-3 py-2 hover:bg-gray-50 disabled:opacity-50"
+              className={`${tapTarget} text-sm border border-[color:var(--border)] rounded-md px-4 hover:bg-gray-50 disabled:opacity-50`}
             >
               {creatingCategory ? "Adding…" : "Add"}
             </button>
@@ -231,7 +232,7 @@ export default function GoalForm({
           <button
             type="button"
             onClick={() => setWeeklyTarget(null)}
-            className={`text-xs border rounded-full px-3 py-1 transition ${
+            className={`${tapTarget} text-xs border rounded-full px-4 transition ${
               !isCount
                 ? "border-black bg-black text-white"
                 : "border-[color:var(--border)] hover:border-black"
@@ -242,7 +243,7 @@ export default function GoalForm({
           <button
             type="button"
             onClick={() => setWeeklyTarget(Math.min(3, targetDays.length || 7))}
-            className={`text-xs border rounded-full px-3 py-1 transition ${
+            className={`${tapTarget} text-xs border rounded-full px-4 transition ${
               isCount
                 ? "border-black bg-black text-white"
                 : "border-[color:var(--border)] hover:border-black"
@@ -260,7 +261,7 @@ export default function GoalForm({
                 onClick={() => setWeeklyTarget((n) => Math.max(1, (n ?? 1) - 1))}
                 disabled={(weeklyTarget ?? 1) <= 1}
                 aria-label="Fewer times per week"
-                className="w-8 h-8 rounded-md border border-[color:var(--border)] text-sm hover:border-black disabled:opacity-40"
+                className="w-11 h-11 rounded-md border border-[color:var(--border)] text-sm hover:border-black disabled:opacity-40"
               >
                 −
               </button>
@@ -276,7 +277,7 @@ export default function GoalForm({
                 }
                 disabled={(weeklyTarget ?? 1) >= targetDays.length}
                 aria-label="More times per week"
-                className="w-8 h-8 rounded-md border border-[color:var(--border)] text-sm hover:border-black disabled:opacity-40"
+                className="w-11 h-11 rounded-md border border-[color:var(--border)] text-sm hover:border-black disabled:opacity-40"
               >
                 +
               </button>
@@ -296,7 +297,7 @@ export default function GoalForm({
               key={p.label}
               type="button"
               onClick={() => setDays(p.days)}
-              className={`text-xs border rounded-full px-3 py-1 transition ${
+              className={`${tapTarget} text-xs border rounded-full px-4 transition ${
                 presetMatch?.label === p.label
                   ? "border-black bg-black text-white"
                   : "border-[color:var(--border)] hover:border-black"
@@ -315,7 +316,7 @@ export default function GoalForm({
                 type="button"
                 onClick={() => toggleDay(i)}
                 aria-pressed={active}
-                className={`w-9 h-9 text-xs rounded-md border transition ${
+                className={`flex-1 h-11 text-xs rounded-md border transition ${
                   active
                     ? "border-black bg-black text-white"
                     : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black"
@@ -336,7 +337,7 @@ export default function GoalForm({
               type="time"
               value={reminderTime}
               onChange={(e) => setReminderTime(e.target.value)}
-              className="border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
+              className="min-h-[44px] border border-[color:var(--border)] rounded-md px-3 text-sm focus:outline-none focus:border-black"
             />
             {reminderTime ? (
               <>
@@ -381,14 +382,14 @@ export default function GoalForm({
         <button
           type="submit"
           disabled={pending}
-          className="bg-black text-white text-sm rounded-md px-4 py-2 hover:bg-gray-800 disabled:opacity-50"
+          className={`${tapTarget} bg-black text-white text-sm rounded-md px-4 hover:bg-gray-800 disabled:opacity-50`}
         >
           {pending ? "Saving…" : mode === "create" ? "Create goal" : "Save changes"}
         </button>
         <button
           type="button"
           onClick={() => router.back()}
-          className="text-sm text-[color:var(--muted)] hover:text-black"
+          className={`${tapTarget} px-3 text-sm text-[color:var(--muted)] hover:text-black`}
         >
           Cancel
         </button>
