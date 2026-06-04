@@ -81,7 +81,7 @@ export default async function InvitePage({
         </p>
       </div>
 
-      <InviteAcceptButton token={token} />
+      <InviteAcceptButton token={token} currentEmail={user.email ?? null} />
 
       <p className="mt-6 text-xs text-[color:var(--muted)] text-center">
         Not the right person? Just close this tab — nothing happens until you accept.
