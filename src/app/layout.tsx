@@ -3,8 +3,9 @@ import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "sixthsense",
-  description: "sixthsense.works",
+  title: "Consistency Tracker",
+  description:
+    "A calm, private habit tracker with weekly reflections and partner accountability.",
 };
 
 export default function RootLayout({
