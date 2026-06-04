@@ -204,11 +204,25 @@ alter table public.partner_invites     enable row level security;
 alter table public.weekly_reflections  enable row level security;
 alter table public.reactions           enable row level security;
 
--- profiles: any authenticated user can read any profile (just name + avatar).
--- Users can only modify their own row.
+-- profiles: own + accepted partners only (tightened from read-all in 0014).
+-- A partnership is an accepted invite in either direction — identical to
+-- isPartner()/listPartners(). Service-role paths (invite lookup, weekly cron)
+-- bypass RLS. Users can only modify their own row.
 drop policy if exists "profiles: read all (authenticated)" on public.profiles;
-create policy "profiles: read all (authenticated)" on public.profiles
-  for select to authenticated using (true);
+drop policy if exists "profiles: read own or partner" on public.profiles;
+create policy "profiles: read own or partner" on public.profiles
+  for select to authenticated
+  using (
+    auth.uid() = id
+    or exists (
+      select 1 from public.partner_invites pi
+      where pi.accepted_at is not null
+        and (
+          (pi.inviter_id = auth.uid() and pi.accepted_by = profiles.id)
+          or (pi.accepted_by = auth.uid() and pi.inviter_id = profiles.id)
+        )
+    )
+  );
 
 drop policy if exists "profiles: update own" on public.profiles;
 create policy "profiles: update own" on public.profiles
@@ -286,6 +300,8 @@ create policy "shares: read mine (owner or viewer)" on public.shares
 
 -- Tightened in migration 0006: goal_id must belong to the share owner,
 -- so a partner viewing your shared goal can't re-share it to a third user.
+-- Insert requires owning the goal AND that the viewer is an accepted partner
+-- (the partner check added in 0014, mirroring setGoalShared).
 drop policy if exists "shares: owner insert" on public.shares;
 create policy "shares: owner insert" on public.shares
   for insert to authenticated
@@ -294,6 +310,14 @@ create policy "shares: owner insert" on public.shares
     and exists (
       select 1 from public.goals g
       where g.id = shares.goal_id and g.user_id = auth.uid()
+    )
+    and exists (
+      select 1 from public.partner_invites pi
+      where pi.accepted_at is not null
+        and (
+          (pi.inviter_id = auth.uid() and pi.accepted_by = shares.viewer_id)
+          or (pi.accepted_by = auth.uid() and pi.inviter_id = shares.viewer_id)
+        )
     )
   );
 
