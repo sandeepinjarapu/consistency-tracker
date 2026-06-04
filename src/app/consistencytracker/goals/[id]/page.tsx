@@ -115,7 +115,7 @@ export default async function GoalPage({
               “{goal.motivation}”
             </p>
           ) : null}
-          <div className="mt-3 flex items-center gap-4 text-xs text-[color:var(--muted)]">
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[color:var(--muted)]">
             {docUrl ? (
               <a
                 href={docUrl}

@@ -149,11 +149,15 @@ function Prompt({
 }) {
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-1">
-        <label className="text-xs font-medium uppercase tracking-wider">
+      {/* Stacked, not a justify-between row: the Reflections page passes a
+          full-sentence hint that otherwise collides with the label on mobile. */}
+      <div className="mb-1">
+        <label className="block text-xs font-medium uppercase tracking-wider">
           {label}
         </label>
-        <span className="text-[10px] text-[color:var(--muted)]">{hint}</span>
+        <span className="block text-[10px] text-[color:var(--muted)] mt-0.5">
+          {hint}
+        </span>
       </div>
       <textarea
         value={value}
