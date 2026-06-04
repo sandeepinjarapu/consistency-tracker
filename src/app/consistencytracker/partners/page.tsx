@@ -54,7 +54,8 @@ export default async function PartnersPage() {
         {partners.length === 0 ? (
           <div className="border border-dashed border-[color:var(--border)] rounded-lg p-8 text-center">
             <p className="text-sm text-[color:var(--muted)]">
-              No partners yet. Send an invite above to get started.
+              Sharing is per goal, and private until you choose it. Invite
+              someone above to share a goal with them.
             </p>
           </div>
         ) : (

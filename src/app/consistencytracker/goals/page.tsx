@@ -356,7 +356,7 @@ function EmptyState({ showArchived }: { showArchived: boolean }) {
   return (
     <div className="border border-dashed border-[color:var(--border)] rounded-lg p-10 text-center">
       <p className="text-sm text-[color:var(--muted)] mb-4">
-        No goals yet. Pick one small habit to start with — you can always add more.
+        No goals yet. Pick one small habit to start with. You can always add more.
       </p>
       <Link
         href="/consistencytracker/goals/new"

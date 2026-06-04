@@ -1,17 +1,25 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { upsertReflection, type Reflection } from "@/lib/actions/reflections";
 import { tapTarget } from "@/lib/ui";
+
+// Whether sharing a reflection with a partner is meaningful yet. The Partner
+// visibility pill only makes sense once an invite is accepted; before that it
+// is a trust smell ("Partner? which partner? is something shared already?").
+export type PartnerState = "none" | "pending" | "accepted";
 
 export default function ReflectionEditor({
   weekStartDate,
   initial,
+  partnerState,
   continueHint = "What worked this week?",
   improveHint = "One small change for next week?",
 }: {
   weekStartDate: string;
   initial: Reflection | null;
+  partnerState: PartnerState;
   // Optionally anchored to the week's strongest/weakest goal so the prompt
   // responds to what actually happened rather than being a blank template.
   continueHint?: string;
@@ -25,8 +33,10 @@ export default function ReflectionEditor({
   const [stopText, setStopText] = useState(initial?.stop_text ?? "");
   const [improveText, setImproveText] = useState(initial?.improve_text ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  // Without an accepted partner there is no one to share with, so the
+  // reflection stays private regardless of any stale stored value.
   const [visibility, setVisibility] = useState<"private" | "partner">(
-    initial?.visibility ?? "private"
+    partnerState === "accepted" ? initial?.visibility ?? "private" : "private"
   );
 
   function handleSave() {
@@ -87,31 +97,53 @@ export default function ReflectionEditor({
       />
 
       <div className="flex items-center justify-between pt-2 gap-4 flex-wrap">
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-[color:var(--muted)]">Visibility:</span>
-          <button
-            type="button"
-            onClick={() => setVisibility("private")}
-            className={`${tapTarget} px-4 rounded-full border transition ${
-              visibility === "private"
-                ? "border-black bg-black text-white"
-                : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black"
-            }`}
-          >
-            Private
-          </button>
-          <button
-            type="button"
-            onClick={() => setVisibility("partner")}
-            className={`${tapTarget} px-4 rounded-full border transition ${
-              visibility === "partner"
-                ? "border-black bg-black text-white"
-                : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black"
-            }`}
-          >
-            Partner
-          </button>
-        </div>
+        {partnerState === "accepted" ? (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-[color:var(--muted)]">Visibility:</span>
+            <button
+              type="button"
+              onClick={() => setVisibility("private")}
+              className={`${tapTarget} px-4 rounded-full border transition ${
+                visibility === "private"
+                  ? "border-black bg-black text-white"
+                  : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black"
+              }`}
+            >
+              Private
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibility("partner")}
+              className={`${tapTarget} px-4 rounded-full border transition ${
+                visibility === "partner"
+                  ? "border-black bg-black text-white"
+                  : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black"
+              }`}
+            >
+              Partner
+            </button>
+          </div>
+        ) : (
+          // No accepted partner: don't dangle a "Partner" choice the user can't
+          // use. State plainly that it's private, and say when sharing unlocks.
+          <p className="text-xs text-[color:var(--muted)] max-w-prose">
+            <span className="text-black">Visibility: Private.</span>{" "}
+            {partnerState === "pending" ? (
+              "Reflections can be shared after a partner accepts your invite."
+            ) : (
+              <>
+                Add a partner to share reflections later.{" "}
+                <Link
+                  href="/consistencytracker/partners"
+                  className="underline hover:text-black"
+                >
+                  Invite someone
+                </Link>
+                .
+              </>
+            )}
+          </p>
+        )}
 
         <div className="flex items-center gap-3 ml-auto">
           {savedAt ? (

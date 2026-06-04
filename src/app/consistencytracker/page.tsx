@@ -71,8 +71,8 @@ async function TodaySection() {
       <div>
         <Header timezone={timezone} firstName={firstName} />
         <div className="border border-dashed border-[color:var(--border)] rounded-lg p-10 text-center">
-          <p className="text-sm text-[color:var(--muted)] mb-4">
-            No goals yet. Start with one small habit you can do most days.
+          <p className="text-sm mb-4">
+            Start with one small promise you want evidence for.
           </p>
           <Link
             href="/consistencytracker/goals/new"
@@ -80,6 +80,9 @@ async function TodaySection() {
           >
             Create your first goal
           </Link>
+          <p className="text-xs text-[color:var(--muted)] mt-4">
+            Check in daily, reflect once a week. Everything starts private.
+          </p>
         </div>
       </div>
     );
