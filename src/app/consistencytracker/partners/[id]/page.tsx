@@ -265,7 +265,7 @@ export default async function PartnerPage({
                     {stats.currentStreak > 0
                       ? `${stats.currentStreak} ${stats.streakUnit} streak · `
                       : ""}
-                    {stats.doneCount} done · {Math.round(stats.completionRate * 100)}% completion
+                    {stats.doneCount} {stats.doneCount === 1 ? "check-in" : "check-ins"} logged
                   </p>
                 </div>
                 {goal.weekly_target != null ? (

@@ -9,6 +9,7 @@ import {
   buildHighlights,
   buildWeeklyNarrative,
   reflectionCompletionRate,
+  weekHasScoreableTarget,
   type WeekStats,
   type WeekTrend,
   type Highlights,
@@ -131,7 +132,10 @@ export default async function ReflectionsPage({
   const statsByWeekStart = new Map(weeks.map((w) => [w.start, w.stats]));
   const pastWeeks = visibleWeeks.slice(1).filter((w) => {
     const active = w.stats.done + w.stats.skipped + w.stats.missed > 0;
-    return active || reflectionByWeek.has(w.start);
+    // Also surface weeks with a scoreable target but no day-level activity —
+    // e.g. a count goal you didn't touch all week is worth reflecting on, even
+    // though it logs no done/skipped/missed days.
+    return active || weekHasScoreableTarget(w.stats) || reflectionByWeek.has(w.start);
   });
 
   return (
@@ -254,6 +258,7 @@ function PastWeek({
   motivationByGoal: Map<string, string | null>;
 }) {
   const total = stats.done + stats.skipped + stats.missed;
+  const scoreable = weekHasScoreableTarget(stats);
   const completion = Math.round(reflectionCompletionRate(stats) * 100);
   const hasReflection = Boolean(
     reflection &&
@@ -276,7 +281,11 @@ function PastWeek({
         </span>
         <span className="flex items-center gap-2 text-xs text-[color:var(--muted)] tabular-nums">
           <span>
-            {total === 0 ? "no activity" : `${stats.done} done · ${completion}%`}
+            {scoreable
+              ? `${stats.done} done · ${completion}%`
+              : total > 0
+                ? `${stats.done} done`
+                : "no activity"}
           </span>
           <span aria-hidden className="transition-transform group-open:rotate-180">
             ▾
@@ -322,6 +331,7 @@ function WeekDetailBody({
   inProgress: boolean;
 }) {
   const total = stats.done + stats.skipped + stats.missed;
+  const scoreable = weekHasScoreableTarget(stats);
   const completion = Math.round(reflectionCompletionRate(stats) * 100);
   const { strongest, weakest } = highlights;
   const weakestMotivation = weakest
@@ -366,7 +376,7 @@ function WeekDetailBody({
             {stats.done} done · {stats.skipped} skipped
             {stats.skipped > 0 ? ` (${formatReasons(stats.skipReasons)})` : ""} ·{" "}
             {stats.missed} missed
-            {inProgress ? "" : ` · ${completion}% completion`}
+            {!inProgress && scoreable ? ` · ${completion}% completion` : ""}
           </>
         )}
       </p>

@@ -24,6 +24,12 @@ export type GoalWeekStats = {
   skipped: number;
   missed: number;
   completion: number; // done / targetCount, 0..1 (0 if no targets this week)
+  // A count goal's *first* week, when the goal was created after that week's
+  // Monday: it never had a full week to hit its quota, so it's grace — excluded
+  // from completion scoring (its check-ins still show as evidence). Specific
+  // goals don't need this: their targetCount already only counts eligible days
+  // on/after creation. Absent/false means "score normally".
+  partial?: boolean;
   skipReasons: Record<string, number>;
   notes: Array<{ date: string; note: string }>;
   dailyStatus: GoalDayStatus[]; // length 7, indexed Mon..Sun
@@ -163,6 +169,7 @@ export function computeWeekStats({
       skipped,
       missed,
       completion,
+      partial: isCount && goalStart > start,
       skipReasons,
       notes,
       dailyStatus,
@@ -213,6 +220,7 @@ export function reflectionCompletionRate(stats: WeekStats): number {
   let done = 0;
   let target = 0;
   for (const g of stats.perGoal) {
+    if (g.partial) continue; // count goal's partial first week is grace
     done += Math.min(g.done, g.targetCount);
     target += g.targetCount;
   }
@@ -220,25 +228,33 @@ export function reflectionCompletionRate(stats: WeekStats): number {
 }
 
 /**
+ * Whether the week has at least one goal whose target should be scored. Drives
+ * (a) whether a completed week is worth surfacing on the Reflections page and
+ * (b) whether to show a completion %. A count goal with zero check-ins still
+ * counts (an unmet quota is a meaningful week to reflect on), but a count
+ * goal's partial first week is grace — it doesn't make a week scoreable on its
+ * own, though its check-ins still show as evidence.
+ */
+export function weekHasScoreableTarget(stats: WeekStats): boolean {
+  return stats.perGoal.some((g) => g.targetCount > 0 && !g.partial);
+}
+
+/**
  * Compute completion-rate / done / skipped deltas vs the prior week.
- * Returns hasPrior=false if the prior week had no activity at all
- * (comparing to a zero-baseline isn't meaningful).
+ * Comparable only when both weeks have a scoreable target (same rule the page
+ * uses for visibility and the %). This means a count-goal week with zero
+ * check-ins is a real 0% baseline you can step up from — but a partial-first
+ * count-goal grace week is never a baseline.
  */
 export function compareWeeks(
   current: WeekStats,
   prior: WeekStats | null
 ): WeekTrend {
-  if (!prior) {
-    return {
-      hasPrior: false,
-      completionDelta: null,
-      doneDelta: null,
-      skipDelta: null,
-    };
-  }
-  // A prior week with no activity isn't a meaningful baseline to compare to.
-  const priorTotal = prior.done + prior.skipped + prior.missed;
-  if (priorTotal === 0) {
+  if (
+    !prior ||
+    !weekHasScoreableTarget(current) ||
+    !weekHasScoreableTarget(prior)
+  ) {
     return {
       hasPrior: false,
       completionDelta: null,
@@ -272,7 +288,7 @@ export type Highlights = {
  *  - If there's just one eligible goal, only strongest is returned.
  */
 export function buildHighlights(stats: WeekStats): Highlights {
-  const eligible = stats.perGoal.filter((g) => g.targetCount > 0);
+  const eligible = stats.perGoal.filter((g) => g.targetCount > 0 && !g.partial);
   if (eligible.length === 0) {
     return { strongest: null, weakest: null, weakestDominantReason: null };
   }
