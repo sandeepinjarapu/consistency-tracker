@@ -113,10 +113,10 @@ export default function PrivacyPage() {
           <p>
             Questions, or want your data removed? Email{" "}
             <a
-              href="mailto:sandeep.injarapu@gmail.com"
+              href="mailto:privacy@sixthsense.works"
               className="underline hover:text-black"
             >
-              sandeep.injarapu@gmail.com
+              privacy@sixthsense.works
             </a>
             .
           </p>
