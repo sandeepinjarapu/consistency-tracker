@@ -4,6 +4,7 @@ import {
   compareWeeks,
   buildHighlights,
   buildWeeklyNarrative,
+  reflectionCompletionRate,
   type WeekStats,
   type WeekTrend,
   type Highlights,
@@ -195,9 +196,120 @@ describe("computeWeekStats", () => {
   });
 });
 
+describe("reflectionCompletionRate", () => {
+  const ALL = [0, 1, 2, 3, 4, 5, 6];
+
+  it("specific-day goal: unchanged (done over eligible days)", () => {
+    // 2 done, 1 skipped, 4 missed → target 7, done 2 → 2/7 (same as the old
+    // done/(done+skipped+missed) for specific goals).
+    const stats = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [goal("g1", "Writing")],
+      checkIns: [
+        { goal_id: "g1", date: "2024-01-15", status: "done", skip_reason: null, note: null },
+        { goal_id: "g1", date: "2024-01-16", status: "done", skip_reason: null, note: null },
+        { goal_id: "g1", date: "2024-01-17", status: "skipped", skip_reason: "x", note: null },
+      ],
+    });
+    expect(reflectionCompletionRate(stats)).toBeCloseTo(2 / 7, 5);
+  });
+
+  it("count goal: extra skips do NOT lower completion (the fix)", () => {
+    const stats = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [
+        { id: "c1", name: "Gym", target_days: ALL, created_at: "2024-01-01T00:00:00Z", weekly_target: 3 },
+      ],
+      checkIns: [
+        { goal_id: "c1", date: "2024-01-15", status: "done", skip_reason: null, note: null },
+        { goal_id: "c1", date: "2024-01-16", status: "done", skip_reason: null, note: null },
+        { goal_id: "c1", date: "2024-01-17", status: "skipped", skip_reason: "rest", note: null },
+        { goal_id: "c1", date: "2024-01-18", status: "skipped", skip_reason: "rest", note: null },
+      ],
+    });
+    // done 2, skipped 2, target = weekly_target 3 → min(2,3)/3 = 2/3.
+    // Old done/(done+skipped+missed) would have been 2/4 = 0.5.
+    expect(reflectionCompletionRate(stats)).toBeCloseTo(2 / 3, 5);
+  });
+
+  it("count goal: caps at 1 when the quota is exceeded", () => {
+    const stats = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [
+        { id: "c1", name: "Water", target_days: ALL, created_at: "2024-01-01T00:00:00Z", weekly_target: 2 },
+      ],
+      checkIns: [
+        { goal_id: "c1", date: "2024-01-15", status: "done", skip_reason: null, note: null },
+        { goal_id: "c1", date: "2024-01-16", status: "done", skip_reason: null, note: null },
+        { goal_id: "c1", date: "2024-01-17", status: "done", skip_reason: null, note: null },
+      ],
+    });
+    expect(reflectionCompletionRate(stats)).toBe(1);
+  });
+
+  it("mixed goals: target-weighted across goals", () => {
+    const stats = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [
+        goal("g1", "Writing"), // specific, 7 eligible days
+        { id: "c1", name: "Gym", target_days: ALL, created_at: "2024-01-01T00:00:00Z", weekly_target: 3 },
+      ],
+      checkIns: [
+        { goal_id: "g1", date: "2024-01-15", status: "done", skip_reason: null, note: null }, // 1 of 7
+        { goal_id: "c1", date: "2024-01-15", status: "done", skip_reason: null, note: null },
+        { goal_id: "c1", date: "2024-01-16", status: "done", skip_reason: null, note: null },
+        { goal_id: "c1", date: "2024-01-17", status: "done", skip_reason: null, note: null }, // 3 of 3
+      ],
+    });
+    // sum(min(done,target)) = 1 + 3 = 4; sum(target) = 7 + 3 = 10 → 0.4
+    expect(reflectionCompletionRate(stats)).toBeCloseTo(0.4, 5);
+  });
+
+  it("returns 0 when there are no eligible targets", () => {
+    expect(
+      reflectionCompletionRate({
+        done: 0,
+        skipped: 0,
+        missed: 0,
+        skipReasons: {},
+        notes: [],
+        perGoal: [],
+      })
+    ).toBe(0);
+  });
+});
+
 describe("compareWeeks", () => {
+  // Model a single specific-day goal so reflectionCompletionRate (which reads
+  // perGoal) sees a target == done+skipped+missed, matching real usage where
+  // the page always passes a populated perGoal.
   function ws(done: number, skipped: number, missed: number): WeekStats {
-    return { done, skipped, missed, skipReasons: {}, notes: [], perGoal: [] };
+    const targetCount = done + skipped + missed;
+    return {
+      done,
+      skipped,
+      missed,
+      skipReasons: {},
+      notes: [],
+      perGoal: [
+        {
+          goalId: "g",
+          goalName: "G",
+          targetCount,
+          done,
+          skipped,
+          missed,
+          completion: targetCount > 0 ? done / targetCount : 0,
+          skipReasons: {},
+          notes: [],
+          dailyStatus: [],
+        },
+      ],
+    };
   }
 
   it("returns hasPrior=false when no prior", () => {

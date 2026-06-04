@@ -8,6 +8,7 @@ import {
   compareWeeks,
   buildHighlights,
   buildWeeklyNarrative,
+  reflectionCompletionRate,
   type WeekStats,
   type WeekTrend,
   type Highlights,
@@ -227,6 +228,7 @@ function CurrentWeekHero({
         highlights={highlights}
         reflection={reflection}
         motivationByGoal={motivationByGoal}
+        inProgress
       />
     </section>
   );
@@ -252,7 +254,7 @@ function PastWeek({
   motivationByGoal: Map<string, string | null>;
 }) {
   const total = stats.done + stats.skipped + stats.missed;
-  const completion = total > 0 ? Math.round((stats.done / total) * 100) : 0;
+  const completion = Math.round(reflectionCompletionRate(stats) * 100);
   const hasReflection = Boolean(
     reflection &&
       (reflection.continue_text ||
@@ -291,6 +293,7 @@ function PastWeek({
           highlights={highlights}
           reflection={reflection}
           motivationByGoal={motivationByGoal}
+          inProgress={false}
         />
       </div>
     </details>
@@ -306,15 +309,20 @@ function WeekDetailBody({
   highlights,
   reflection,
   motivationByGoal,
+  inProgress,
 }: {
   weekStart: string;
   stats: WeekStats;
   highlights: Highlights;
   reflection: ReflectionRow | null;
   motivationByGoal: Map<string, string | null>;
+  // The current week is still open: show evidence of showing up, not a
+  // mid-week completion grade (a count goal at 2-of-5 on Wednesday isn't 40%
+  // "complete" — the week isn't over).
+  inProgress: boolean;
 }) {
   const total = stats.done + stats.skipped + stats.missed;
-  const completion = total > 0 ? Math.round((stats.done / total) * 100) : 0;
+  const completion = Math.round(reflectionCompletionRate(stats) * 100);
   const { strongest, weakest } = highlights;
   const weakestMotivation = weakest
     ? motivationByGoal.get(weakest.goalId) ?? null
@@ -357,7 +365,8 @@ function WeekDetailBody({
           <>
             {stats.done} done · {stats.skipped} skipped
             {stats.skipped > 0 ? ` (${formatReasons(stats.skipReasons)})` : ""} ·{" "}
-            {stats.missed} missed · {completion}% completion
+            {stats.missed} missed
+            {inProgress ? "" : ` · ${completion}% completion`}
           </>
         )}
       </p>
