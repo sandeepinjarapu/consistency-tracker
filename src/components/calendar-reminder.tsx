@@ -38,7 +38,7 @@ export default function CalendarReminder({
   }
 
   return (
-    <span className="flex items-center gap-1">
+    <span className="inline-flex flex-wrap items-center gap-x-1">
       <span>{added ? `Added ${reminderLabel} to your calendar ✓` : `Reminder ${reminderLabel}`}</span>
       <span aria-hidden>·</span>
       <a

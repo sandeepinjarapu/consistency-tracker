@@ -369,7 +369,7 @@ export default function GoalForm({
             ) : null}
           </div>
           <p className="mt-1 text-xs text-[color:var(--muted)]">
-            The Calendar link reflects your current time + target days — click to add a recurring event.
+            The Calendar link reflects your current time + target days — open it to add a recurring event.
           </p>
         </Field>
       ) : null}
