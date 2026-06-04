@@ -39,3 +39,6 @@ next-env.d.ts
 # editor
 .vscode/
 .idea/
+
+# Browser MCP session artifacts
+.playwright-mcp/
