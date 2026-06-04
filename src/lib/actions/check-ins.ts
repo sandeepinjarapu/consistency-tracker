@@ -124,8 +124,8 @@ export async function unmark(goalId: string, date: string): Promise<void> {
  * Server-side guard for backfill edits: confirms ownership AND that `date`
  * falls within the allowed backfill window (eligible weekday, within the
  * goal's lifetime, current ISO week + 2-day grace) computed in the user's
- * timezone. Mirrors the client-side `isBackfillable` so the heatmap UI and
- * the server agree — the UI only offers eligible cells, this enforces it.
+ * timezone. Mirrors the client-side `isBackfillable` so the Catch up editor
+ * and the server agree — the editor only offers eligible days, this enforces it.
  */
 async function assertBackfillable(
   supabase: Awaited<ReturnType<typeof createClient>>,

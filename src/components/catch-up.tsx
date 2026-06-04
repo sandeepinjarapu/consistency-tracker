@@ -88,7 +88,7 @@ export default function CatchUp({
                   type="button"
                   onClick={() => run({ ...day, status, action })}
                   disabled={pending}
-                  className={`text-xs rounded-full px-4 min-h-[36px] border transition disabled:opacity-50 ${
+                  className={`text-xs rounded-full px-4 min-h-[44px] border transition disabled:opacity-50 ${
                     action === "mark"
                       ? "text-white border-transparent"
                       : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black hover:text-black"
