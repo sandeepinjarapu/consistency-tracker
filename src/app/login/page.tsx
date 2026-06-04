@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -68,6 +69,14 @@ function LoginContent() {
           Something went wrong. Try again.
         </p>
       ) : null}
+
+      <p className="mt-6 text-xs text-center text-[color:var(--muted)]">
+        By continuing, you agree to the{" "}
+        <Link href="/privacy" className="underline hover:text-black">
+          Privacy notice
+        </Link>
+        .
+      </p>
     </>
   );
 }
