@@ -14,7 +14,10 @@ import {
   type WeekTrend,
   type Highlights,
 } from "@/lib/reflection-stats";
-import ReflectionEditor from "@/components/reflection-editor";
+import { listPartners, listPendingInvites } from "@/lib/actions/partners";
+import ReflectionEditor, {
+  type PartnerState,
+} from "@/components/reflection-editor";
 import WeekGrid from "@/components/week-grid";
 
 // Weeks shown by default and per "Show earlier weeks" step. The visible
@@ -93,6 +96,20 @@ export default async function ReflectionsPage({
   const reflections = await listReflections();
   const reflectionByWeek = new Map(reflections.map((r) => [r.week_start_date, r]));
 
+  // Whether the reflection visibility toggle should offer "Partner". Sharing is
+  // only meaningful once a partner has accepted; before that we keep reflections
+  // private and explain that sharing unlocks after partner setup.
+  const [partners, pendingInvites] = await Promise.all([
+    listPartners(),
+    listPendingInvites(),
+  ]);
+  const partnerState: PartnerState =
+    partners.length > 0
+      ? "accepted"
+      : pendingInvites.length > 0
+        ? "pending"
+        : "none";
+
   // Build week list — compute one extra week (oldest) just for trend comparison
   type Week = {
     start: string;
@@ -155,6 +172,7 @@ export default async function ReflectionsPage({
           highlights={buildHighlights(currentWeek.stats)}
           reflection={reflectionByWeek.get(currentWeek.start) ?? null}
           motivationByGoal={motivationByGoal}
+          partnerState={partnerState}
         />
       ) : null}
 
@@ -176,6 +194,7 @@ export default async function ReflectionsPage({
                   highlights={buildHighlights(w.stats)}
                   reflection={reflectionByWeek.get(w.start) ?? null}
                   motivationByGoal={motivationByGoal}
+                  partnerState={partnerState}
                 />
               );
             })}
@@ -208,6 +227,7 @@ function CurrentWeekHero({
   highlights,
   reflection,
   motivationByGoal,
+  partnerState,
 }: {
   start: string;
   end: string;
@@ -215,6 +235,7 @@ function CurrentWeekHero({
   highlights: Highlights;
   reflection: ReflectionRow | null;
   motivationByGoal: Map<string, string | null>;
+  partnerState: PartnerState;
 }) {
   const narrative = buildWeeklyNarrative(stats, null, highlights);
   return (
@@ -224,7 +245,7 @@ function CurrentWeekHero({
       </p>
       <p className="text-2xl font-light tracking-tight leading-snug mb-6 max-w-prose">
         {narrative ??
-          "A fresh week. Log a check-in or two, then come back to reflect."}
+          "Log a few check-ins this week, then this becomes your read on what helped and what got in the way."}
       </p>
       <WeekDetailBody
         weekStart={start}
@@ -232,6 +253,7 @@ function CurrentWeekHero({
         highlights={highlights}
         reflection={reflection}
         motivationByGoal={motivationByGoal}
+        partnerState={partnerState}
         inProgress
       />
     </section>
@@ -248,6 +270,7 @@ function PastWeek({
   highlights,
   reflection,
   motivationByGoal,
+  partnerState,
 }: {
   start: string;
   end: string;
@@ -256,6 +279,7 @@ function PastWeek({
   highlights: Highlights;
   reflection: ReflectionRow | null;
   motivationByGoal: Map<string, string | null>;
+  partnerState: PartnerState;
 }) {
   const total = stats.done + stats.skipped + stats.missed;
   const scoreable = weekHasScoreableTarget(stats);
@@ -302,6 +326,7 @@ function PastWeek({
           highlights={highlights}
           reflection={reflection}
           motivationByGoal={motivationByGoal}
+          partnerState={partnerState}
           inProgress={false}
         />
       </div>
@@ -318,6 +343,7 @@ function WeekDetailBody({
   highlights,
   reflection,
   motivationByGoal,
+  partnerState,
   inProgress,
 }: {
   weekStart: string;
@@ -325,6 +351,7 @@ function WeekDetailBody({
   highlights: Highlights;
   reflection: ReflectionRow | null;
   motivationByGoal: Map<string, string | null>;
+  partnerState: PartnerState;
   // The current week is still open: show evidence of showing up, not a
   // mid-week completion grade (a count goal at 2-of-5 on Wednesday isn't 40%
   // "complete" — the week isn't over).
@@ -390,6 +417,7 @@ function WeekDetailBody({
       <ReflectionEditor
         weekStartDate={weekStart}
         initial={reflection}
+        partnerState={partnerState}
         continueHint={
           strongest
             ? `${strongest.goalName} is working. What's making it click?`
