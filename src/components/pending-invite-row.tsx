@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { revokeInvite } from "@/lib/actions/partners";
+import { tapTarget } from "@/lib/ui";
 
 export default function PendingInviteRow({
   id,
@@ -39,11 +40,11 @@ export default function PendingInviteRow({
         <p className="text-sm">{email}</p>
         <p className="text-xs text-[color:var(--muted)] mt-0.5">Pending</p>
       </div>
-      <div className="flex items-center gap-2 text-xs">
+      <div className="flex items-center gap-1 text-xs">
         <button
           type="button"
           onClick={handleCopy}
-          className="text-[color:var(--muted)] hover:text-black"
+          className={`${tapTarget} px-2 text-[color:var(--muted)] hover:text-black`}
         >
           {copied ? "Copied" : "Copy link"}
         </button>
@@ -51,7 +52,7 @@ export default function PendingInviteRow({
           type="button"
           onClick={handleRevoke}
           disabled={pending}
-          className="text-[color:var(--muted)] hover:text-red-600 disabled:opacity-50"
+          className={`${tapTarget} px-2 text-[color:var(--muted)] hover:text-red-600 disabled:opacity-50`}
         >
           Revoke
         </button>
