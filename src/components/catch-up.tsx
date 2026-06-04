@@ -65,7 +65,7 @@ export default function CatchUp({
       <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
         Catch up
       </h3>
-      <ul className="divide-y divide-[color:var(--border)] border-y border-[color:var(--border)]">
+      <ul className="max-w-md divide-y divide-[color:var(--border)] border-y border-[color:var(--border)]">
         {days.map((day) => {
           // Apply the optimistic override so the row reflects the tap instantly.
           const status =
@@ -95,7 +95,7 @@ export default function CatchUp({
                   type="button"
                   onClick={() => run({ ...day, status, action })}
                   disabled={pending}
-                  className={`${tapTarget} text-xs rounded-full px-4 border transition disabled:opacity-50 ${
+                  className={`${tapTarget} text-xs rounded-md px-4 border transition disabled:opacity-50 ${
                     action === "mark"
                       ? "text-white border-transparent"
                       : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black hover:text-black"
@@ -111,7 +111,7 @@ export default function CatchUp({
           );
         })}
       </ul>
-      <p className="mt-2 text-xs text-[color:var(--muted)]">
+      <p className="mt-2 max-w-md text-xs text-[color:var(--muted)]">
         Update any day from this week or the last couple of days. Older days lock in.
       </p>
     </div>
