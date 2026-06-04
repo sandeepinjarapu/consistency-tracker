@@ -122,112 +122,121 @@ export default function GoalForm({
   );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Field label="Goal name" htmlFor="name">
-        <input
-          id="name"
-          required
-          maxLength={120}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. 30 min of writing"
-          className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
-        />
-      </Field>
+    <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Intent leads: the goal and the reason for it sit above the config, so
+          "why this matters" is the first thing shaped, not an afterthought. */}
+      <div className="space-y-6">
+        <Field label="Goal name" htmlFor="name">
+          <input
+            id="name"
+            required
+            maxLength={120}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. 30 min of writing"
+            className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
+          />
+        </Field>
 
-      {/* Intent leads, right under the name — the "why" is what brings
-          someone back, so it shouldn't hide among the config fields. */}
-      <Field label="Why this matters" htmlFor="motivation">
-        <textarea
-          id="motivation"
-          value={motivation}
-          onChange={(e) => setMotivation(e.target.value)}
-          rows={3}
-          maxLength={400}
-          placeholder="When this gets hard, what should this goal remind you of?"
-          className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black resize-none"
-        />
-        <p className="mt-1 text-xs text-[color:var(--muted)]">
-          Optional — but it&apos;s what you&apos;ll see on this goal when showing up feels hard.
-        </p>
-      </Field>
-
-      <Field label="Category" htmlFor="category">
-        <div className="flex items-center gap-2">
-          <select
-            id="category"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="flex-1 min-h-[44px] border border-[color:var(--border)] rounded-md px-3 text-sm bg-white focus:outline-none focus:border-black"
-          >
-            <option value="">Uncategorized</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => setShowNewCategory((s) => !s)}
-            className={`${tapTarget} text-xs text-[color:var(--muted)] hover:text-black px-3`}
-          >
-            {showNewCategory ? "Cancel" : "+ New"}
-          </button>
+        <div>
+          <label htmlFor="motivation" className="block text-sm font-medium">
+            Why this matters
+          </label>
+          <p className="mt-1 mb-2 text-xs text-[color:var(--muted)]">
+            Optional, but it&apos;s the line you&apos;ll come back to when showing up feels hard.
+          </p>
+          <textarea
+            id="motivation"
+            value={motivation}
+            onChange={(e) => setMotivation(e.target.value)}
+            rows={3}
+            maxLength={400}
+            placeholder="When this gets hard, what should this goal remind you of?"
+            className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black resize-none"
+          />
         </div>
-        {showNewCategory ? (
-          <div className="mt-2 flex items-center gap-2">
-            <input
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              placeholder="New category name"
-              maxLength={40}
-              className="flex-1 border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddCategory();
-                }
-              }}
+      </div>
+
+      <Section title="Details">
+        <div className="space-y-6">
+          <Field label="Category" htmlFor="category">
+            <div className="flex items-center gap-2">
+              <select
+                id="category"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="flex-1 min-h-[44px] border border-[color:var(--border)] rounded-md px-3 text-sm bg-white focus:outline-none focus:border-black"
+              >
+                <option value="">Uncategorized</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowNewCategory((s) => !s)}
+                className={`${tapTarget} text-xs text-[color:var(--muted)] hover:text-black px-3`}
+              >
+                {showNewCategory ? "Cancel" : "+ New"}
+              </button>
+            </div>
+            {showNewCategory ? (
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="New category name"
+                  maxLength={40}
+                  className="flex-1 border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddCategory();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCategory}
+                  disabled={creatingCategory || !newCategoryName.trim()}
+                  className={`${tapTarget} text-sm border border-[color:var(--border)] rounded-md px-4 hover:bg-gray-50 disabled:opacity-50`}
+                >
+                  {creatingCategory ? "Adding…" : "Add"}
+                </button>
+              </div>
+            ) : null}
+          </Field>
+
+          <Field label="Description (optional)" htmlFor="description">
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              maxLength={400}
+              className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black resize-none"
             />
-            <button
-              type="button"
-              onClick={handleAddCategory}
-              disabled={creatingCategory || !newCategoryName.trim()}
-              className={`${tapTarget} text-sm border border-[color:var(--border)] rounded-md px-4 hover:bg-gray-50 disabled:opacity-50`}
-            >
-              {creatingCategory ? "Adding…" : "Add"}
-            </button>
-          </div>
-        ) : null}
-      </Field>
+          </Field>
 
-      <Field label="Description (optional)" htmlFor="description">
-        <textarea
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={2}
-          maxLength={400}
-          className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black resize-none"
-        />
-      </Field>
+          <Field label="Reflection doc URL (optional)" htmlFor="doc_url">
+            <input
+              id="doc_url"
+              type="url"
+              value={docUrl}
+              onChange={(e) => setDocUrl(e.target.value)}
+              placeholder="https://docs.google.com/…"
+              className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
+            />
+            <p className="mt-1 text-xs text-[color:var(--muted)]">
+              A Google Doc, Notion page, or anything you want to link from this goal.
+            </p>
+          </Field>
+        </div>
+      </Section>
 
-      <Field label="Reflection doc URL (optional)" htmlFor="doc_url">
-        <input
-          id="doc_url"
-          type="url"
-          value={docUrl}
-          onChange={(e) => setDocUrl(e.target.value)}
-          placeholder="https://docs.google.com/…"
-          className="w-full border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
-        />
-        <p className="mt-1 text-xs text-[color:var(--muted)]">
-          A Google Doc, Notion page, or anything you want to link from this goal.
-        </p>
-      </Field>
-
-      <Field label="How often">
+      <Section title="How often">
         <div className="flex items-center gap-2 mb-4">
           <button
             type="button"
@@ -283,7 +292,7 @@ export default function GoalForm({
               </button>
             </div>
             <p className="mt-2 text-xs text-[color:var(--muted)]">
-              Shows up in Today with your weekly progress — no fixed reminder.
+              Shows up in Today with your weekly progress; no fixed reminder.
             </p>
           </div>
         ) : null}
@@ -327,14 +336,15 @@ export default function GoalForm({
             );
           })}
         </div>
-      </Field>
+      </Section>
 
       {!isCount ? (
-        <Field label="Reminder time (optional)" htmlFor="reminder_time">
-          <div className="flex items-center gap-3">
+        <Section title="Reminder">
+          <div className="flex flex-wrap items-center gap-3">
             <input
               id="reminder_time"
               type="time"
+              aria-label="Reminder time"
               value={reminderTime}
               onChange={(e) => setReminderTime(e.target.value)}
               className="min-h-[44px] border border-[color:var(--border)] rounded-md px-3 text-sm focus:outline-none focus:border-black"
@@ -368,10 +378,10 @@ export default function GoalForm({
               </>
             ) : null}
           </div>
-          <p className="mt-1 text-xs text-[color:var(--muted)]">
-            The Calendar link reflects your current time + target days — open it to add a recurring event.
+          <p className="mt-2 text-xs text-[color:var(--muted)]">
+            The Calendar link reflects your current time + target days. Open it to add a recurring event.
           </p>
-        </Field>
+        </Section>
       ) : null}
 
       {error ? (
@@ -395,6 +405,26 @@ export default function GoalForm({
         </button>
       </div>
     </form>
+  );
+}
+
+// A quiet section: a hairline divider and an uppercase label, matching the
+// "Sharing" section the edit page renders right after this form — so the whole
+// page reads as one set of sections (Details / How often / Reminder / Sharing).
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="pt-6 border-t border-[color:var(--border)]">
+      <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-4">
+        {title}
+      </h2>
+      {children}
+    </div>
   );
 }
 
