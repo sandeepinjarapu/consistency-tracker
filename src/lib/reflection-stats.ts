@@ -199,6 +199,27 @@ export function computeWeekStats({
 }
 
 /**
+ * The week's completion rate (0..1) for the Reflections surface, aggregated
+ * across goals as sum(min(done, target)) / sum(target).
+ *
+ * Using each goal's own `targetCount` is what keeps this honest for count
+ * goals: their target is the weekly quota, so extra skipped days don't inflate
+ * the denominator (the old done/(done+skipped+missed) penalised count goals for
+ * skips, which their day-by-day compliance is meant to ignore). For specific-day
+ * goals targetCount == done+skipped+missed, so their number is unchanged. min()
+ * caps an over-quota count goal at 100%.
+ */
+export function reflectionCompletionRate(stats: WeekStats): number {
+  let done = 0;
+  let target = 0;
+  for (const g of stats.perGoal) {
+    done += Math.min(g.done, g.targetCount);
+    target += g.targetCount;
+  }
+  return target > 0 ? done / target : 0;
+}
+
+/**
  * Compute completion-rate / done / skipped deltas vs the prior week.
  * Returns hasPrior=false if the prior week had no activity at all
  * (comparing to a zero-baseline isn't meaningful).
@@ -215,7 +236,7 @@ export function compareWeeks(
       skipDelta: null,
     };
   }
-  const currentTotal = current.done + current.skipped + current.missed;
+  // A prior week with no activity isn't a meaningful baseline to compare to.
   const priorTotal = prior.done + prior.skipped + prior.missed;
   if (priorTotal === 0) {
     return {
@@ -225,8 +246,8 @@ export function compareWeeks(
       skipDelta: null,
     };
   }
-  const currentCompletion = currentTotal > 0 ? current.done / currentTotal : 0;
-  const priorCompletion = prior.done / priorTotal;
+  const currentCompletion = reflectionCompletionRate(current);
+  const priorCompletion = reflectionCompletionRate(prior);
   return {
     hasPrior: true,
     completionDelta: Math.round((currentCompletion - priorCompletion) * 100),

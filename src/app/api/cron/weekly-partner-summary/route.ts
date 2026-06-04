@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
- * Weekly partner-summary cron. Runs Sundays end-of-day UTC.
+ * Weekly partner-summary cron. Runs Monday 02:30 UTC (see vercel.json),
+ * summarizing the prior, fully-complete Mon–Sun week.
  *
  * For every accepted partnership (A ↔ B), for each direction (A is owner,
  * B is viewer), gather the goals A has shared with B, compute A's stats
