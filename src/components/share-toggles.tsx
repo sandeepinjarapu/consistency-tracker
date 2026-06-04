@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { setGoalShared } from "@/lib/actions/partners";
+import { tapTarget, tapTargetRow } from "@/lib/ui";
 
 type Partner = { id: string; display_name: string | null };
 
@@ -106,7 +107,7 @@ export default function ShareToggles({
           type="button"
           onClick={() => setEditing(true)}
           aria-expanded={false}
-          className="shrink-0 text-xs underline text-[color:var(--muted)] hover:text-black"
+          className={`${tapTarget} shrink-0 px-2 text-xs underline text-[color:var(--muted)] hover:text-black`}
         >
           {sharedNames.length === 0 ? "Share" : "Manage"}
         </button>
@@ -122,14 +123,14 @@ export default function ShareToggles({
           return (
             <label
               key={p.id}
-              className="flex items-center gap-2 text-sm cursor-pointer hover:text-black text-[color:var(--muted)]"
+              className={`${tapTargetRow} gap-2 text-sm cursor-pointer hover:text-black text-[color:var(--muted)]`}
             >
               <input
                 type="checkbox"
                 checked={shared}
                 onChange={() => toggle(p.id)}
                 disabled={pending}
-                className="rounded border-[color:var(--border)]"
+                className="w-5 h-5 rounded border-[color:var(--border)]"
               />
               <span className={shared ? "text-black" : ""}>
                 {p.display_name ?? "Partner"}
@@ -142,7 +143,7 @@ export default function ShareToggles({
         type="button"
         onClick={() => setEditing(false)}
         aria-expanded
-        className="text-xs underline text-[color:var(--muted)] hover:text-black"
+        className={`${tapTarget} px-2 text-xs underline text-[color:var(--muted)] hover:text-black`}
       >
         Done
       </button>

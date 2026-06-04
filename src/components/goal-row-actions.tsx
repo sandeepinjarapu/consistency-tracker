@@ -4,6 +4,7 @@ import { archiveGoal, unarchiveGoal } from "@/lib/actions/goals";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTransition } from "react";
+import { tapTarget } from "@/lib/ui";
 
 export default function GoalRowActions({
   goalId,
@@ -24,10 +25,10 @@ export default function GoalRowActions({
   }
 
   return (
-    <div className="flex items-center gap-3 text-xs">
+    <div className="flex items-center gap-1 text-xs">
       <Link
         href={`/consistencytracker/goals/${goalId}/edit`}
-        className="text-[color:var(--muted)] hover:text-black"
+        className={`${tapTarget} px-2 text-[color:var(--muted)] hover:text-black`}
       >
         Edit
       </Link>
@@ -35,7 +36,7 @@ export default function GoalRowActions({
         type="button"
         onClick={handleArchive}
         disabled={pending}
-        className="text-[color:var(--muted)] hover:text-black disabled:opacity-50"
+        className={`${tapTarget} px-2 text-[color:var(--muted)] hover:text-black disabled:opacity-50`}
       >
         {pending ? "…" : archived ? "Unarchive" : "Archive"}
       </button>

@@ -7,7 +7,9 @@ import type { WeekSlot } from "@/lib/goal-week-status";
  * recent days, lifetime record) look like the same object. So shape follows
  * job:
  *   - frequency goals → a segmented quota rail ("2 of 5" worth of progress),
- *   - specific-day goals → labeled weekday markers (this week's schedule).
+ *   - specific-day goals → labeled weekday chips (this week's schedule), where
+ *     the chip itself carries the state (done / today / missed / upcoming) so
+ *     the signal is legible without a tiny dot.
  * Purely presentational — slot computation lives in goal-week-status.
  */
 export default function WeekProgress({
@@ -22,15 +24,20 @@ export default function WeekProgress({
 
   // Frequency goals: a calm horizontal rail of N segments, filled by progress.
   if (!labeled) {
+    const done = slots.filter((s) => s.state === "done").length;
     return (
-      <div className="flex gap-1" aria-hidden>
+      <div
+        className="flex gap-1"
+        role="img"
+        aria-label={`This week: ${done} of ${slots.length} done`}
+      >
         {slots.map((slot, i) => (
           <span
             key={i}
+            aria-hidden
             className="h-2 flex-1 rounded-full"
             style={{
-              background:
-                slot.state === "done" ? doneColor : "var(--border)",
+              background: slot.state === "done" ? doneColor : "var(--border)",
             }}
           />
         ))}
@@ -38,21 +45,17 @@ export default function WeekProgress({
     );
   }
 
-  // Specific-day goals: weekday markers, so it reads as "this week's schedule"
-  // (which days are done / today / missed / still upcoming) rather than a chart.
+  // Specific-day goals: weekday chips, so it reads as "this week's schedule"
+  // (which days are done / today / missed / still upcoming).
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label="This week's schedule">
       {slots.map((slot, i) => (
         <span
           key={i}
-          className="inline-flex items-center gap-1.5 text-xs"
-          style={markerColor(slot, doneColor)}
+          aria-label={`${slot.label}: ${STATE_WORD[slot.state]}`}
+          className="text-[11px] font-medium rounded-md px-2 py-1"
+          style={chipStyle(slot, doneColor)}
         >
-          <span
-            aria-hidden
-            className="h-2 w-2 rounded-full"
-            style={dotStyle(slot, doneColor)}
-          />
           {slot.label}
         </span>
       ))}
@@ -60,32 +63,34 @@ export default function WeekProgress({
   );
 }
 
-// The label color: muted for upcoming/empty, normal otherwise.
-function markerColor(slot: WeekSlot, doneColor: string): React.CSSProperties {
-  switch (slot.state) {
-    case "done":
-      return { color: doneColor };
-    case "missed":
-    case "upcoming":
-    case "empty":
-      return { color: "var(--muted)" };
-    case "today":
-    default:
-      return { color: "var(--foreground)", fontWeight: 500 };
-  }
-}
+const STATE_WORD: Record<WeekSlot["state"], string> = {
+  done: "done",
+  today: "today",
+  missed: "missed",
+  upcoming: "upcoming",
+  empty: "upcoming",
+};
 
-function dotStyle(slot: WeekSlot, doneColor: string): React.CSSProperties {
+// The chip's appearance is the signal — done fills with the category color,
+// today gets a colored ring, missed reads as a quiet filled gray, upcoming is a
+// faint outline. No separate dot.
+function chipStyle(slot: WeekSlot, doneColor: string): React.CSSProperties {
   switch (slot.state) {
     case "done":
-      return { background: doneColor };
+      return { background: doneColor, color: "#ffffff" };
     case "today":
-      return { boxShadow: `inset 0 0 0 2px ${doneColor}` };
+      return {
+        boxShadow: `inset 0 0 0 1.5px ${doneColor}`,
+        color: doneColor,
+      };
     case "missed":
-      return { background: "#e5e7eb" };
+      return { background: "#f3f4f6", color: "var(--muted)" };
     case "upcoming":
     case "empty":
     default:
-      return { boxShadow: "inset 0 0 0 1px var(--border)" };
+      return {
+        boxShadow: "inset 0 0 0 1px var(--border)",
+        color: "var(--muted)",
+      };
   }
 }

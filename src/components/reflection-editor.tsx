@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { upsertReflection, type Reflection } from "@/lib/actions/reflections";
+import { tapTarget } from "@/lib/ui";
 
 export default function ReflectionEditor({
   weekStartDate,
@@ -91,7 +92,7 @@ export default function ReflectionEditor({
           <button
             type="button"
             onClick={() => setVisibility("private")}
-            className={`px-3 py-1 rounded-full border transition ${
+            className={`${tapTarget} px-4 rounded-full border transition ${
               visibility === "private"
                 ? "border-black bg-black text-white"
                 : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black"
@@ -102,7 +103,7 @@ export default function ReflectionEditor({
           <button
             type="button"
             onClick={() => setVisibility("partner")}
-            className={`px-3 py-1 rounded-full border transition ${
+            className={`${tapTarget} px-4 rounded-full border transition ${
               visibility === "partner"
                 ? "border-black bg-black text-white"
                 : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black"
@@ -121,7 +122,7 @@ export default function ReflectionEditor({
             type="button"
             onClick={handleSave}
             disabled={pending}
-            className="bg-black text-white text-sm rounded-md px-4 py-2 hover:bg-gray-800 disabled:opacity-50"
+            className={`${tapTarget} bg-black text-white text-sm rounded-md px-4 hover:bg-gray-800 disabled:opacity-50`}
           >
             {pending ? "Saving…" : "Save reflection"}
           </button>

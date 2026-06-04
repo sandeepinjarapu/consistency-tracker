@@ -11,6 +11,7 @@ import {
   type SkipReason,
 } from "@/lib/actions/check-ins";
 import { formatCheckInTime } from "@/lib/dates";
+import { tapTarget, tapTargetRow } from "@/lib/ui";
 
 const REASON_LABELS: Record<SkipReason, string> = {
   travel: "Travel",
@@ -161,7 +162,7 @@ export default function TodayGoalCard({
                 <button
                   onClick={() => run(() => unmark(goalId, date), null)}
                   disabled={pending}
-                  className="text-xs text-[color:var(--muted)] hover:text-black disabled:opacity-50"
+                  className={`${tapTarget} px-2 text-xs text-[color:var(--muted)] hover:text-black disabled:opacity-50`}
                 >
                   Undo
                 </button>
@@ -180,7 +181,7 @@ export default function TodayGoalCard({
                 <button
                   onClick={() => run(() => unmark(goalId, date), null)}
                   disabled={pending}
-                  className="text-xs text-[color:var(--muted)] hover:text-black disabled:opacity-50"
+                  className={`${tapTarget} px-2 text-xs text-[color:var(--muted)] hover:text-black disabled:opacity-50`}
                 >
                   Undo
                 </button>
@@ -190,7 +191,7 @@ export default function TodayGoalCard({
                 <button
                   onClick={() => run(() => markDone(goalId, date), optimisticRow("done", null))}
                   disabled={pending}
-                  className="text-xs border border-[color:var(--border)] rounded-md px-3 py-1.5 hover:border-black hover:bg-gray-50 disabled:opacity-50"
+                  className={`${tapTarget} text-xs font-medium bg-black text-white rounded-md px-4 hover:bg-gray-800 disabled:opacity-50`}
                 >
                   Mark done
                 </button>
@@ -198,17 +199,17 @@ export default function TodayGoalCard({
                   <button
                     onClick={() => setShowSkipMenu((s) => !s)}
                     disabled={pending}
-                    className="text-xs text-[color:var(--muted)] hover:text-black px-2 py-1.5 disabled:opacity-50"
+                    className={`${tapTarget} text-xs text-[color:var(--muted)] hover:text-black px-3 rounded-md border border-[color:var(--border)] disabled:opacity-50`}
                   >
                     Skip ▾
                   </button>
                   {showSkipMenu ? (
-                    <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-[color:var(--border)] rounded-md shadow-sm py-1 w-32">
+                    <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-[color:var(--border)] rounded-md shadow-sm py-1 w-40">
                       {(Object.keys(REASON_LABELS) as SkipReason[]).map((r) => (
                         <button
                           key={r}
                           onClick={() => run(() => markSkipped(goalId, date, r), optimisticRow("skipped", r))}
-                          className="block w-full text-left text-xs px-3 py-1.5 hover:bg-gray-50"
+                          className={`${tapTargetRow} w-full text-left text-xs px-3 hover:bg-gray-50`}
                         >
                           {REASON_LABELS[r]}
                         </button>
@@ -232,7 +233,7 @@ export default function TodayGoalCard({
                   onChange={(e) => setNoteDraft(e.target.value.slice(0, 100))}
                   placeholder="A note for your weekly reflection…"
                   maxLength={100}
-                  className="flex-1 text-xs border border-[color:var(--border)] rounded-md px-2 py-1.5 focus:outline-none focus:border-black"
+                  className="flex-1 min-h-[44px] text-xs border border-[color:var(--border)] rounded-md px-3 focus:outline-none focus:border-black"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") saveNote();
                     if (e.key === "Escape") cancelNote();
@@ -244,13 +245,13 @@ export default function TodayGoalCard({
                 <button
                   onClick={saveNote}
                   disabled={savingNote}
-                  className="text-xs text-black hover:underline disabled:opacity-50"
+                  className={`${tapTarget} px-2 text-xs text-black hover:underline disabled:opacity-50`}
                 >
                   Save
                 </button>
                 <button
                   onClick={cancelNote}
-                  className="text-xs text-[color:var(--muted)] hover:text-black"
+                  className={`${tapTarget} px-2 text-xs text-[color:var(--muted)] hover:text-black`}
                 >
                   Cancel
                 </button>
@@ -258,14 +259,14 @@ export default function TodayGoalCard({
             ) : checkIn?.note ? (
               <button
                 onClick={() => setEditingNote(true)}
-                className="text-xs text-[color:var(--muted)] italic hover:text-black text-left"
+                className="min-h-[44px] inline-flex items-center text-xs text-[color:var(--muted)] italic hover:text-black text-left"
               >
                 “{checkIn.note}” <span className="not-italic">· edit</span>
               </button>
             ) : (
               <button
                 onClick={() => setEditingNote(true)}
-                className="text-xs text-[color:var(--muted)] hover:text-black"
+                className={`${tapTarget} text-xs text-[color:var(--muted)] hover:text-black`}
               >
                 + Add note
               </button>

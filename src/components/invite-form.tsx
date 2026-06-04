@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { sendInvite } from "@/lib/actions/partners";
+import { tapTarget } from "@/lib/ui";
 
 export default function InviteForm() {
   const router = useRouter();
@@ -52,12 +53,12 @@ export default function InviteForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="partner@example.com"
-          className="flex-1 border border-[color:var(--border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"
+          className="flex-1 min-h-[44px] border border-[color:var(--border)] rounded-md px-3 text-sm focus:outline-none focus:border-black"
         />
         <button
           type="submit"
           disabled={pending || !email.trim()}
-          className="bg-black text-white text-sm rounded-md px-4 py-2 hover:bg-gray-800 disabled:opacity-50"
+          className={`${tapTarget} shrink-0 bg-black text-white text-sm rounded-md px-4 hover:bg-gray-800 disabled:opacity-50`}
         >
           {pending ? "Sending…" : "Send invite"}
         </button>
@@ -79,7 +80,7 @@ export default function InviteForm() {
             <button
               type="button"
               onClick={copyUrl}
-              className="border border-[color:var(--border)] rounded-md px-3 py-1.5 hover:bg-white"
+              className={`${tapTarget} shrink-0 border border-[color:var(--border)] rounded-md px-3 hover:bg-white`}
             >
               {copied ? "Copied" : "Copy link"}
             </button>
