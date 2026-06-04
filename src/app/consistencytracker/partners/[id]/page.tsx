@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { isPartner } from "@/lib/actions/partners";
 import { listMyReactions } from "@/lib/actions/reactions";
+import { getPartnerReflections, type Reflection } from "@/lib/actions/reflections";
 import { addDays, todayIn, isoWeekStart } from "@/lib/dates";
 import { buildHeatmapCells, computeStats, computeWeeklyMet } from "@/lib/stats";
 import { targetDaysLabel } from "@/lib/target-days-label";
@@ -117,6 +118,15 @@ export default async function PartnerPage({
   const myReactions: Record<string, true> =
     goals.length > 0 ? await listMyReactions(partnerId, weekStart) : {};
 
+  // Their own words for the recent weeks — only the reflections they chose to
+  // make partner-visible (RLS double-checks the share). The most human signal
+  // on this page, so it leads.
+  const prevWeekStart = addDays(weekStart, -7);
+  const partnerReflections =
+    goals.length > 0
+      ? await getPartnerReflections(partnerId, [weekStart, prevWeekStart])
+      : [];
+
   return (
     <section className="space-y-10">
       <MarkSharesSeen ownerId={partnerId} />
@@ -149,6 +159,29 @@ export default async function PartnerPage({
           </p>
         </div>
       </header>
+
+      {partnerReflections.length > 0 ? (
+        <div>
+          <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+            In {partnerProfile.display_name ?? "their"} words
+          </h2>
+          <div className="space-y-4">
+            {partnerReflections.map((r) => (
+              <PartnerReflection
+                key={r.id}
+                reflection={r}
+                weekLabel={
+                  r.week_start_date === weekStart
+                    ? "This week"
+                    : r.week_start_date === prevWeekStart
+                      ? "Last week"
+                      : weekRangeLabel(r.week_start_date)
+                }
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {goals.length === 0 ? (
         <div className="border border-dashed border-[color:var(--border)] rounded-lg p-10 text-center">
@@ -270,6 +303,45 @@ export default async function PartnerPage({
         </div>
       )}
     </section>
+  );
+}
+
+// A partner-visible reflection, shown as their words for the week. Only the
+// fields they actually filled in appear, each with the same quiet label as the
+// reflection editor so the framing carries over.
+function PartnerReflection({
+  reflection,
+  weekLabel,
+}: {
+  reflection: Reflection;
+  weekLabel: string;
+}) {
+  const lines: Array<{ label: string | null; text: string }> = [];
+  if (reflection.continue_text)
+    lines.push({ label: "Continuing", text: reflection.continue_text });
+  if (reflection.stop_text)
+    lines.push({ label: "Stopping", text: reflection.stop_text });
+  if (reflection.improve_text)
+    lines.push({ label: "Improving", text: reflection.improve_text });
+  if (reflection.notes) lines.push({ label: null, text: reflection.notes });
+  if (lines.length === 0) return null;
+
+  return (
+    <div className="border-l-2 border-[color:var(--border)] pl-4">
+      <p className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
+        {weekLabel}
+      </p>
+      <div className="space-y-2">
+        {lines.map((l, i) => (
+          <p key={i} className="text-sm leading-relaxed">
+            {l.label ? (
+              <span className="text-[color:var(--muted)]">{l.label}: </span>
+            ) : null}
+            {l.text}
+          </p>
+        ))}
+      </div>
+    </div>
   );
 }
 
