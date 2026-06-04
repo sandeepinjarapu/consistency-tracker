@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { revalidatePath } from "next/cache";
-import { isoWeekStart, todayIn } from "@/lib/dates";
+import { isoWeekStart, todayIn, addDays } from "@/lib/dates";
 import {
   buildReactionSummaries,
   type ReactionKind,
@@ -19,7 +19,8 @@ import {
  */
 export async function toggleReaction(
   goalId: string,
-  kind: ReactionKind
+  kind: ReactionKind,
+  weekStart?: string
 ): Promise<{ active: boolean }> {
   const supabase = await createClient();
   const user = await getCurrentUser();
@@ -33,14 +34,22 @@ export async function toggleReaction(
   if (!goal) throw new Error("Goal not found");
   const ownerId = goal.user_id as string;
 
-  // Bucket the reaction to the current ISO week in the owner's timezone, so it
-  // lines up with the owner's reflection weeks. Computed server-side.
+  // Reactions are bucketed by ISO week in the owner's timezone (lining up with
+  // their reflection weeks) and stay open only for the current and previous
+  // week — aligned with the Monday summary email; older weeks are settled.
   const { data: ownerProfile } = await supabase
     .from("profiles")
     .select("timezone")
     .eq("id", ownerId)
     .single();
-  const weekStart = isoWeekStart(todayIn(ownerProfile?.timezone ?? "UTC"));
+  const currentWeek = isoWeekStart(todayIn(ownerProfile?.timezone ?? "UTC"));
+  const previousWeek = addDays(currentWeek, -7);
+  const targetWeek = weekStart ?? currentWeek;
+  if (targetWeek !== currentWeek && targetWeek !== previousWeek) {
+    throw new Error(
+      "Reactions are open for the current and previous week only."
+    );
+  }
 
   const { data: existing } = await supabase
     .from("reactions")
@@ -48,7 +57,7 @@ export async function toggleReaction(
     .eq("goal_id", goalId)
     .eq("reactor_id", user.id)
     .eq("kind", kind)
-    .eq("week_start_date", weekStart)
+    .eq("week_start_date", targetWeek)
     .maybeSingle();
 
   let active: boolean;
@@ -62,7 +71,7 @@ export async function toggleReaction(
       owner_id: ownerId,
       reactor_id: user.id,
       kind,
-      week_start_date: weekStart,
+      week_start_date: targetWeek,
     });
     if (error && error.code !== "23505") throw error; // ignore double-insert race
     active = true;
@@ -74,25 +83,26 @@ export async function toggleReaction(
 }
 
 /**
- * Which reactions the current user has left on a given owner's goals, keyed
- * `${goalId}:${kind}`. Lets the partner-view buttons render their toggled
- * state.
+ * Which reactions the current user has left on a given owner's goals across
+ * the given weeks, keyed `${goalId}:${kind}:${weekStart}`. Lets the partner
+ * view render each week's buttons in their toggled state.
  */
 export async function listMyReactions(
   ownerId: string,
-  weekStart: string
+  weekStarts: string[]
 ): Promise<Record<string, true>> {
   const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) return {};
+  if (!user || weekStarts.length === 0) return {};
   const { data } = await supabase
     .from("reactions")
-    .select("goal_id, kind")
+    .select("goal_id, kind, week_start_date")
     .eq("owner_id", ownerId)
     .eq("reactor_id", user.id)
-    .eq("week_start_date", weekStart);
+    .in("week_start_date", weekStarts);
   const out: Record<string, true> = {};
-  for (const r of data ?? []) out[`${r.goal_id}:${r.kind}`] = true;
+  for (const r of data ?? [])
+    out[`${r.goal_id}:${r.kind}:${r.week_start_date}`] = true;
   return out;
 }
 
