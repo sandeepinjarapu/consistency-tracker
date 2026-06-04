@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import CopyEmail from "./copy-email";
 
 export const metadata: Metadata = {
   title: "Privacy notice · Consistency Tracker",
@@ -111,15 +112,9 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-base font-medium">Contact</h2>
           <p>
-            Questions, or want your data removed? Email{" "}
-            <a
-              href="mailto:privacy@sixthsense.works"
-              className="underline hover:text-black"
-            >
-              privacy@sixthsense.works
-            </a>
-            .
+            Questions, or want your data removed?
           </p>
+          <CopyEmail />
         </section>
 
         <footer className="pt-4 border-t border-[color:var(--border)]">
