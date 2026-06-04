@@ -313,10 +313,15 @@ export async function countUnseenShares(): Promise<number> {
  * seen. Called when the user visits the partner's page.
  */
 export async function markSharesSeen(ownerId: string): Promise<void> {
-  const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return;
-  await supabase
+  // The viewer's "seen" marker lives on the owner's share row, but the shares
+  // table is owner-managed (no RLS UPDATE policy for viewers), so an RLS-scoped
+  // update silently matches zero rows and the dot never clears. Use the service
+  // role and scope the write in code to the caller's own viewer rows, touching
+  // only notified_at.
+  const service = createServiceClient();
+  await service
     .from("shares")
     .update({ notified_at: new Date().toISOString() })
     .eq("viewer_id", user.id)
