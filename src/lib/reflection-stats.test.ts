@@ -428,6 +428,69 @@ describe("compareWeeks", () => {
     const t = compareWeeks(ws(5, 2, 0), ws(5, 0, 2));
     expect(t.skipDelta).toBe(2);
   });
+
+  it("a zero-check-in count week is a comparable 0% baseline (recovery shows a step up)", () => {
+    const countGoal = {
+      id: "c1",
+      name: "Gym",
+      target_days: [0, 1, 2, 3, 4, 5, 6],
+      created_at: "2024-01-01T00:00:00Z",
+      weekly_target: 5,
+    };
+    // Prior week (Jan 8–14): full target, zero check-ins → scoreable, 0%.
+    const prior = computeWeekStats({
+      start: "2024-01-08",
+      end: "2024-01-14",
+      today: TODAY_AFTER_WEEK,
+      goals: [countGoal],
+      checkIns: [],
+    });
+    // Current week (Jan 15–21): 3 of 5 → 60%.
+    const current = computeWeekStats({
+      start: "2024-01-15",
+      end: "2024-01-21",
+      today: TODAY_AFTER_WEEK,
+      goals: [countGoal],
+      checkIns: [
+        { goal_id: "c1", date: "2024-01-15", status: "done", skip_reason: null, note: null },
+        { goal_id: "c1", date: "2024-01-16", status: "done", skip_reason: null, note: null },
+        { goal_id: "c1", date: "2024-01-17", status: "done", skip_reason: null, note: null },
+      ],
+    });
+    const t = compareWeeks(current, prior);
+    expect(t.hasPrior).toBe(true);
+    expect(t.completionDelta).toBe(60); // 60% − 0%
+  });
+
+  it("a partial-first count week is not a comparable baseline", () => {
+    const countGoal = {
+      id: "c1",
+      name: "Gym",
+      target_days: [0, 1, 2, 3, 4, 5, 6],
+      created_at: "2024-01-10T00:00:00Z", // created mid prior week → grace there
+      weekly_target: 5,
+    };
+    const prior = computeWeekStats({
+      start: "2024-01-08",
+      end: "2024-01-14",
+      today: TODAY_AFTER_WEEK,
+      goals: [countGoal],
+      checkIns: [
+        { goal_id: "c1", date: "2024-01-11", status: "done", skip_reason: null, note: null },
+      ],
+    });
+    const current = computeWeekStats({
+      start: "2024-01-15",
+      end: "2024-01-21",
+      today: TODAY_AFTER_WEEK,
+      goals: [countGoal],
+      checkIns: [
+        { goal_id: "c1", date: "2024-01-15", status: "done", skip_reason: null, note: null },
+      ],
+    });
+    const t = compareWeeks(current, prior);
+    expect(t.hasPrior).toBe(false); // prior was grace, not a baseline
+  });
 });
 
 describe("buildHighlights", () => {

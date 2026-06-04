@@ -241,24 +241,20 @@ export function weekHasScoreableTarget(stats: WeekStats): boolean {
 
 /**
  * Compute completion-rate / done / skipped deltas vs the prior week.
- * Returns hasPrior=false if the prior week had no activity at all
- * (comparing to a zero-baseline isn't meaningful).
+ * Comparable only when both weeks have a scoreable target (same rule the page
+ * uses for visibility and the %). This means a count-goal week with zero
+ * check-ins is a real 0% baseline you can step up from — but a partial-first
+ * count-goal grace week is never a baseline.
  */
 export function compareWeeks(
   current: WeekStats,
   prior: WeekStats | null
 ): WeekTrend {
-  if (!prior) {
-    return {
-      hasPrior: false,
-      completionDelta: null,
-      doneDelta: null,
-      skipDelta: null,
-    };
-  }
-  // A prior week with no activity isn't a meaningful baseline to compare to.
-  const priorTotal = prior.done + prior.skipped + prior.missed;
-  if (priorTotal === 0) {
+  if (
+    !prior ||
+    !weekHasScoreableTarget(current) ||
+    !weekHasScoreableTarget(prior)
+  ) {
     return {
       hasPrior: false,
       completionDelta: null,
