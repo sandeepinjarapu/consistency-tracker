@@ -6,9 +6,15 @@ import { upsertReflection, type Reflection } from "@/lib/actions/reflections";
 export default function ReflectionEditor({
   weekStartDate,
   initial,
+  continueHint = "What worked this week — keep doing it.",
+  improveHint = "Small change for next week.",
 }: {
   weekStartDate: string;
   initial: Reflection | null;
+  // Optionally anchored to the week's strongest/weakest goal so the prompt
+  // responds to what actually happened rather than being a blank template.
+  continueHint?: string;
+  improveHint?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -51,7 +57,7 @@ export default function ReflectionEditor({
     <div className="space-y-4">
       <Prompt
         label="Continue"
-        hint="What worked this week — keep doing it."
+        hint={continueHint}
         value={continueText}
         onChange={setContinueText}
         placeholder="Morning writing right after coffee felt focused…"
@@ -65,7 +71,7 @@ export default function ReflectionEditor({
       />
       <Prompt
         label="Improve"
-        hint="Small change for next week."
+        hint={improveHint}
         value={improveText}
         onChange={setImproveText}
         placeholder="Pack gym bag the night before…"

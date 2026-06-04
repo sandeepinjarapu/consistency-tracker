@@ -59,7 +59,7 @@ export default async function ReflectionsPage({
   // All active + archived goals (so historical weeks compute correctly)
   const { data: allGoals } = await supabase
     .from("goals")
-    .select("id, name, target_days, created_at, weekly_target")
+    .select("id, name, target_days, created_at, weekly_target, motivation")
     .eq("user_id", user.id);
   const goals = (allGoals ?? []) as Array<{
     id: string;
@@ -67,7 +67,11 @@ export default async function ReflectionsPage({
     target_days: number[];
     created_at: string;
     weekly_target: number | null;
+    motivation: string | null;
   }>;
+  // The goal's "why this matters", looked up when a goal is the week's hardest —
+  // so reflection can meet you with your own reason, not just a number.
+  const motivationByGoal = new Map(goals.map((g) => [g.id, g.motivation]));
 
   // Check-ins across the window (extra week included for trend comparison)
   const { data: ciRaw } = await supabase
@@ -91,7 +95,6 @@ export default async function ReflectionsPage({
   type Week = {
     start: string;
     end: string;
-    isCurrent: boolean;
     stats: WeekStats;
   };
   const weeks: Week[] = [];
@@ -99,7 +102,7 @@ export default async function ReflectionsPage({
     const start = addDays(currentWeekStart, -i * 7);
     const end = addDays(start, 6);
     const stats = computeWeekStats({ start, end, today, goals, checkIns });
-    weeks.push({ start, end, isCurrent: i === 0, stats });
+    weeks.push({ start, end, stats });
   }
 
   // Is there history older than the current window? Show "earlier weeks" only
@@ -120,6 +123,16 @@ export default async function ReflectionsPage({
     ((oldestGoalStart !== null && oldestGoalStart < earliestWeekStart) ||
       (oldestReflectionWeek !== null && oldestReflectionWeek < earliestWeekStart));
 
+  // The current week leads as a "here's your week" hero; completed weeks
+  // collapse into a quiet, expandable list below (skipping empty ones).
+  const visibleWeeks = weeks.slice(0, weeksToShow);
+  const currentWeek = visibleWeeks[0] ?? null;
+  const statsByWeekStart = new Map(weeks.map((w) => [w.start, w.stats]));
+  const pastWeeks = visibleWeeks.slice(1).filter((w) => {
+    const active = w.stats.done + w.stats.skipped + w.stats.missed > 0;
+    return active || reflectionByWeek.has(w.start);
+  });
+
   return (
     <section>
       <header className="mb-10">
@@ -129,32 +142,41 @@ export default async function ReflectionsPage({
         </p>
       </header>
 
-      <div className="space-y-10">
-        {weeks.slice(0, weeksToShow).map((w, idx) => {
-          const reflection = reflectionByWeek.get(w.start) ?? null;
-          const hasAnyActivity = w.stats.done + w.stats.skipped + w.stats.missed > 0;
-          if (!w.isCurrent && !hasAnyActivity && !reflection) return null;
+      {currentWeek ? (
+        <CurrentWeekHero
+          start={currentWeek.start}
+          end={currentWeek.end}
+          stats={currentWeek.stats}
+          highlights={buildHighlights(currentWeek.stats)}
+          reflection={reflectionByWeek.get(currentWeek.start) ?? null}
+          motivationByGoal={motivationByGoal}
+        />
+      ) : null}
 
-          // Trend vs prior week — only meaningful for completed weeks.
-          const prior = weeks[idx + 1]?.stats ?? null;
-          const trend = w.isCurrent ? null : compareWeeks(w.stats, prior);
-
-          const highlights = buildHighlights(w.stats);
-
-          return (
-            <WeekCard
-              key={w.start}
-              start={w.start}
-              end={w.end}
-              isCurrent={w.isCurrent}
-              stats={w.stats}
-              trend={trend}
-              highlights={highlights}
-              reflection={reflection}
-            />
-          );
-        })}
-      </div>
+      {pastWeeks.length > 0 ? (
+        <div className="mt-12">
+          <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
+            Earlier weeks
+          </h2>
+          <div>
+            {pastWeeks.map((w) => {
+              const prior = statsByWeekStart.get(addDays(w.start, -7)) ?? null;
+              return (
+                <PastWeek
+                  key={w.start}
+                  start={w.start}
+                  end={w.end}
+                  stats={w.stats}
+                  trend={compareWeeks(w.stats, prior)}
+                  highlights={buildHighlights(w.stats)}
+                  reflection={reflectionByWeek.get(w.start) ?? null}
+                  motivationByGoal={motivationByGoal}
+                />
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {hasOlder ? (
         <div className="mt-10 text-center">
@@ -170,62 +192,175 @@ export default async function ReflectionsPage({
   );
 }
 
-function WeekCard({
+// The current week as a "here's your week" hero: a human narrative leads,
+// then the shared body (your words, the why behind the hardest goal, the
+// quiet numbers, the grid, and the prompt). No box — it's the moment, not a
+// list item.
+function CurrentWeekHero({
   start,
   end,
-  isCurrent,
+  stats,
+  highlights,
+  reflection,
+  motivationByGoal,
+}: {
+  start: string;
+  end: string;
+  stats: WeekStats;
+  highlights: Highlights;
+  reflection: ReflectionRow | null;
+  motivationByGoal: Map<string, string | null>;
+}) {
+  const narrative = buildWeeklyNarrative(stats, null, highlights);
+  return (
+    <section>
+      <p className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
+        This week · {formatRange(start, end)} · in progress
+      </p>
+      <p className="text-2xl font-light tracking-tight leading-snug mb-6 max-w-prose">
+        {narrative ??
+          "A fresh week. Log a check-in or two, then come back to reflect."}
+      </p>
+      <WeekDetailBody
+        weekStart={start}
+        stats={stats}
+        highlights={highlights}
+        reflection={reflection}
+        motivationByGoal={motivationByGoal}
+      />
+    </section>
+  );
+}
+
+// A completed week, collapsed to a summary row that expands in place. Uses a
+// native <details> so it stays server-rendered (no client state).
+function PastWeek({
+  start,
+  end,
   stats,
   trend,
   highlights,
   reflection,
+  motivationByGoal,
 }: {
   start: string;
   end: string;
-  isCurrent: boolean;
   stats: WeekStats;
   trend: WeekTrend | null;
   highlights: Highlights;
   reflection: ReflectionRow | null;
+  motivationByGoal: Map<string, string | null>;
 }) {
   const total = stats.done + stats.skipped + stats.missed;
   const completion = total > 0 ? Math.round((stats.done / total) * 100) : 0;
+  const hasReflection = Boolean(
+    reflection &&
+      (reflection.continue_text ||
+        reflection.stop_text ||
+        reflection.improve_text ||
+        reflection.notes)
+  );
   const narrative = buildWeeklyNarrative(stats, trend, highlights);
-  const highlightText = formatHighlights(highlights);
+  return (
+    <details className="group border-b border-[color:var(--border)]">
+      <summary className="flex items-center justify-between gap-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden py-3 hover:text-black">
+        <span className="text-sm font-medium">
+          {formatRange(start, end)}
+          {hasReflection ? (
+            <span className="ml-2 text-xs font-normal text-[color:var(--muted)]">
+              · reflected
+            </span>
+          ) : null}
+        </span>
+        <span className="flex items-center gap-2 text-xs text-[color:var(--muted)] tabular-nums">
+          <span>
+            {total === 0 ? "no activity" : `${stats.done} done · ${completion}%`}
+          </span>
+          <span aria-hidden className="transition-transform group-open:rotate-180">
+            ▾
+          </span>
+        </span>
+      </summary>
+      <div className="pb-6 pt-1">
+        {narrative ? (
+          <p className="text-base mb-4 leading-relaxed">{narrative}</p>
+        ) : null}
+        <WeekDetailBody
+          weekStart={start}
+          stats={stats}
+          highlights={highlights}
+          reflection={reflection}
+          motivationByGoal={motivationByGoal}
+        />
+      </div>
+    </details>
+  );
+}
+
+// Shared inner content for the hero and an expanded past week: human content
+// first (your own words; the "why" behind the goal that's hardest), then the
+// quiet numbers, the grid, and the writing prompt anchored to the week.
+function WeekDetailBody({
+  weekStart,
+  stats,
+  highlights,
+  reflection,
+  motivationByGoal,
+}: {
+  weekStart: string;
+  stats: WeekStats;
+  highlights: Highlights;
+  reflection: ReflectionRow | null;
+  motivationByGoal: Map<string, string | null>;
+}) {
+  const total = stats.done + stats.skipped + stats.missed;
+  const completion = total > 0 ? Math.round((stats.done / total) * 100) : 0;
+  const { strongest, weakest } = highlights;
+  const weakestMotivation = weakest
+    ? motivationByGoal.get(weakest.goalId) ?? null
+    : null;
 
   return (
-    <article className="border border-[color:var(--border)] rounded-lg p-6">
-      <header className="flex items-baseline justify-between mb-1 gap-4 flex-wrap">
-        <h2 className="text-lg font-medium">
-          {formatRange(start, end)}
-          {isCurrent ? (
-            <span className="ml-2 text-xs text-[color:var(--muted)] font-normal">· this week (in progress)</span>
-          ) : null}
-        </h2>
-        {trend?.hasPrior ? (
-          <span className="text-xs text-[color:var(--muted)] tabular-nums">
-            {formatTrend(trend)}
-          </span>
-        ) : null}
-      </header>
-
-      {narrative ? (
-        <p className="text-base mb-3 leading-relaxed">{narrative}</p>
+    <>
+      {weakest && weakestMotivation ? (
+        <div className="mb-6 border-l-2 border-[color:var(--border)] pl-4">
+          <p className="text-sm">
+            <span className="font-medium">{weakest.goalName}</span> has been the
+            hard one.
+          </p>
+          <p className="mt-1 text-sm italic text-[color:var(--muted)]">
+            You started it because: &ldquo;{weakestMotivation}&rdquo;
+          </p>
+        </div>
       ) : null}
 
-      <p className="text-xs text-[color:var(--muted)] mb-4">
+      {stats.notes.length > 0 ? (
+        <div className="mb-6">
+          <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
+            In your own words
+          </h3>
+          <ul className="space-y-1 text-sm">
+            {stats.notes.map((n, i) => (
+              <li key={i} className="text-[color:var(--muted)]">
+                <span className="italic">&ldquo;{n.note}&rdquo;</span> —{" "}
+                {n.goalName}, {shortDate(n.date)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <p className="text-xs text-[color:var(--muted)] mb-6">
         {total === 0 ? (
           <>No check-ins recorded.</>
         ) : (
           <>
             {stats.done} done · {stats.skipped} skipped
-            {stats.skipped > 0 ? ` (${formatReasons(stats.skipReasons)})` : ""} · {stats.missed} missed · {completion}% completion
+            {stats.skipped > 0 ? ` (${formatReasons(stats.skipReasons)})` : ""} ·{" "}
+            {stats.missed} missed · {completion}% completion
           </>
         )}
       </p>
-
-      {highlightText ? (
-        <p className="text-sm mb-6 leading-relaxed">{highlightText}</p>
-      ) : null}
 
       {stats.perGoal.length > 0 ? (
         <div className="mb-6">
@@ -233,23 +368,21 @@ function WeekCard({
         </div>
       ) : null}
 
-      {stats.notes.length > 0 ? (
-        <div className="mb-6">
-          <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
-            Notes from check-ins
-          </h3>
-          <ul className="space-y-1 text-sm">
-            {stats.notes.map((n, i) => (
-              <li key={i} className="text-[color:var(--muted)]">
-                <span className="italic">&ldquo;{n.note}&rdquo;</span> — {n.goalName}, {shortDate(n.date)}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      <ReflectionEditor weekStartDate={start} initial={reflection} />
-    </article>
+      <ReflectionEditor
+        weekStartDate={weekStart}
+        initial={reflection}
+        continueHint={
+          strongest
+            ? `${strongest.goalName} is working — what's making it click?`
+            : undefined
+        }
+        improveHint={
+          weakest
+            ? `${weakest.goalName} is the hard one — what would help?`
+            : undefined
+        }
+      />
+    </>
   );
 }
 
@@ -290,42 +423,3 @@ function formatReasons(reasons: Record<string, number>): string {
     .join(", ");
 }
 
-function formatTrend(trend: WeekTrend): string {
-  const parts: string[] = [];
-  if (trend.completionDelta !== null) {
-    if (trend.completionDelta > 0) parts.push(`↑ ${trend.completionDelta}% completion`);
-    else if (trend.completionDelta < 0) parts.push(`↓ ${Math.abs(trend.completionDelta)}% completion`);
-    else parts.push(`= completion`);
-  }
-  if (trend.doneDelta !== null && trend.doneDelta !== 0) {
-    parts.push(`${trend.doneDelta > 0 ? "+" : ""}${trend.doneDelta} done`);
-  }
-  if (trend.skipDelta !== null && trend.skipDelta !== 0) {
-    parts.push(`${trend.skipDelta > 0 ? "+" : ""}${trend.skipDelta} skipped`);
-  }
-  return parts.length > 0 ? parts.join(" · ") + " vs last week" : "";
-}
-
-function formatHighlights(h: Highlights): string | null {
-  const REASON_LABELS: Record<string, string> = {
-    travel: "mostly travel",
-    illness: "mostly illness",
-    mood: "mostly mood",
-    other: "mostly other",
-  };
-  const parts: string[] = [];
-  if (h.strongest) {
-    parts.push(
-      `Strongest: ${h.strongest.goalName} (${h.strongest.done}/${h.strongest.targetCount})`
-    );
-  }
-  if (h.weakest) {
-    const reason = h.weakestDominantReason
-      ? `, ${REASON_LABELS[h.weakestDominantReason] ?? h.weakestDominantReason}`
-      : "";
-    parts.push(
-      `Weakest: ${h.weakest.goalName} (${h.weakest.done}/${h.weakest.targetCount}${reason})`
-    );
-  }
-  return parts.length > 0 ? parts.join(" · ") : null;
-}
