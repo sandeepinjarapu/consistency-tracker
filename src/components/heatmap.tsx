@@ -1,10 +1,7 @@
 "use client";
 
-import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { addDays, dayOfWeekForDateString } from "@/lib/dates";
-import { backfillCheckIn, clearBackfillCheckIn } from "@/lib/actions/check-ins";
-import { backfillAction } from "@/lib/heatmap-backfill";
 import HeatmapScroller from "./heatmap-scroller";
 
 export type CellStatus = "done" | "skipped" | "missed" | "empty";
@@ -48,47 +45,28 @@ const DAY_LABELS_SHOWN: Record<number, string> = {
  * an ISO week and each row is a day of week (Monday on top, Sunday on
  * bottom — matching the app's Monday-based ISO weeks).
  *
+ * Read-only: it's the record of showing up, not an editing control. Logging
+ * and correcting recent days lives in the "Catch up" editor (catch-up.tsx),
+ * which has finger-friendly targets — a heatmap cell is 11px and the tooltip
+ * is hover-only, both hostile to touch.
+ *
  * Pass an array of cells covering whatever date range you want — the
  * component will pad with `empty` cells on the left so the first column
  * starts on a Monday.
  */
-export type HeatmapEditable = {
-  goalId: string;
-  goalStartDate: string;
-  today: string;
-  targetDays: number[];
-};
-
 export default function Heatmap({
   cells,
   doneColor = COLOR.done,
   hideLegend = false,
-  editable,
   schedule,
 }: {
   cells: HeatmapCell[];
   doneColor?: string;
   hideLegend?: boolean;
-  editable?: HeatmapEditable;
-  // Read-only schedule context for tooltip disambiguation (e.g. the partner
-  // view, which renders someone else's goal without click-to-edit). Lets an
-  // "empty" cell read "not logged" vs "not scheduled" without making it
-  // editable. `editable` already carries the same fields and takes precedence.
+  // Schedule context for tooltip disambiguation: lets an "empty" cell read
+  // "not logged" vs "not scheduled". Used by the owner detail + partner views.
   schedule?: { goalStartDate: string; today: string; targetDays: number[] };
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
-  // Optimistic per-date status overrides so a clicked cell fills/clears
-  // instantly; reconciles to the server cells on refresh (reverts on failure).
-  const [overrides, addOverride] = useOptimistic(
-    {} as Record<string, CellStatus>,
-    (state, o: { date: string; status: CellStatus }) => ({
-      ...state,
-      [o.date]: o.status,
-    })
-  );
-
   // Custom tooltip: the native SVG <title> has a long, browser-controlled
   // show-delay. Track the hovered cell and render our own near-instant
   // tooltip instead. ~120ms delay avoids flicker when sweeping across cells.
@@ -107,20 +85,6 @@ export default function Heatmap({
   useEffect(() => () => {
     if (tipTimer.current) clearTimeout(tipTimer.current);
   }, []);
-
-  const runBackfill = (cell: HeatmapCell, action: "mark" | "clear") => {
-    if (!editable || pending) return;
-    startTransition(async () => {
-      addOverride({ date: cell.date, status: action === "mark" ? "done" : "empty" });
-      try {
-        if (action === "mark") await backfillCheckIn(editable.goalId, cell.date);
-        else await clearBackfillCheckIn(editable.goalId, cell.date);
-        router.refresh();
-      } catch {
-        // ignore — the UI only offers cells inside the window the server enforces
-      }
-    });
-  };
 
   if (cells.length === 0) {
     return (
@@ -193,7 +157,7 @@ export default function Heatmap({
         // overflow visible so the hover tooltip isn't clipped by a narrow grid
         // (e.g. the compact all-goals summary). The enclosing scroller is far
         // wider than a compact grid, so the tooltip simply spills into it.
-        style={{ overflow: "visible", ...(pending ? { opacity: 0.6 } : {}) }}
+        style={{ overflow: "visible" }}
       >
         {/* Month labels */}
         {monthLabels.map((m, i) => {
@@ -227,27 +191,11 @@ export default function Heatmap({
 
         {/* Cells */}
         {columns.map((col, ci) =>
-          col.cells.map((rawCell, ri) => {
-            if (rawCell === null) return null;
-            // Apply optimistic override so a clicked cell reflects instantly.
-            const override = overrides[rawCell.date];
-            const cell =
-              override && override !== rawCell.status
-                ? { ...rawCell, status: override }
-                : rawCell;
+          col.cells.map((cell, ri) => {
+            if (cell === null) return null;
             const x = LEFT_GUTTER + ci * COL;
             const y = TOP_GUTTER + ri * ROW;
-            const action = editable
-              ? backfillAction(cell, {
-                  goalStartDate: editable.goalStartDate,
-                  today: editable.today,
-                  targetDays: editable.targetDays,
-                })
-              : null;
-            const baseTip = cell.tooltip ?? tooltipFor(cell, editable ?? schedule);
-            const tipText = action
-              ? `${baseTip} — click to ${action === "clear" ? "undo" : "log"}`
-              : baseTip;
+            const tipText = cell.tooltip ?? tooltipFor(cell, schedule);
             return (
               <rect
                 key={`${ci}-${ri}`}
@@ -259,8 +207,6 @@ export default function Heatmap({
                 ry={2}
                 fill={colorFor(cell)}
                 aria-label={tipText}
-                style={action ? { cursor: "pointer" } : undefined}
-                onClick={action ? () => runBackfill(cell, action) : undefined}
                 onMouseEnter={() => showTip(x, y, tipText)}
                 onMouseLeave={hideTip}
               />
