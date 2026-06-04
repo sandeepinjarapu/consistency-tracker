@@ -7,6 +7,7 @@ import { listMyReactions } from "@/lib/actions/reactions";
 import { getPartnerReflections, type Reflection } from "@/lib/actions/reflections";
 import { addDays, todayIn, isoWeekStart } from "@/lib/dates";
 import { buildHeatmapCells, computeStats, computeWeeklyMet } from "@/lib/stats";
+import { notableForWeek } from "@/lib/partner-notable";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { safeExternalUrl } from "@/lib/url";
 import Heatmap from "@/components/heatmap";
@@ -113,18 +114,21 @@ export default async function PartnerPage({
 
   // Which reactions I've already left on this partner's goals this week
   // (reactions are once per goal per ISO week).
+  // Reactions stay open for the current and previous ISO week (aligned with
+  // the Monday summary email), so the partner can react to the week that just
+  // ended — which is what the email is about.
   const weekStart = isoWeekStart(today);
-  const weekRange = weekRangeLabel(weekStart);
+  const prevWeekStart = addDays(weekStart, -7);
+  const recentWeeks = [weekStart, prevWeekStart];
   const myReactions: Record<string, true> =
-    goals.length > 0 ? await listMyReactions(partnerId, weekStart) : {};
+    goals.length > 0 ? await listMyReactions(partnerId, recentWeeks) : {};
 
   // Their own words for the recent weeks — only the reflections they chose to
   // make partner-visible (RLS double-checks the share). The most human signal
   // on this page, so it leads.
-  const prevWeekStart = addDays(weekStart, -7);
   const partnerReflections =
     goals.length > 0
-      ? await getPartnerReflections(partnerId, [weekStart, prevWeekStart])
+      ? await getPartnerReflections(partnerId, recentWeeks)
       : [];
 
   return (
@@ -285,17 +289,47 @@ export default async function PartnerPage({
                     targetDays: goal.target_days,
                   }}
                 />
-                <div className="mt-3">
-                  <p className="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1.5">
-                    Let them know you noticed · {weekRange}
+                <div className="mt-4">
+                  <p className="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-2">
+                    Let them know you noticed
                   </p>
-                  <ReactionButtons
-                    goalId={goal.id}
-                    initial={{
-                      saw: Boolean(myReactions[`${goal.id}:saw`]),
-                      proud: Boolean(myReactions[`${goal.id}:proud`]),
-                    }}
-                  />
+                  <div className="space-y-2">
+                    {recentWeeks.map((ws, i) => {
+                      const notable = notableForWeek(
+                        {
+                          createdAt: goal.created_at,
+                          targetDays: goal.target_days,
+                          weeklyTarget: goal.weekly_target,
+                        },
+                        checkIns,
+                        ws,
+                        today
+                      );
+                      return (
+                        <div
+                          key={ws}
+                          className="flex items-center justify-between gap-3 flex-wrap"
+                        >
+                          <span className="text-xs text-[color:var(--muted)]">
+                            {i === 0 ? "This week" : "Last week"}
+                            {notable ? (
+                              <span className="text-black"> · {notable}</span>
+                            ) : null}
+                          </span>
+                          <ReactionButtons
+                            goalId={goal.id}
+                            weekStart={ws}
+                            initial={{
+                              saw: Boolean(myReactions[`${goal.id}:saw:${ws}`]),
+                              proud: Boolean(
+                                myReactions[`${goal.id}:proud:${ws}`]
+                              ),
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             );
