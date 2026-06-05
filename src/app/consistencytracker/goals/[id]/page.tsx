@@ -347,6 +347,7 @@ async function RecordSection({
     statusByDate,
     weeksToShow: isCount ? 1 : 6,
   });
+  const anyEditable = weeks.some((w) => w.cells.some((c) => c.editable));
 
   // Opt-in full-history heatmap (compact recent window, same as before).
   const twelveWeeksAgo = addDays(today, -83);
@@ -413,9 +414,11 @@ async function RecordSection({
           />
         </div>
 
-        {isCount ? (
+        {anyEditable ? (
           <p className="mt-2 text-xs text-[color:var(--muted)]">
-            Any day this week counts toward your {weeklyTarget}.
+            {isCount
+              ? `Any day counts toward your ${weeklyTarget}. Tap a day to log it.`
+              : "Tap an open day to log it. Tap a logged day to undo."}
           </p>
         ) : null}
 
