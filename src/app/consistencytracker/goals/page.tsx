@@ -6,6 +6,7 @@ import { listGoalShares } from "@/lib/actions/partners";
 import { listGoalsWithUnseenReactions } from "@/lib/actions/reactions";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { buildAggregateCells } from "@/lib/stats";
+import { UNCATEGORIZED_COLOR } from "@/lib/colors";
 import { todayIn, addDays, dateInTimezone } from "@/lib/dates";
 import GoalRowMenu from "@/components/goal-row-menu";
 import Heatmap from "@/components/heatmap";
@@ -185,7 +186,7 @@ export default async function GoalsPage({
           {(goalsByCategory.get(null) ?? []).length > 0 && (
             <CategoryGroup
               name="Uncategorized"
-              color="#9ca3af"
+              color={UNCATEGORIZED_COLOR}
               goals={goalsByCategory.get(null) ?? []}
               archived={showArchived}
               shares={goalShares}

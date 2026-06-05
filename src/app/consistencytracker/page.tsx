@@ -5,6 +5,7 @@ import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { todayIn, dayOfWeekIn, addDays, isoWeekStart, hourIn, DAY_START_HOUR, dateInTimezone } from "@/lib/dates";
 import { selectLastNightGoals } from "@/lib/last-night";
 import { computeStats } from "@/lib/stats";
+import { UNCATEGORIZED_COLOR } from "@/lib/colors";
 import { computeTodayBanner } from "@/lib/today-banner";
 import { computeGoalRowState, type GoalRowState } from "@/lib/today-goal-row";
 import TodayGoalCard from "@/components/today-goal-card";
@@ -219,7 +220,7 @@ async function TodaySection() {
                 goalId={g.id}
                 name={g.name}
                 description={g.description}
-                categoryColor={g.category?.color ?? "#9ca3af"}
+                categoryColor={g.category?.color ?? UNCATEGORIZED_COLOR}
                 date={today}
                 timezone={timezone}
                 checkIn={checkInByGoal.get(g.id) ?? null}
@@ -245,7 +246,7 @@ async function TodaySection() {
                 goalId={g.id}
                 name={g.name}
                 description={g.description}
-                categoryColor={g.category?.color ?? "#9ca3af"}
+                categoryColor={g.category?.color ?? UNCATEGORIZED_COLOR}
                 date={yesterday}
                 timezone={timezone}
                 checkIn={null}
@@ -356,7 +357,7 @@ async function AllGoalsSection() {
                   <span
                     aria-hidden
                     className="w-2 h-2 rounded-full shrink-0"
-                    style={{ background: goal.category?.color ?? "#9ca3af" }}
+                    style={{ background: goal.category?.color ?? UNCATEGORIZED_COLOR }}
                   />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{goal.name}</p>
