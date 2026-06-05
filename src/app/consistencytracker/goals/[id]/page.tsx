@@ -9,7 +9,7 @@ import {
   formatTime,
   dayOfWeekForDateString,
 } from "@/lib/dates";
-import { computeWeekStatus, computeWeekSlots } from "@/lib/goal-week-status";
+import { computeWeekStatus } from "@/lib/goal-week-status";
 import {
   buildHeatmapCells,
   buildGoalInsight,
@@ -17,21 +17,22 @@ import {
   computeTimePattern,
   computeWeeklyMet,
 } from "@/lib/stats";
+import { buildWeekRows } from "@/lib/week-rows";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
-import { listPartners, listSharesForGoal } from "@/lib/actions/partners";
+import { listPartners, listPendingInvites, listSharesForGoal } from "@/lib/actions/partners";
 import { getGoalReactions } from "@/lib/actions/reactions";
 import { REACTION_EMOJI, reactionSentence } from "@/lib/reactions";
 import { buildGCalUrl } from "@/lib/gcal";
 import { safeExternalUrl } from "@/lib/url";
-import { recentEditableDays } from "@/lib/heatmap-backfill";
 import CalendarReminder from "@/components/calendar-reminder";
-import Heatmap from "@/components/heatmap";
-import CatchUp from "@/components/catch-up";
-import WeekProgress from "@/components/week-progress";
+import GoalRowMenu from "@/components/goal-row-menu";
+import GoalSharing from "@/components/goal-sharing";
+import Motivation from "@/components/motivation";
+import ProgressRing from "@/components/progress-ring";
+import WeekRows from "@/components/week-rows";
+import FullHistory from "@/components/full-history";
 import WeeklyStrip from "@/components/weekly-strip";
-import GoalRowActions from "@/components/goal-row-actions";
-import ShareToggles from "@/components/share-toggles";
 import TimeHistogram from "@/components/time-histogram";
 import MarkReactionsSeen from "@/components/mark-reactions-seen";
 import Skeleton from "@/components/skeleton";
@@ -60,9 +61,8 @@ export default async function GoalPage({
     .single();
   if (!goal) notFound();
 
-  // This page is for owners only (with mutate controls). If a partner
-  // is viewing because the goal was shared with them, send them to the
-  // partner view instead.
+  // Owner-only page (with mutate controls). Partners viewing a shared goal go
+  // to the read-only partner view.
   if (goal.user_id !== user.id) {
     redirect(`/consistencytracker/partners/${goal.user_id}`);
   }
@@ -78,10 +78,25 @@ export default async function GoalPage({
     : targetDaysLabel(goal.target_days);
   const streakUnit = isCount ? "weeks" : "days";
 
-  // Date range: past year (stats). The heatmap uses a compact recent window
-  // computed inside StatsSection.
   const startDate = addDays(today, -364);
   const goalStartDate = (goal.created_at as string).slice(0, 10);
+
+  // Reminder lives in the Connections column (specific-day goals only). The
+  // CalendarReminder keeps its own "Added ✓ · Add again" honesty.
+  const reminder =
+    !isCount && goal.reminder_time
+      ? {
+          gcalUrl: buildGCalUrl({
+            name: goal.name,
+            description: goal.description,
+            reminderTime: goal.reminder_time,
+            targetDays: goal.target_days,
+            timezone,
+          }),
+          label: formatReminder(goal.reminder_time),
+          addedAt: goal.calendar_added_at as string | null,
+        }
+      : null;
 
   return (
     <section>
@@ -92,7 +107,7 @@ export default async function GoalPage({
         ← All goals
       </Link>
 
-      <header className="mt-4 mb-8 flex items-start justify-between gap-4">
+      <header className="mt-4 mb-5 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span
@@ -105,62 +120,48 @@ export default async function GoalPage({
             </span>
           </div>
           <h1 className="text-2xl font-light tracking-tight">{goal.name}</h1>
-          {goal.description ? (
-            <p className="mt-2 text-sm text-[color:var(--muted)]">
-              {goal.description}
-            </p>
-          ) : null}
-          {goal.motivation ? (
-            <p className="mt-2 max-w-prose text-sm italic text-[color:var(--muted)]">
-              “{goal.motivation}”
-            </p>
-          ) : null}
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[color:var(--muted)]">
-            {docUrl ? (
-              <a
-                href={docUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-black"
-              >
-                Reflection doc ↗
-              </a>
-            ) : null}
-            {!isCount ? (
-              goal.reminder_time ? (
-                <CalendarReminder
-                  goalId={goal.id}
-                  gcalUrl={buildGCalUrl({
-                    name: goal.name,
-                    description: goal.description,
-                    reminderTime: goal.reminder_time,
-                    targetDays: goal.target_days,
-                    timezone,
-                  })}
-                  reminderLabel={formatReminder(goal.reminder_time)}
-                  addedAt={goal.calendar_added_at}
-                />
-              ) : (
-                <span>No reminder set · <a href={`/consistencytracker/goals/${goal.id}/edit`} className="underline hover:text-black">add one</a></span>
-              )
-            ) : null}
-          </div>
         </div>
-        <GoalRowActions goalId={goal.id} archived={!goal.active} />
+        <GoalRowMenu goalId={goal.id} archived={!goal.active} trigger="gear" />
       </header>
 
-      {/* Sharing sits high on the page — partner accountability is central to
-          the product — but as a light status row, not a heavy module: no
-          uppercase section header, just "Shared with … · Manage". */}
-      <div className="mb-8 pb-5 border-b border-[color:var(--border)]">
-        <Suspense fallback={<Skeleton className="h-5 w-48" />}>
-          <SharingSection goalId={goal.id} />
-        </Suspense>
+      {/* Why (left) · Connections (right). The why is the human content; the
+          right column is links and controls (sharing, doc, reminder). */}
+      <div className="flex gap-5">
+        <div className="flex-[1.2] min-w-0">
+          {goal.motivation ? (
+            <Motivation text={goal.motivation} />
+          ) : (
+            <div className="max-w-prose">
+              <p className="text-sm leading-relaxed text-[color:var(--muted)]">
+                When this gets hard, what should it remind you of?
+              </p>
+              <Link
+                href={`/consistencytracker/goals/${goal.id}/edit`}
+                className="mt-1 inline-block text-xs font-medium underline decoration-[color:var(--border)] hover:decoration-black"
+              >
+                Add a reason
+              </Link>
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0 border-l border-[color:var(--border)] pl-5">
+          <Suspense fallback={<Skeleton className="h-5 w-32" />}>
+            <ConnectionsColumn goalId={goal.id} docUrl={docUrl} reminder={reminder} />
+          </Suspense>
+        </div>
       </div>
 
-      <Suspense fallback={<StatsSkeleton isCount={isCount} />}>
-        <StatsSection
+      {/* Reaction, full width, only when a partner has reacted. */}
+      <Suspense fallback={null}>
+        <ReactionLine goalId={goal.id} timezone={timezone} />
+      </Suspense>
+
+      <div className="my-6 border-t border-[color:var(--border)]" />
+
+      <Suspense fallback={<RecordSkeleton isCount={isCount} />}>
+        <RecordSection
           goalId={goal.id}
+          isCount={isCount}
           targetDays={goal.target_days}
           weeklyTarget={goal.weekly_target}
           startDate={startDate}
@@ -175,10 +176,89 @@ export default async function GoalPage({
   );
 }
 
-// The heavy part: a year of check-ins + stats/heatmap/histogram computation.
-// Streams in behind the header, which paints on the fast goal lookup.
-async function StatsSection({
+async function ConnectionsColumn({
   goalId,
+  docUrl,
+  reminder,
+}: {
+  goalId: string;
+  docUrl: string | null;
+  reminder: { gcalUrl: string; label: string; addedAt: string | null } | null;
+}) {
+  const [partners, pending, sharedWith] = await Promise.all([
+    listPartners(),
+    listPendingInvites(),
+    listSharesForGoal(goalId),
+  ]);
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <GoalSharing
+        goalId={goalId}
+        partners={partners.map((p) => ({ id: p.id, display_name: p.display_name }))}
+        pending={pending.map((p) => ({
+          id: p.id,
+          invitee_email: p.invitee_email,
+          invite_url: p.invite_url,
+        }))}
+        sharedWith={sharedWith}
+      />
+      {docUrl ? (
+        <a
+          href={docUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs text-[#374151] hover:text-black"
+        >
+          <DocIcon />
+          Reflection doc <span className="text-[color:var(--muted)]">↗</span>
+        </a>
+      ) : null}
+      {reminder ? (
+        <div className="text-xs text-[color:var(--muted)]">
+          <CalendarReminder
+            goalId={goalId}
+            gcalUrl={reminder.gcalUrl}
+            reminderLabel={reminder.label}
+            addedAt={reminder.addedAt}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+async function ReactionLine({
+  goalId,
+  timezone,
+}: {
+  goalId: string;
+  timezone: string;
+}) {
+  const reactions = await getGoalReactions(goalId);
+  if (reactions.length === 0) return null;
+  const currentWeekStart = isoWeekStart(todayIn(timezone));
+  return (
+    <div className="mt-4 border-t border-[#f0f0ef] pt-4">
+      {/* Visiting your own goal acknowledges the reactions; clears the nav badge. */}
+      <MarkReactionsSeen goalId={goalId} />
+      <ul className="space-y-1.5">
+        {reactions.map((r, i) => (
+          <li key={i} className="flex items-start gap-2 text-sm leading-relaxed">
+            <span aria-hidden>{REACTION_EMOJI[r.kind]}</span>
+            <span>{reactionSentence(r, currentWeekStart)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// The heavy part: a year of check-ins + this-week status, the editable week
+// grid, the optional full history, and the time-of-day pattern.
+async function RecordSection({
+  goalId,
+  isCount,
   targetDays,
   weeklyTarget,
   startDate,
@@ -189,6 +269,7 @@ async function StatsSection({
   streakUnit,
 }: {
   goalId: string;
+  isCount: boolean;
   targetDays: number[];
   weeklyTarget: number | null;
   startDate: string;
@@ -213,30 +294,30 @@ async function StatsSection({
     created_at: string;
   }>;
 
-  const timePattern = computeTimePattern({
-    entries: checkIns
-      .filter((c) => c.status === "done")
-      .map((c) => ({ createdAt: c.created_at, date: c.date })),
-    timezone,
-  });
+  const statusByDate: Record<string, "done" | "skipped"> = {};
+  for (const c of checkIns) statusByDate[c.date] = c.status;
 
-  // Compact recent window (~12 weeks, trimmed so it never starts before the
-  // goal) so the heatmap stays legible and doesn't auto-scroll a full year.
-  // Stats below still span `startDate` (the year), so all-time numbers are
-  // unaffected.
-  const twelveWeeksAgo = addDays(today, -83);
-  const heatmapStart =
-    goalStartDate > twelveWeeksAgo ? goalStartDate : twelveWeeksAgo;
-
-  const cells = buildHeatmapCells({
-    startDate: heatmapStart,
-    endDate: today,
-    targetDays,
-    checkIns,
-    goalStartDate,
-    todayStr: today,
-    weeklyTarget,
-  });
+  // "Where am I this week?"
+  const weekStart = isoWeekStart(today);
+  const doneThisWeek = checkIns.filter(
+    (c) => c.status === "done" && c.date >= weekStart && c.date <= today
+  ).length;
+  let total = weeklyTarget ?? 0;
+  let missedSoFar = 0;
+  if (weeklyTarget == null) {
+    for (let d = 0; d < 7; d++) {
+      const date = addDays(weekStart, d);
+      if (!targetDays.includes(dayOfWeekForDateString(date))) continue;
+      // Don't count scheduled days from before the goal existed — the grid shows
+      // them as rest, so the "X of N" headline must agree (a goal created
+      // mid-week shouldn't read "0 of 5").
+      if (date < goalStartDate) continue;
+      total++;
+      if (date < today && statusByDate[date] === undefined) {
+        missedSoFar++;
+      }
+    }
+  }
 
   const clampStart = goalStartDate > startDate ? goalStartDate : startDate;
   const stats = computeStats({
@@ -244,6 +325,41 @@ async function StatsSection({
     endDate: today,
     targetDays,
     checkIns,
+    weeklyTarget,
+  });
+  const weekStatus = computeWeekStatus({
+    doneThisWeek,
+    total,
+    isCount,
+    currentStreak: stats.currentStreak,
+    longestStreak: stats.longestStreak,
+    streakUnit,
+    doneCount: stats.doneCount,
+    missedSoFar,
+  });
+
+  // The record + editor. Specific-day shows recent weeks; frequency shows only
+  // the live week (its history is the week-by-week strip below).
+  const weeks = buildWeekRows({
+    goalStartDate,
+    today,
+    targetDays,
+    statusByDate,
+    weeksToShow: isCount ? 1 : 6,
+  });
+  const anyEditable = weeks.some((w) => w.cells.some((c) => c.editable));
+
+  // Opt-in full-history heatmap (compact recent window, same as before).
+  const twelveWeeksAgo = addDays(today, -83);
+  const heatmapStart =
+    goalStartDate > twelveWeeksAgo ? goalStartDate : twelveWeeksAgo;
+  const cells = buildHeatmapCells({
+    startDate: heatmapStart,
+    endDate: today,
+    targetDays,
+    checkIns,
+    goalStartDate,
+    todayStr: today,
     weeklyTarget,
   });
 
@@ -258,6 +374,12 @@ async function StatsSection({
         })
       : [];
 
+  const timePattern = computeTimePattern({
+    entries: checkIns
+      .filter((c) => c.status === "done")
+      .map((c) => ({ createdAt: c.created_at, date: c.date })),
+    timezone,
+  });
   const insight = buildGoalInsight({
     typical: timePattern.typical,
     timedTotal: timePattern.total,
@@ -266,103 +388,47 @@ async function StatsSection({
     doneCount: stats.doneCount,
   });
 
-  // "Where am I this week?" — the page's primary status. For count goals the
-  // denominator is the weekly target; for specific-day goals it's the number
-  // of scheduled days in the current ISO week.
-  const weekStart = isoWeekStart(today);
-  const doneDatesThisWeek = checkIns
-    .filter((c) => c.status === "done" && c.date >= weekStart && c.date <= today)
-    .map((c) => c.date);
-  const doneThisWeek = doneDatesThisWeek.length;
-  let total = weeklyTarget ?? 0;
-  if (weeklyTarget == null) {
-    for (let d = 0; d < 7; d++) {
-      if (targetDays.includes(dayOfWeekForDateString(addDays(weekStart, d)))) {
-        total++;
-      }
-    }
-  }
-  const weekSlots = computeWeekSlots({
-    isCount: weeklyTarget != null,
-    weekStart,
-    today,
-    targetDays,
-    doneDates: doneDatesThisWeek,
-    weeklyTarget: weeklyTarget ?? 0,
-    doneThisWeek,
-  });
-  // Scheduled days already gone by unlogged — derived from the same slots so
-  // the headline copy and the slot row never disagree.
-  const missedSoFar = weekSlots.filter((s) => s.state === "missed").length;
-  const weekStatus = computeWeekStatus({
-    doneThisWeek,
-    total,
-    isCount: weeklyTarget != null,
-    currentStreak: stats.currentStreak,
-    longestStreak: stats.longestStreak,
-    streakUnit,
-    doneCount: stats.doneCount,
-    missedSoFar,
-  });
-
-  // The days still open to logging/correction (this ISO week + the 2-day
-  // grace). Powers the "Catch up" editor — the finger-friendly replacement for
-  // tapping tiny heatmap cells. Same window the heatmap used to make editable.
-  const statusByDate: Record<string, "done" | "skipped"> = {};
-  for (const c of checkIns) statusByDate[c.date] = c.status;
-  const catchUpDays = recentEditableDays({
-    goalStartDate,
-    today,
-    targetDays,
-    statusByDate,
-  });
-
   return (
     <>
       <div className="mb-8">
         <p className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-1">
           This week
         </p>
-        <p className="text-3xl font-light tracking-tight">
-          {weekStatus.headline}
-        </p>
-        <p className="mt-1 text-sm">{weekStatus.note}</p>
-        <div className="mt-3">
-          <WeekProgress slots={weekSlots} doneColor={categoryColor} />
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-3xl font-light tracking-tight">
+              {weekStatus.headline}
+            </p>
+            <p className="mt-1 text-sm max-w-[32ch]">{weekStatus.note}</p>
+          </div>
+          <ProgressRing done={doneThisWeek} total={total} color={categoryColor} />
         </div>
-        <p className="mt-3 text-xs text-[color:var(--muted)]">
+
+        <div className="mt-5">
+          <WeekRows
+            goalId={goalId}
+            today={today}
+            weeks={weeks}
+            isCount={isCount}
+            doneColor={categoryColor}
+          />
+        </div>
+
+        {anyEditable ? (
+          <p className="mt-2 text-xs text-[color:var(--muted)]">
+            {isCount
+              ? `Any day counts toward your ${weeklyTarget}. Tap a day to log it.`
+              : "Tap an open day to log it. Tap a logged day to undo."}
+          </p>
+        ) : null}
+
+        <p className="mt-4 text-xs text-[color:var(--muted)]">
           {weekStatus.secondary}
         </p>
       </div>
 
-      {catchUpDays.length > 0 ? (
-        <div className="mb-10">
-          <CatchUp
-            goalId={goalId}
-            days={catchUpDays}
-            doneColor={categoryColor}
-          />
-        </div>
-      ) : null}
-
-      <div className="mb-10">
-        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
-          Recent activity
-        </h3>
-        <p className="text-xs text-[color:var(--muted)] mb-2">
-          Each square is a day — your record of showing up.
-        </p>
-        <Heatmap
-          cells={cells}
-          doneColor={categoryColor}
-          schedule={{ goalStartDate, today, targetDays }}
-        />
-      </div>
-
-      {/* Week-by-week trend sits in the history zone, after the daily heatmap —
-          not next to the "X of 5" headline, which already covers this week. */}
       {weeklyTarget != null ? (
-        <div className="mb-10">
+        <div className="mb-8">
           <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
             Week by week
           </h3>
@@ -374,8 +440,14 @@ async function StatsSection({
         </div>
       ) : null}
 
-      {/* Pattern — what the app has noticed. Comes last (status → proof →
-          pattern), and the insight sentence narrates the time-of-day chart. */}
+      <div className="mb-10">
+        <FullHistory
+          cells={cells}
+          doneColor={categoryColor}
+          schedule={{ goalStartDate, today, targetDays }}
+        />
+      </div>
+
       {insight ? (
         <p className="text-sm leading-relaxed mb-6">{insight}</p>
       ) : null}
@@ -391,42 +463,7 @@ async function StatsSection({
   );
 }
 
-async function SharingSection({ goalId }: { goalId: string }) {
-  const [partners, sharedWith, reactions, profile] = await Promise.all([
-    listPartners(),
-    listSharesForGoal(goalId),
-    getGoalReactions(goalId),
-    getCurrentProfile(),
-  ]);
-  const currentWeekStart = isoWeekStart(todayIn(profile?.timezone ?? "UTC"));
-  return (
-    <>
-      <ShareToggles
-        goalId={goalId}
-        partners={partners.map((p) => ({
-          id: p.id,
-          display_name: p.display_name,
-        }))}
-        sharedWith={sharedWith}
-      />
-      {reactions.length > 0 ? (
-        <div className="mt-5">
-          {/* Visiting your own goal = acknowledgement; clears the nav badge. */}
-          <MarkReactionsSeen goalId={goalId} />
-          <ul className="space-y-1 text-xs text-[color:var(--muted)]">
-            {reactions.map((r, i) => (
-              <li key={i}>
-                {REACTION_EMOJI[r.kind]} {reactionSentence(r, currentWeekStart)}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </>
-  );
-}
-
-function StatsSkeleton({ isCount }: { isCount: boolean }) {
+function RecordSkeleton({ isCount }: { isCount: boolean }) {
   return (
     <div aria-busy>
       <span className="sr-only">Loading…</span>
@@ -434,7 +471,7 @@ function StatsSkeleton({ isCount }: { isCount: boolean }) {
         <Skeleton className="h-9 w-24" />
         <Skeleton className="h-4 w-40" />
       </div>
-      <Skeleton className="h-28 w-full" />
+      <Skeleton className="h-24 w-full" />
       {isCount ? (
         <div className="mt-8">
           <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
@@ -443,13 +480,16 @@ function StatsSkeleton({ isCount }: { isCount: boolean }) {
           <Skeleton className="h-8 w-full" />
         </div>
       ) : null}
-      <div className="mt-8">
-        <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-          Time of day
-        </h3>
-        <Skeleton className="h-12 w-full" />
-      </div>
     </div>
+  );
+}
+
+function DocIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+    </svg>
   );
 }
 
