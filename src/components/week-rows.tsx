@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { backfillCheckIn, clearBackfillCheckIn } from "@/lib/actions/check-ins";
 import type { GridWeek, GridCell, GridCellState } from "@/lib/week-rows";
@@ -15,8 +15,10 @@ const DOW_NAME = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
  * history cells are flat paint. The editable set is whatever the server allows.
  *
  * Logging is one tap; removing a logged day asks first via an inline confirm
- * below the grid (never a floating popover, which the horizontal-scroll wrapper
- * would clip).
+ * below the grid. A date tooltip shows on hover (desktop) and on tapping a
+ * read-only cell (mobile) — editable cells keep tap-to-log. The tooltip is
+ * rendered at the component root, outside the horizontal-scroll wrapper, so it
+ * is never clipped.
  */
 export default function WeekRows({
   goalId,
@@ -35,6 +37,31 @@ export default function WeekRows({
   const [pending, startTransition] = useTransition();
   const [override, setOverride] = useState<Record<string, "done" | "empty">>({});
   const [confirm, setConfirm] = useState<string | null>(null);
+
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (tipTimer.current) clearTimeout(tipTimer.current);
+  }, []);
+
+  function showTip(text: string, el: HTMLElement, sticky: boolean) {
+    const root = rootRef.current;
+    if (!root) return;
+    const r = el.getBoundingClientRect();
+    const rr = root.getBoundingClientRect();
+    if (tipTimer.current) clearTimeout(tipTimer.current);
+    setTip({ x: r.left - rr.left + r.width / 2, y: r.top - rr.top, text });
+    // On a tap (no mouseleave to dismiss it), fade it after a moment.
+    if (sticky) tipTimer.current = setTimeout(() => setTip(null), 2500);
+  }
+  function hideTip() {
+    if (tipTimer.current) {
+      clearTimeout(tipTimer.current);
+      tipTimer.current = null;
+    }
+    setTip(null);
+  }
 
   function effective(cell: GridCell): GridCell {
     const ov = override[cell.date];
@@ -80,13 +107,14 @@ export default function WeekRows({
   }
 
   function onCell(cell: GridCell) {
+    hideTip();
     if (!cell.editable) return;
     if (cell.state === "done" || cell.state === "skipped") setConfirm(cell.date);
     else log(cell.date);
   }
 
   return (
-    <div>
+    <div ref={rootRef} className="relative">
       {/* Content-width, left-aligned. Scrolls horizontally only if the week
           can't fit (small phones), with the scrollbar hidden. */}
       <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -120,6 +148,7 @@ export default function WeekRows({
               </span>
               {week.cells.map((raw, i) => {
                 const cell = effective(raw);
+                const text = `${DOW_NAME[i]}, ${formatDate(cell.date)} · ${TIP_STATUS[cell.state]}`;
                 return (
                   <Cell
                     key={cell.date}
@@ -127,7 +156,10 @@ export default function WeekRows({
                     dowName={DOW_NAME[i]}
                     isCount={isCount}
                     doneColor={doneColor}
-                    onClick={() => onCell(cell)}
+                    onEnter={(el) => showTip(text, el, false)}
+                    onLeave={hideTip}
+                    onAction={() => onCell(cell)}
+                    onTapTip={(el) => showTip(text, el, true)}
                   />
                 );
               })}
@@ -135,6 +167,17 @@ export default function WeekRows({
           ))}
         </div>
       </div>
+
+      {tip ? (
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute z-40 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-[#0a0a0a] px-2 py-1 text-[11px] leading-none text-white"
+          style={{ left: tip.x, top: tip.y - 8 }}
+        >
+          {tip.text}
+          <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[#0a0a0a]" />
+        </span>
+      ) : null}
 
       {confirm ? (
         <div className="mt-2 flex flex-wrap items-center gap-2.5 text-xs">
@@ -167,20 +210,33 @@ function Cell({
   dowName,
   isCount,
   doneColor,
-  onClick,
+  onEnter,
+  onLeave,
+  onAction,
+  onTapTip,
 }: {
   cell: GridCell;
   dowName: string;
   isCount: boolean;
   doneColor: string;
-  onClick: () => void;
+  onEnter: (el: HTMLElement) => void;
+  onLeave: () => void;
+  onAction: () => void;
+  onTapTip: (el: HTMLElement) => void;
 }) {
   const base = "w-9 h-9 rounded-[10px] grid place-items-center shrink-0 relative";
   const aria = `${dowName} ${formatDate(cell.date)}: ${LABEL[cell.state]}`;
 
   if (!cell.editable) {
     return (
-      <span className={base} style={lockedStyle(cell.state, doneColor)} aria-label={aria}>
+      <span
+        className={base}
+        style={lockedStyle(cell.state, doneColor)}
+        aria-label={aria}
+        onMouseEnter={(e) => onEnter(e.currentTarget)}
+        onMouseLeave={onLeave}
+        onClick={(e) => onTapTip(e.currentTarget)}
+      >
         {cell.state === "rest" ? (
           <span className="w-1 h-1 rounded-full bg-[#e6e6e6]" />
         ) : null}
@@ -191,7 +247,9 @@ function Cell({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={onAction}
+      onMouseEnter={(e) => onEnter(e.currentTarget)}
+      onMouseLeave={onLeave}
       aria-label={aria}
       // 36px chip, but the ::before extends the hit area to ~44px (it sits
       // inside the row's px-2, so it never adds scrollable width).
@@ -227,6 +285,17 @@ const LABEL: Record<GridCellState, string> = {
   missed: "missed",
   upcoming: "upcoming",
   rest: "rest day",
+};
+
+// Sentence-case status for the date tooltip, e.g. "Tue, May 19 · Done".
+const TIP_STATUS: Record<GridCellState, string> = {
+  done: "Done",
+  skipped: "Skipped",
+  today: "Today",
+  open: "Open to log",
+  missed: "Missed",
+  upcoming: "Upcoming",
+  rest: "Not scheduled",
 };
 
 function editableStyle(
