@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cache, Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
-import { todayIn, dayOfWeekIn, addDays, isoWeekStart, hourIn, DAY_START_HOUR } from "@/lib/dates";
+import { todayIn, dayOfWeekIn, addDays, isoWeekStart, hourIn, DAY_START_HOUR, dateInTimezone } from "@/lib/dates";
 import { selectLastNightGoals } from "@/lib/last-night";
 import { computeStats } from "@/lib/stats";
 import { computeTodayBanner } from "@/lib/today-banner";
@@ -152,7 +152,7 @@ async function TodaySection() {
   const lastCheckInDate = lastCheckInRows?.[0]?.date ?? null;
   const earliestGoalDate = goals.reduce(
     (min, g) => {
-      const d = g.created_at.slice(0, 10);
+      const d = dateInTimezone(g.created_at, timezone);
       return d < min ? d : min;
     },
     today
@@ -179,7 +179,7 @@ async function TodaySection() {
   for (const g of goalsToday) {
     if (g.weekly_target == null) continue;
     const stats = computeStats({
-      startDate: g.created_at.slice(0, 10),
+      startDate: dateInTimezone(g.created_at, timezone),
       endDate: today,
       targetDays: g.target_days,
       checkIns: weekCheckIns
@@ -315,7 +315,7 @@ async function AllGoalsSection() {
       .filter((c) => c.goal_id === g.id)
       .map((c) => ({ date: c.date, status: c.status }));
     const stats = computeStats({
-      startDate: g.created_at.slice(0, 10),
+      startDate: dateInTimezone(g.created_at, timezone),
       endDate: today,
       targetDays: g.target_days,
       checkIns: goalCheckIns,
@@ -334,7 +334,7 @@ async function AllGoalsSection() {
       targetDays: g.target_days,
       weeklyTarget: g.weekly_target,
       lastDone,
-      createdAt: g.created_at,
+      createdAt: dateInTimezone(g.created_at, timezone),
       today,
     });
     return { goal: g, rowState };

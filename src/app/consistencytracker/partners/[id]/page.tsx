@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/supabase/current-user";
 import { isPartner } from "@/lib/actions/partners";
 import { listMyReactions } from "@/lib/actions/reactions";
 import { getPartnerReflections, type Reflection } from "@/lib/actions/reflections";
-import { addDays, todayIn, isoWeekStart } from "@/lib/dates";
+import { addDays, todayIn, isoWeekStart, dateInTimezone } from "@/lib/dates";
 import { buildHeatmapCells, computeStats, computeWeeklyMet } from "@/lib/stats";
 import { notableForWeek } from "@/lib/partner-notable";
 import { targetDaysLabel } from "@/lib/target-days-label";
@@ -197,7 +197,7 @@ export default async function PartnerPage({
         <div className="space-y-12">
           {goals.map((goal) => {
             const checkIns = checkInsByGoal.get(goal.id) ?? [];
-            const goalStart = goal.created_at.slice(0, 10);
+            const goalStart = dateInTimezone(goal.created_at, partnerTz);
             const cells = buildHeatmapCells({
               startDate: goalStart > twelveWeeksAgo ? goalStart : twelveWeeksAgo,
               endDate: today,
@@ -297,7 +297,7 @@ export default async function PartnerPage({
                     {recentWeeks.map((ws, i) => {
                       const notable = notableForWeek(
                         {
-                          createdAt: goal.created_at,
+                          createdAt: dateInTimezone(goal.created_at, partnerTz),
                           targetDays: goal.target_days,
                           weeklyTarget: goal.weekly_target,
                         },
