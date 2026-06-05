@@ -335,7 +335,7 @@ function CategoryGroup({
                   </span>
                 </span>
               ) : null}
-              <GoalRowMenu goalId={g.id} archived={archived} />
+              <GoalRowMenu goalId={g.id} goalName={g.name} archived={archived} />
             </div>
           </li>
           );

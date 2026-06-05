@@ -3,25 +3,29 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { archiveGoal, unarchiveGoal } from "@/lib/actions/goals";
+import { archiveGoal, unarchiveGoal, deleteGoal } from "@/lib/actions/goals";
 import { tapTargetIcon, tapTargetRow } from "@/lib/ui";
 
 /**
- * Secondary row actions for a goal, collapsed into a quiet "⋯" overflow menu
- * so the card stays calm and the whole card click (open detail) stays primary.
- * Lives above the card's stretched-link overlay (the parent gives it z-10).
+ * Secondary actions for a goal in a quiet overflow menu (⋯ on the goals list,
+ * gear on the goal-detail header). Edit and Archive are calm; Delete is a
+ * separated, red, destructive action behind a confirm, because it permanently
+ * removes the goal and its history.
  */
 export default function GoalRowMenu({
   goalId,
+  goalName,
   archived,
   trigger = "kebab",
 }: {
   goalId: string;
+  goalName: string;
   archived: boolean;
   /** "kebab" (⋯, goals list rows) or "gear" (goal-detail header). */
   trigger?: "kebab" | "gear";
 }) {
   const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -51,6 +55,21 @@ export default function GoalRowMenu({
     });
   }
 
+  function handleDelete() {
+    startTransition(async () => {
+      try {
+        await deleteGoal(goalId);
+        setConfirmDelete(false);
+        // The goal and its history are gone; leave whatever view we're on for
+        // the goals list (a no-op refresh there, a navigation from detail).
+        router.push("/consistencytracker/goals");
+        router.refresh();
+      } catch {
+        // Stay on the confirm so the user can retry.
+      }
+    });
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -66,7 +85,7 @@ export default function GoalRowMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-40 rounded-md border border-[color:var(--border)] bg-white py-1 shadow-md"
+          className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-[color:var(--border)] bg-white py-1 shadow-md"
         >
           <Link
             role="menuitem"
@@ -85,8 +104,83 @@ export default function GoalRowMenu({
           >
             {pending ? "…" : archived ? "Unarchive" : "Archive"}
           </button>
+          <div className="my-1 border-t border-[color:var(--border)]" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setConfirmDelete(true);
+            }}
+            className={`${tapTargetRow} w-full px-3 text-left text-xs text-red-600 hover:bg-red-50`}
+          >
+            Delete goal
+          </button>
         </div>
       ) : null}
+
+      {confirmDelete ? (
+        <DeleteConfirm
+          goalName={goalName}
+          pending={pending}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function DeleteConfirm({
+  goalName,
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  goalName: string;
+  pending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <button
+        type="button"
+        aria-label="Cancel"
+        onClick={onCancel}
+        className="absolute inset-0 bg-black/20"
+      />
+      <div
+        role="dialog"
+        aria-label="Delete goal"
+        className="relative z-10 w-full max-w-sm rounded-t-2xl border border-[color:var(--border)] bg-white p-5 shadow-md sm:rounded-2xl"
+      >
+        <h3 className="text-sm font-semibold">Delete this goal?</h3>
+        <p className="mt-2 text-sm text-[color:var(--muted)]">
+          This permanently removes{" "}
+          <span className="font-medium text-[color:var(--foreground)]">
+            {goalName}
+          </span>{" "}
+          and all its check-in history. This can&rsquo;t be undone.
+        </p>
+        <div className="mt-4 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-[44px] px-3 text-sm text-[color:var(--muted)] hover:text-black"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending}
+            className="min-h-[44px] rounded-md bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {pending ? "Deleting…" : "Delete goal"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
