@@ -26,6 +26,7 @@ import { getGoalReactions } from "@/lib/actions/reactions";
 import { REACTION_EMOJI, reactionSentence } from "@/lib/reactions";
 import { buildGCalUrl } from "@/lib/gcal";
 import { safeExternalUrl } from "@/lib/url";
+import { UNCATEGORIZED_COLOR } from "@/lib/colors";
 import CalendarReminder from "@/components/calendar-reminder";
 import GoalRowMenu from "@/components/goal-row-menu";
 import GoalSharing from "@/components/goal-sharing";
@@ -71,7 +72,7 @@ export default async function GoalPage({
   const category = Array.isArray(goal.category)
     ? goal.category[0] ?? null
     : goal.category;
-  const categoryColor = category?.color ?? "#9ca3af";
+  const categoryColor = category?.color ?? UNCATEGORIZED_COLOR;
   const docUrl = safeExternalUrl(goal.doc_url);
   const isCount = goal.weekly_target != null;
   const cadenceLabel = isCount

@@ -10,7 +10,7 @@ colors:
   heatmap-empty: "#f3f4f6"
   heatmap-missed: "#e5e7eb"
   heatmap-skipped: "#fde68a"
-  uncategorized: "#9ca3af"
+  uncategorized: "#bd8a9c"
 typography:
   display:
     fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
@@ -112,7 +112,10 @@ fixed status hues for the heatmap.
   category color. The *only* saturated color on most screens. Used for the
   category dot, the Today card's left rail, a "done" heatmap cell, this week's
   filled progress (chips / quota rail / weekly strip), and the Catch Up "Log"
-  action. Uncategorized falls back to a neutral grey `#9ca3af`.
+  action. Uncategorized falls back to a quiet dusty rose `#bd8a9c` (its own
+  muted hue, not a category color and distinct from the missed grey, so an
+  uncategorized goal still reads as a live row). Centralized in
+  `src/lib/colors.ts` as `UNCATEGORIZED_COLOR`.
 
 ### Neutral
 - **Ink** (`#0a0a0a`): all primary text and the primary-button fill.

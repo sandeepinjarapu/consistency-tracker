@@ -10,6 +10,7 @@ import { buildHeatmapCells, computeStats, computeWeeklyMet } from "@/lib/stats";
 import { notableForWeek } from "@/lib/partner-notable";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { safeExternalUrl } from "@/lib/url";
+import { UNCATEGORIZED_COLOR } from "@/lib/colors";
 import Heatmap from "@/components/heatmap";
 import WeeklyStrip from "@/components/weekly-strip";
 import MarkSharesSeen from "@/components/mark-shares-seen";
@@ -214,7 +215,7 @@ export default async function PartnerPage({
               checkIns,
               weeklyTarget: goal.weekly_target,
             });
-            const color = goal.category?.color ?? "#9ca3af";
+            const color = goal.category?.color ?? UNCATEGORIZED_COLOR;
             const docUrl = safeExternalUrl(goal.doc_url);
             const cadenceLabel =
               goal.weekly_target != null
