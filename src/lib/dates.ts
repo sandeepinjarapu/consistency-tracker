@@ -20,6 +20,37 @@ export function todayIn(timezone: string, ref: Date = new Date()): string {
 }
 
 /**
+ * The local YYYY-MM-DD a stored timestamp falls on in the given timezone. Use
+ * this to compare a UTC timestamp (e.g. a goal's `created_at`) against local
+ * dates — `created_at.slice(0, 10)` would wrongly use the UTC date, so a goal
+ * created after local midnight could read as having existed "yesterday".
+ */
+export function dateInTimezone(timestamp: string, timezone: string): string {
+  return todayIn(timezone, new Date(timestamp));
+}
+
+/**
+ * The hour the habit "day" rolls over, in local time. Before this hour reads as
+ * the tail of the previous day (for night owls), not the start of a new one.
+ * Shared so the "late night" bucket, the "Still up" greeting, and the
+ * time-of-day live-check all agree on one boundary.
+ */
+export const DAY_START_HOUR = 5;
+
+/** Current local hour (0-23) in the given timezone. */
+export function hourIn(timezone: string, ref: Date = new Date()): number {
+  const h = parseInt(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "numeric",
+      hour12: false,
+    }).format(ref),
+    10
+  );
+  return h % 24; // some engines render midnight as "24"
+}
+
+/**
  * Day of week (0=Sun..6=Sat) for the given date in the user's timezone.
  */
 export function dayOfWeekIn(timezone: string, ref: Date = new Date()): number {

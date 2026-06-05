@@ -559,28 +559,62 @@ describe("computeTimePattern", () => {
     expect(r.typical).toEqual({ hour: 7, minute: 0 });
   });
 
-  it("respects timezone when deciding same-day (date boundary)", () => {
-    // 02:00 UTC on the 16th is still the 15th in LA (UTC-8). If the activity
-    // date is the LA-local 2024-01-15, it counts; against 2024-01-16 it wouldn't.
-    const entry = { createdAt: "2024-01-16T02:00:00Z", date: "2024-01-15" };
-    expect(
-      computeTimePattern({ entries: [entry], timezone: "America/Los_Angeles" }).total
-    ).toBe(1);
-    expect(
-      computeTimePattern({ entries: [entry], timezone: "UTC" }).total
-    ).toBe(0);
+  it("uses the logical (5am) day, timezone-aware, for live vs backfill", () => {
+    // 10:00 UTC on the 16th is 5am the 16th in UTC — past the rollover, so a
+    // log "for the 15th" reads as a backfill. In LA it's 2am the 16th — before
+    // the rollover, still the 15th's logical night — so it counts, late at night.
+    const entry = { createdAt: "2024-01-16T10:00:00Z", date: "2024-01-15" };
+    expect(computeTimePattern({ entries: [entry], timezone: "UTC" }).total).toBe(0);
+    const la = computeTimePattern({
+      entries: [entry],
+      timezone: "America/Los_Angeles",
+    });
+    expect(la.total).toBe(1);
+    expect(la.hourly[2]).toBe(1);
   });
 
   // Regression: en-CA with hour12:false renders midnight as "24:30" in
   // some engines instead of "00:30". Without normalization, a midnight
   // check-in would land in hourly[24] (out of bounds → ghost 25th
   // bucket) and the typical-time render would flip 12:xxam → 12:xxpm.
+  it("counts a pre-dawn log for the prior day (night owl) as late night", () => {
+    // Stretched at 2am, logged for yesterday before sleeping — a real do-time.
+    const r = computeTimePattern({
+      entries: [{ createdAt: "2024-01-15T02:00:00Z", date: "2024-01-14" }],
+      timezone: "UTC",
+    });
+    expect(r.total).toBe(1);
+    expect(r.hourly[2]).toBe(1);
+    expect(r.typical).toEqual({ hour: 2, minute: 0 });
+  });
+
+  it("still excludes a genuine backfill days later", () => {
+    // Logging Sunday's session the following Wednesday evening — not a do-time.
+    const r = computeTimePattern({
+      entries: [{ createdAt: "2024-01-17T20:00:00Z", date: "2024-01-14" }],
+      timezone: "UTC",
+    });
+    expect(r.total).toBe(0);
+  });
+
+  it("excludes a pre-dawn log made for the new calendar day (the tradeoff)", () => {
+    // 1am logged for today: before the 5am rollover it belongs to the prior
+    // logical day, so it isn't counted toward the new day. Documented tradeoff.
+    const r = computeTimePattern({
+      entries: [{ createdAt: "2024-01-15T01:00:00Z", date: "2024-01-15" }],
+      timezone: "UTC",
+    });
+    expect(r.total).toBe(0);
+  });
+
   it("buckets midnight (00:xx) as hour 0, not hour 24", () => {
+    // Logged just after midnight, for the night that just ended (the prior
+    // logical day), so they're live and land in hourly[0].
     const r = computeTimePattern({
       entries: [
-        live("2024-01-15T00:30:00Z"),
-        live("2024-01-16T00:30:00Z"),
-        live("2024-01-17T00:30:00Z"),
+        { createdAt: "2024-01-15T00:30:00Z", date: "2024-01-14" },
+        { createdAt: "2024-01-16T00:30:00Z", date: "2024-01-15" },
+        { createdAt: "2024-01-17T00:30:00Z", date: "2024-01-16" },
       ],
       timezone: "UTC",
     });

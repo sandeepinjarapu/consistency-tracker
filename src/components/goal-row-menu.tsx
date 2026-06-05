@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { archiveGoal, unarchiveGoal, deleteGoal } from "@/lib/actions/goals";
@@ -27,22 +28,50 @@ export default function GoalRowMenu({
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, startTransition] = useTransition();
-  const ref = useRef<HTMLDivElement>(null);
+  // The menu is portaled to <body> so it escapes the goal row's stacking
+  // context; otherwise the next card's icon cluster paints over it. We anchor
+  // it to the trigger with fixed coordinates measured on open.
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
+    null
+  );
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  function toggleMenu() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    setOpen(true);
+  }
 
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (triggerRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+      setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
+    // The portaled menu is fixed-positioned to the trigger; if the page scrolls
+    // or resizes it would detach, so just close it.
+    function onReflow() {
+      setOpen(false);
+    }
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onReflow, true);
+    window.addEventListener("resize", onReflow);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onReflow, true);
+      window.removeEventListener("resize", onReflow);
     };
   }, [open]);
 
@@ -71,62 +100,71 @@ export default function GoalRowMenu({
   }
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Goal actions"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggleMenu}
         className={`${tapTargetIcon} rounded text-base leading-none text-[color:var(--muted)] hover:bg-gray-100 hover:text-black`}
       >
         {trigger === "gear" ? <GearIcon /> : "⋯"}
       </button>
-      {open ? (
-        <div
-          role="menu"
-          className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-[color:var(--border)] bg-white py-1 shadow-md"
-        >
-          <Link
-            role="menuitem"
-            href={`/consistencytracker/goals/${goalId}/edit`}
-            onClick={() => setOpen(false)}
-            className={`${tapTargetRow} px-3 text-xs hover:bg-gray-50`}
-          >
-            Edit
-          </Link>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={handleArchive}
-            disabled={pending}
-            className={`${tapTargetRow} w-full px-3 text-left text-xs hover:bg-gray-50 disabled:opacity-50`}
-          >
-            {pending ? "…" : archived ? "Unarchive" : "Archive"}
-          </button>
-          <div className="my-1 border-t border-[color:var(--border)]" />
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              setConfirmDelete(true);
-            }}
-            className={`${tapTargetRow} w-full px-3 text-left text-xs text-red-600 hover:bg-red-50`}
-          >
-            Delete goal
-          </button>
-        </div>
-      ) : null}
+      {open && menuPos
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              style={{ position: "fixed", top: menuPos.top, right: menuPos.right }}
+              className="z-50 w-44 rounded-md border border-[color:var(--border)] bg-white py-1 shadow-md"
+            >
+              <Link
+                role="menuitem"
+                href={`/consistencytracker/goals/${goalId}/edit`}
+                onClick={() => setOpen(false)}
+                className={`${tapTargetRow} px-3 text-xs hover:bg-gray-50`}
+              >
+                Edit
+              </Link>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleArchive}
+                disabled={pending}
+                className={`${tapTargetRow} w-full px-3 text-left text-xs hover:bg-gray-50 disabled:opacity-50`}
+              >
+                {pending ? "…" : archived ? "Unarchive" : "Archive"}
+              </button>
+              <div className="my-1 border-t border-[color:var(--border)]" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  setConfirmDelete(true);
+                }}
+                className={`${tapTargetRow} w-full px-3 text-left text-xs text-red-600 hover:bg-red-50`}
+              >
+                Delete goal
+              </button>
+            </div>,
+            document.body
+          )
+        : null}
 
-      {confirmDelete ? (
-        <DeleteConfirm
-          goalName={goalName}
-          pending={pending}
-          onConfirm={handleDelete}
-          onCancel={() => setConfirmDelete(false)}
-        />
-      ) : null}
+      {confirmDelete
+        ? createPortal(
+            <DeleteConfirm
+              goalName={goalName}
+              pending={pending}
+              onConfirm={handleDelete}
+              onCancel={() => setConfirmDelete(false)}
+            />,
+            document.body
+          )
+        : null}
     </div>
   );
 }

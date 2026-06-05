@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { todayIn } from "@/lib/dates";
+import { todayIn, dateInTimezone } from "@/lib/dates";
 import { isBackfillable } from "@/lib/heatmap-backfill";
 
 export type SkipReason = "travel" | "illness" | "mood" | "other";
@@ -52,7 +52,7 @@ export async function markDone(goalId: string, date: string): Promise<void> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
-  await assertOwnsGoal(supabase, user.id, goalId);
+  await assertBackfillable(supabase, user.id, goalId, date);
 
   const { error } = await supabase
     .from("check_ins")
@@ -84,7 +84,7 @@ export async function markSkipped(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
-  await assertOwnsGoal(supabase, user.id, goalId);
+  await assertBackfillable(supabase, user.id, goalId, date);
 
   const { error } = await supabase
     .from("check_ins")
@@ -109,7 +109,7 @@ export async function unmark(goalId: string, date: string): Promise<void> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
-  await assertOwnsGoal(supabase, user.id, goalId);
+  await assertBackfillable(supabase, user.id, goalId, date);
 
   const { error } = await supabase
     .from("check_ins")
@@ -145,9 +145,10 @@ async function assertBackfillable(
   if (goal.user_id !== userId) {
     throw new Error("You can only check in on your own goals");
   }
+  const timezone = profile?.timezone ?? "UTC";
   const eligible = isBackfillable(date, {
-    goalStartDate: (goal.created_at as string).slice(0, 10),
-    today: todayIn(profile?.timezone ?? "UTC"),
+    goalStartDate: dateInTimezone(goal.created_at as string, timezone),
+    today: todayIn(timezone),
     targetDays: goal.target_days as number[],
   });
   if (!eligible) {
@@ -156,9 +157,9 @@ async function assertBackfillable(
 }
 
 /**
- * Backfill a "done" check-in for a past day via the heatmap. Unlike markDone
- * (which the Today card uses for the current day), this enforces the backfill
- * date window server-side, not just in the UI.
+ * Backfill a "done" check-in for a past day via the heatmap / Catch up list.
+ * Like the Today-card actions above, it enforces the editable date window
+ * server-side (not just in the UI) via the same `assertBackfillable` guard.
  */
 export async function backfillCheckIn(
   goalId: string,

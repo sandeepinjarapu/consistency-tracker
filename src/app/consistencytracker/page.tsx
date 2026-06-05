@@ -2,7 +2,8 @@ import Link from "next/link";
 import { cache, Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
-import { todayIn, dayOfWeekIn, addDays, isoWeekStart } from "@/lib/dates";
+import { todayIn, dayOfWeekIn, addDays, isoWeekStart, hourIn, DAY_START_HOUR } from "@/lib/dates";
+import { selectLastNightGoals } from "@/lib/last-night";
 import { computeStats } from "@/lib/stats";
 import { computeTodayBanner } from "@/lib/today-banner";
 import { computeGoalRowState, type GoalRowState } from "@/lib/today-goal-row";
@@ -126,6 +127,23 @@ async function TodaySection() {
   >;
   const weekCheckIns = twoWeekCheckIns.filter((c) => c.date >= weekStart);
 
+  // Night owls: between midnight and DAY_START_HOUR, surface yesterday's
+  // still-open tasks so a late log is a normal check-in, not a backfill. Only
+  // shown in that window, so daytime users never see it.
+  const yesterday = addDays(today, -1);
+  const yesterdayDow = (dow + 6) % 7;
+  const loggedYesterday = new Set(
+    twoWeekCheckIns.filter((c) => c.date === yesterday).map((c) => c.goal_id)
+  );
+  const lastNightGoals = selectLastNightGoals({
+    goals,
+    hour: hourIn(timezone),
+    yesterday,
+    yesterdayDow,
+    loggedYesterday,
+    timezone,
+  });
+
   // Contextual banner: reflect-on-the-week (gated on activity + day) or a
   // gentle drop-off nudge after a ≥2-week lapse. See computeTodayBanner.
   const reflectedWeeks = new Set(
@@ -211,6 +229,31 @@ async function TodaySection() {
           })}
         </div>
       )}
+
+      {lastNightGoals.length > 0 ? (
+        <div className="mt-8">
+          <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
+            Still open from last night
+          </h2>
+          <p className="mb-3 mt-1 text-xs text-[color:var(--muted)]">
+            Up late? You can still log yesterday until 5am.
+          </p>
+          <div className="space-y-2">
+            {lastNightGoals.map((g) => (
+              <TodayGoalCard
+                key={g.id}
+                goalId={g.id}
+                name={g.name}
+                description={g.description}
+                categoryColor={g.category?.color ?? "#9ca3af"}
+                date={yesterday}
+                timezone={timezone}
+                checkIn={null}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {banner.kind === "reflect" ? (
         <Link
@@ -411,15 +454,8 @@ function shortDate(d: string): string {
 }
 
 function greeting(timezone: string): string {
-  const hour = parseInt(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      hour: "numeric",
-      hour12: false,
-    }).format(new Date()),
-    10
-  );
-  if (hour < 5) return "Still up";
+  const hour = hourIn(timezone);
+  if (hour < DAY_START_HOUR) return "Still up";
   if (hour < 12) return "Morning";
   if (hour < 17) return "Afternoon";
   if (hour < 21) return "Evening";

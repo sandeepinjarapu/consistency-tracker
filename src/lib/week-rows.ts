@@ -41,7 +41,7 @@ const MONTH_ABBR = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-function weekLabel(weekStart: string, currentWeekStart: string): string {
+export function weekLabel(weekStart: string, currentWeekStart: string): string {
   if (weekStart === currentWeekStart) return "This week";
   if (weekStart === addDays(currentWeekStart, -7)) return "Last week";
   const [, m, d] = weekStart.split("-");

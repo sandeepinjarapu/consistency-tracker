@@ -1,17 +1,19 @@
 "use client";
 
+import { DAY_START_HOUR } from "@/lib/dates";
 import { HoverTip, useHoverTip } from "./tooltip";
 
-// Four parts of day, matching partOfDay() in stats.ts so the bars line up with
-// the "You usually do this in the afternoon" insight sentence.
-// Ordered as a day reads, with the small-hours bucket last (it's the tail of
-// the night, not the start of the morning).
+// Five parts of day, matching partOfDay() in stats.ts so the bars line up with
+// the "You usually do this in the afternoon" insight sentence. The Late night
+// edge is the shared DAY_START_HOUR (so the rollover and the bucket can't
+// drift). Ordered as a day reads, with the small-hours bucket last (it's the
+// tail of the night, not the start of the morning).
 const PARTS: { label: string; from: number; to: number }[] = [
-  { label: "Morning", from: 5, to: 11 },
+  { label: "Morning", from: DAY_START_HOUR, to: 11 },
   { label: "Afternoon", from: 12, to: 16 },
   { label: "Evening", from: 17, to: 20 },
   { label: "Night", from: 21, to: 23 },
-  { label: "Late night", from: 0, to: 4 },
+  { label: "Late night", from: 0, to: DAY_START_HOUR - 1 },
 ];
 
 /**
