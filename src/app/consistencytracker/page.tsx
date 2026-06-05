@@ -141,6 +141,7 @@ async function TodaySection() {
     yesterday,
     yesterdayDow,
     loggedYesterday,
+    timezone,
   });
 
   // Contextual banner: reflect-on-the-week (gated on activity + day) or a

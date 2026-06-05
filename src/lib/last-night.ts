@@ -1,4 +1,4 @@
-import { DAY_START_HOUR } from "@/lib/dates";
+import { DAY_START_HOUR, dateInTimezone } from "@/lib/dates";
 
 /**
  * The goals to surface in the Today page's "Still open from last night"
@@ -23,12 +23,14 @@ export function selectLastNightGoals<
   yesterdayDow: number;
   /** Goal ids already logged or skipped for yesterday. */
   loggedYesterday: Set<string>;
+  /** The user's IANA timezone, for resolving each goal's local start date. */
+  timezone: string;
 }): G[] {
   if (opts.hour >= DAY_START_HOUR) return [];
   return opts.goals.filter(
     (g) =>
       g.target_days.includes(opts.yesterdayDow) &&
-      g.created_at.slice(0, 10) <= opts.yesterday &&
+      dateInTimezone(g.created_at, opts.timezone) <= opts.yesterday &&
       !opts.loggedYesterday.has(g.id)
   );
 }

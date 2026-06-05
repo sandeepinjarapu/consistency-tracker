@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { todayIn } from "@/lib/dates";
+import { todayIn, dateInTimezone } from "@/lib/dates";
 import { isBackfillable } from "@/lib/heatmap-backfill";
 
 export type SkipReason = "travel" | "illness" | "mood" | "other";
@@ -145,9 +145,10 @@ async function assertBackfillable(
   if (goal.user_id !== userId) {
     throw new Error("You can only check in on your own goals");
   }
+  const timezone = profile?.timezone ?? "UTC";
   const eligible = isBackfillable(date, {
-    goalStartDate: (goal.created_at as string).slice(0, 10),
-    today: todayIn(profile?.timezone ?? "UTC"),
+    goalStartDate: dateInTimezone(goal.created_at as string, timezone),
+    today: todayIn(timezone),
     targetDays: goal.target_days as number[],
   });
   if (!eligible) {

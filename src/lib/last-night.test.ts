@@ -16,13 +16,14 @@ const goals: G[] = [
   { id: "already-logged", target_days: [1], created_at: "2024-01-01T12:00:00Z" },
 ];
 
-function run(hour: number, logged: string[] = []) {
+function run(hour: number, logged: string[] = [], timezone = "UTC") {
   return selectLastNightGoals({
     goals,
     hour,
     yesterday: YESTERDAY,
     yesterdayDow: YDOW,
     loggedYesterday: new Set(logged),
+    timezone,
   }).map((g) => g.id);
 }
 
@@ -53,6 +54,26 @@ describe("selectLastNightGoals", () => {
   it("excludes goals already logged or skipped for yesterday", () => {
     expect(run(2, ["already-logged"])).not.toContain("already-logged");
     expect(run(2)).toContain("already-logged"); // included when not yet logged
+  });
+
+  it("resolves the goal's start date in the user's timezone, not UTC", () => {
+    // 2024-01-15T19:45:00Z is Jan 16, 1:15am in Asia/Kolkata (UTC+5:30): the
+    // goal was born "today" locally, so it must not be eligible for yesterday.
+    const justBorn: G[] = [
+      { id: "ist", target_days: [1], created_at: "2024-01-15T19:45:00Z" },
+    ];
+    const select = (timezone: string) =>
+      selectLastNightGoals({
+        goals: justBorn,
+        hour: 2,
+        yesterday: YESTERDAY,
+        yesterdayDow: YDOW,
+        loggedYesterday: new Set<string>(),
+        timezone,
+      }).map((g) => g.id);
+
+    expect(select("Asia/Kolkata")).toEqual([]); // born today, locally
+    expect(select("UTC")).toEqual(["ist"]); // still Jan 15 in UTC
   });
 
   it("returns the full eligible set pre-dawn", () => {
