@@ -177,3 +177,14 @@ export async function setGoalMotivation(
   revalidatePath("/consistencytracker", "layout");
 }
 
+// Permanently delete a goal. The "goals: delete own" RLS policy scopes this to
+// the owner, and the FK on-delete-cascade removes the goal's check-ins, shares,
+// and reactions. Weekly reflections aren't goal-scoped, so they're untouched.
+// Irreversible — the UI confirms first.
+export async function deleteGoal(id: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("goals").delete().eq("id", id);
+  if (error) throw error;
+  revalidatePath("/consistencytracker", "layout");
+}
+

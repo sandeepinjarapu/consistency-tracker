@@ -121,7 +121,7 @@ export default async function GoalPage({
           </div>
           <h1 className="text-2xl font-light tracking-tight">{goal.name}</h1>
         </div>
-        <GoalRowMenu goalId={goal.id} archived={!goal.active} trigger="gear" />
+        <GoalRowMenu goalId={goal.id} goalName={goal.name} archived={!goal.active} trigger="gear" />
       </header>
 
       {/* Why (left) · Connections (right). The why is the human content; the
