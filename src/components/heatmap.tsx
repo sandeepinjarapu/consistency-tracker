@@ -161,8 +161,12 @@ export default function Heatmap({
       >
         {/* Month labels */}
         {monthLabels.map((m, i) => {
-          // Suppress if too close to the previous one
-          if (i > 0 && m.col - monthLabels[i - 1].col < 3) return null;
+          // Drop a label only when the NEXT month starts too close, so the more
+          // recent month always wins. Suppressing the later one instead left the
+          // current month unlabeled at the right edge (the view looked a month
+          // behind, e.g. ending in June but only labeled through May).
+          const next = monthLabels[i + 1];
+          if (next && next.col - m.col < 3) return null;
           return (
             <text
               key={`${m.col}-${m.label}`}
