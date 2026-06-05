@@ -52,7 +52,7 @@ export async function markDone(goalId: string, date: string): Promise<void> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
-  await assertOwnsGoal(supabase, user.id, goalId);
+  await assertBackfillable(supabase, user.id, goalId, date);
 
   const { error } = await supabase
     .from("check_ins")
@@ -84,7 +84,7 @@ export async function markSkipped(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
-  await assertOwnsGoal(supabase, user.id, goalId);
+  await assertBackfillable(supabase, user.id, goalId, date);
 
   const { error } = await supabase
     .from("check_ins")
@@ -109,7 +109,7 @@ export async function unmark(goalId: string, date: string): Promise<void> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
-  await assertOwnsGoal(supabase, user.id, goalId);
+  await assertBackfillable(supabase, user.id, goalId, date);
 
   const { error } = await supabase
     .from("check_ins")
@@ -156,9 +156,9 @@ async function assertBackfillable(
 }
 
 /**
- * Backfill a "done" check-in for a past day via the heatmap. Unlike markDone
- * (which the Today card uses for the current day), this enforces the backfill
- * date window server-side, not just in the UI.
+ * Backfill a "done" check-in for a past day via the heatmap / Catch up list.
+ * Like the Today-card actions above, it enforces the editable date window
+ * server-side (not just in the UI) via the same `assertBackfillable` guard.
  */
 export async function backfillCheckIn(
   goalId: string,

@@ -37,7 +37,7 @@ export default function WeekQuotaRows({
             <div
               className="flex w-28 shrink-0 gap-1"
               role="img"
-              aria-label={`${w.done} of ${weeklyTarget} done`}
+              aria-label={`${weekLabel(w.weekStart, currentWeekStart)}: ${w.done} of ${weeklyTarget} done${w.met ? ", target met" : ""}`}
             >
               {Array.from({ length: weeklyTarget }).map((_, i) => (
                 <span

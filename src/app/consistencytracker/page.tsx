@@ -3,6 +3,7 @@ import { cache, Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { todayIn, dayOfWeekIn, addDays, isoWeekStart, hourIn, DAY_START_HOUR } from "@/lib/dates";
+import { selectLastNightGoals } from "@/lib/last-night";
 import { computeStats } from "@/lib/stats";
 import { computeTodayBanner } from "@/lib/today-banner";
 import { computeGoalRowState, type GoalRowState } from "@/lib/today-goal-row";
@@ -134,13 +135,13 @@ async function TodaySection() {
   const loggedYesterday = new Set(
     twoWeekCheckIns.filter((c) => c.date === yesterday).map((c) => c.goal_id)
   );
-  const lastNightGoals =
-    hourIn(timezone) < DAY_START_HOUR
-      ? goals.filter(
-          (g) =>
-            g.target_days.includes(yesterdayDow) && !loggedYesterday.has(g.id)
-        )
-      : [];
+  const lastNightGoals = selectLastNightGoals({
+    goals,
+    hour: hourIn(timezone),
+    yesterday,
+    yesterdayDow,
+    loggedYesterday,
+  });
 
   // Contextual banner: reflect-on-the-week (gated on activity + day) or a
   // gentle drop-off nudge after a ≥2-week lapse. See computeTodayBanner.
