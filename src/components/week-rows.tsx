@@ -12,12 +12,11 @@ const DOW_NAME = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
  * The goal-detail record AND editor: one row per ISO week, Monday on the left.
  * The current week is interactive — editable cells look like controls (a check
  * you can undo, today's accent ring, a dashed "open" well you can fill); locked
- * history cells are flat paint. The editable set is whatever the server allows
- * (it re-checks via `backfillCheckIn`/`clearBackfillCheckIn`), so a tap that
- * shouldn't land simply reverts.
+ * history cells are flat paint. The editable set is whatever the server allows.
  *
- * Logging is one tap; removing a logged day asks first (a soft confirm), so a
- * mis-tap never silently deletes a check-in.
+ * Logging is one tap; removing a logged day asks first via an inline confirm
+ * below the grid (never a floating popover, which the horizontal-scroll wrapper
+ * would clip).
  */
 export default function WeekRows({
   goalId,
@@ -41,11 +40,7 @@ export default function WeekRows({
     const ov = override[cell.date];
     if (ov === "done") return { ...cell, state: "done", editable: true };
     if (ov === "empty")
-      return {
-        ...cell,
-        state: cell.date === today ? "today" : "open",
-        editable: true,
-      };
+      return { ...cell, state: cell.date === today ? "today" : "open", editable: true };
     return cell;
   }
 
@@ -91,38 +86,38 @@ export default function WeekRows({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-max">
-        {/* weekday header */}
-        <div className="flex gap-2 pl-[68px] mb-2">
-          {WEEKDAY.map((d, i) => (
-            <span
-              key={i}
-              className="w-9 text-center text-[10px] text-[color:var(--muted)]"
-            >
-              {d}
-            </span>
-          ))}
-        </div>
+    <div>
+      {/* Content-width, left-aligned. Scrolls horizontally only if the week
+          can't fit (small phones), with the scrollbar hidden. */}
+      <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="w-fit py-1">
+          <div className="flex items-center gap-1.5 px-2">
+            <span className="w-14 shrink-0" />
+            {WEEKDAY.map((d, i) => (
+              <span
+                key={i}
+                className="w-9 text-center text-[10px] text-[color:var(--muted)]"
+              >
+                {d}
+              </span>
+            ))}
+          </div>
 
-        {weeks.map((week) => (
-          <div
-            key={week.weekStart}
-            className={`flex items-center ${
-              week.isCurrent ? "rounded-xl py-2 -mx-1.5 px-1.5 my-0.5" : "py-0.5"
-            }`}
-            style={week.isCurrent ? { background: washOf(doneColor) } : undefined}
-          >
-            <span
-              className={`w-[68px] shrink-0 text-xs ${
-                week.isCurrent
-                  ? "font-semibold text-[color:var(--foreground)]"
-                  : "text-[color:var(--muted)]"
-              }`}
+          {weeks.map((week) => (
+            <div
+              key={week.weekStart}
+              className="flex items-center gap-1.5 rounded-xl px-2 py-1.5"
+              style={week.isCurrent ? { background: washOf(doneColor) } : undefined}
             >
-              {week.label}
-            </span>
-            <div className="flex gap-2">
+              <span
+                className={`w-14 shrink-0 text-xs ${
+                  week.isCurrent
+                    ? "font-semibold text-[color:var(--foreground)]"
+                    : "text-[color:var(--muted)]"
+                }`}
+              >
+                {week.label}
+              </span>
               {week.cells.map((raw, i) => {
                 const cell = effective(raw);
                 return (
@@ -132,17 +127,37 @@ export default function WeekRows({
                     dowName={DOW_NAME[i]}
                     isCount={isCount}
                     doneColor={doneColor}
-                    confirming={confirm === cell.date}
                     onClick={() => onCell(cell)}
-                    onConfirmRemove={() => remove(cell.date)}
-                    onCancel={() => setConfirm(null)}
                   />
                 );
               })}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+
+      {confirm ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2.5 text-xs">
+          <span className="text-[color:var(--muted)]">
+            Remove the check-in for {formatDate(confirm)}?
+          </span>
+          <button
+            type="button"
+            onClick={() => remove(confirm)}
+            disabled={pending}
+            className="min-h-[44px] rounded-md bg-black px-4 text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            Remove
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirm(null)}
+            className="min-h-[44px] rounded-md border border-[color:var(--border)] px-4 text-[color:var(--muted)] hover:border-black hover:text-black"
+          >
+            Keep
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -152,24 +167,17 @@ function Cell({
   dowName,
   isCount,
   doneColor,
-  confirming,
   onClick,
-  onConfirmRemove,
-  onCancel,
 }: {
   cell: GridCell;
   dowName: string;
   isCount: boolean;
   doneColor: string;
-  confirming: boolean;
   onClick: () => void;
-  onConfirmRemove: () => void;
-  onCancel: () => void;
 }) {
   const base = "w-9 h-9 rounded-[10px] grid place-items-center shrink-0 relative";
   const aria = `${dowName} ${formatDate(cell.date)}: ${LABEL[cell.state]}`;
 
-  // Locked (non-editable) cells are flat paint, not controls.
   if (!cell.editable) {
     return (
       <span className={base} style={lockedStyle(cell.state, doneColor)} aria-label={aria}>
@@ -181,64 +189,25 @@ function Cell({
   }
 
   return (
-    <span className="relative">
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={aria}
-        // 36px visual chip, but the ::before extends the hit area to ~44px so
-        // logging/removing evidence meets the touch-target floor (gap-2 keeps
-        // adjacent hit areas from overlapping).
-        className={`${base} before:absolute before:-inset-1 before:content-[''] ${
-          cell.state === "open" ? "hover:border-black" : ""
-        } transition`}
-        style={editableStyle(cell.state, isCount, doneColor)}
-      >
-        {cell.state === "done" ? <Check /> : null}
-        {cell.state === "skipped" ? null : null}
-        {cell.state === "today" ? (
-          <span
-            className="w-[7px] h-[7px] rounded-full"
-            style={{ background: doneColor }}
-          />
-        ) : null}
-        {cell.state === "open" ? (
-          <span className="text-[15px] leading-none text-[#aab1ba]">+</span>
-        ) : null}
-      </button>
-
-      {confirming ? (
-        <>
-          <button
-            type="button"
-            aria-label="Cancel"
-            onClick={onCancel}
-            className="fixed inset-0 z-20 cursor-default"
-          />
-          <div className="absolute left-1/2 top-full z-30 mt-1.5 w-40 -translate-x-1/2 rounded-lg border border-[color:var(--border)] bg-white p-2.5 shadow-md">
-            <p className="text-[11px] text-[color:var(--muted)] mb-2">
-              Remove this check-in?
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onConfirmRemove}
-                className="flex-1 min-h-[44px] rounded-md bg-black text-white text-xs hover:bg-gray-800"
-              >
-                Remove
-              </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="flex-1 min-h-[44px] rounded-md border border-[color:var(--border)] text-xs text-[color:var(--muted)] hover:text-black hover:border-black"
-              >
-                Keep
-              </button>
-            </div>
-          </div>
-        </>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={aria}
+      // 36px chip, but the ::before extends the hit area to ~44px (it sits
+      // inside the row's px-2, so it never adds scrollable width).
+      className={`${base} before:absolute before:-inset-1 before:content-[''] ${
+        cell.state === "open" ? "hover:border-black" : ""
+      } transition`}
+      style={editableStyle(cell.state, isCount, doneColor)}
+    >
+      {cell.state === "done" ? <Check /> : null}
+      {cell.state === "today" ? (
+        <span className="w-[7px] h-[7px] rounded-full" style={{ background: doneColor }} />
       ) : null}
-    </span>
+      {cell.state === "open" ? (
+        <span className="text-[15px] leading-none text-[#aab1ba]">+</span>
+      ) : null}
+    </button>
   );
 }
 
@@ -267,14 +236,12 @@ function editableStyle(
 ): React.CSSProperties {
   switch (state) {
     case "done":
-      return { background: doneColor, boxShadow: "0 1px 2px rgba(16,80,40,.22)" };
+      return { background: doneColor, boxShadow: "0 1px 2px rgba(16,80,40,.2)" };
     case "skipped":
       return { background: "#fde68a" };
     case "today":
-      return {
-        background: "#fff",
-        boxShadow: `inset 0 0 0 2px ${doneColor}, 0 0 0 4px ${washOf(doneColor)}`,
-      };
+      // Inset ring only (no outer glow, which the scroll wrapper would clip).
+      return { background: "#fff", boxShadow: `inset 0 0 0 2px ${doneColor}` };
     case "open":
     default:
       // Specific-day: a passed scheduled day reads "was due, still open" (soft
@@ -303,7 +270,7 @@ function lockedStyle(state: GridCellState, doneColor: string): React.CSSProperti
   }
 }
 
-// A faint wash of the category accent for the live-week band and today's ring.
+// A faint wash of the category accent for the live-week band.
 function washOf(color: string): string {
   return `color-mix(in srgb, ${color} 8%, white)`;
 }

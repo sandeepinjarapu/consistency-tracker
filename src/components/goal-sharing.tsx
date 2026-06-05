@@ -38,9 +38,11 @@ export default function GoalSharing({
   const [shared, setShared] = useState(() => new Set(sharedWith));
   const [busy, startTransition] = useTransition();
 
+  // First name only in the status line so it fits the narrow column; the sheet
+  // shows full names. "Richa Vadini Singh" -> "Shared with Richa".
   const sharedNames = partners
     .filter((p) => shared.has(p.id))
-    .map((p) => p.display_name ?? "Partner");
+    .map((p) => (p.display_name ?? "Partner").split(" ")[0]);
 
   function toggle(partnerId: string) {
     const next = new Set(shared);

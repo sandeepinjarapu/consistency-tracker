@@ -56,13 +56,13 @@ export default async function GoalsPage({
     goalsByCategory.get(key)!.push(g);
   }
 
-  // All-goals heatmap summary (active view only). A compact recent window —
-  // the last ~12 weeks, trimmed so it never starts before the first goal — so
-  // it fits without horizontal scrolling and stays legible for newcomers. It
-  // appears only once there's a check-in to show, so a brand-new user isn't
-  // greeted by an empty grid they can't yet read.
+  // All-goals heatmap summary (active view only). A compact recent window of
+  // the last ~12 weeks, trimmed so it never starts before the first goal.
+  // Only shown once there are a few goals (3+): with one or two, the per-goal
+  // detail page already tells that story, and an aggregate of a single goal is
+  // just a sparser copy of its own record.
   let heatmapCells: Awaited<ReturnType<typeof buildAggregateCells>> | null = null;
-  if (!showArchived && (goals ?? []).length > 0) {
+  if (!showArchived && (goals ?? []).length >= 3) {
     const activeGoals = goals as GoalRow[];
     const profile = await getCurrentProfile();
     const today = todayIn(profile?.timezone ?? "UTC");

@@ -38,21 +38,35 @@ export default function CalendarReminder({
   }
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-1">
-      <span>{added ? `Added ${reminderLabel} to your calendar ✓` : `Reminder ${reminderLabel}`}</span>
-      {/* Dot grouped with the link so the separator never wraps onto its own line. */}
-      <span className="inline-flex items-center gap-x-1">
-        <span aria-hidden>·</span>
+    // Stacked so it never wraps mid-phrase in the narrow connections column:
+    // "Reminder 8:00pm" on top, the action (or the added state) below it.
+    <span className="flex flex-col gap-0.5">
+      <span>Reminder {reminderLabel}</span>
+      {added ? (
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden>✓ Added</span>
+          <span aria-hidden>·</span>
+          <a
+            href={gcalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleAdd}
+            className="underline hover:text-black"
+          >
+            Add again
+          </a>
+        </span>
+      ) : (
         <a
           href={gcalUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleAdd}
-          className="underline hover:text-black"
+          className="w-max underline hover:text-black"
         >
-          {added ? "Add again" : "Add to Google Calendar ↗"}
+          Add to calendar ↗
         </a>
-      </span>
+      )}
     </span>
   );
 }

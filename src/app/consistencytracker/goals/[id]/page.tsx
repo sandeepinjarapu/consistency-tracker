@@ -128,21 +128,7 @@ export default async function GoalPage({
           right column is links and controls (sharing, doc, reminder). */}
       <div className="flex gap-5">
         <div className="flex-[1.2] min-w-0">
-          {goal.motivation ? (
-            <Motivation text={goal.motivation} />
-          ) : (
-            <div className="max-w-prose">
-              <p className="text-sm leading-relaxed text-[color:var(--muted)]">
-                When this gets hard, what should it remind you of?
-              </p>
-              <Link
-                href={`/consistencytracker/goals/${goal.id}/edit`}
-                className="mt-1 inline-block text-xs font-medium underline decoration-[color:var(--border)] hover:decoration-black"
-              >
-                Add a reason
-              </Link>
-            </div>
-          )}
+          <Motivation goalId={goal.id} initial={goal.motivation} />
         </div>
         <div className="flex-1 min-w-0 border-l border-[color:var(--border)] pl-5">
           <Suspense fallback={<Skeleton className="h-5 w-32" />}>
@@ -394,7 +380,7 @@ async function RecordSection({
         <p className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-1">
           This week
         </p>
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-5">
           <div>
             <p className="text-3xl font-light tracking-tight">
               {weekStatus.headline}
@@ -467,17 +453,19 @@ function RecordSkeleton({ isCount }: { isCount: boolean }) {
   return (
     <div aria-busy>
       <span className="sr-only">Loading…</span>
-      <div className="mb-8 space-y-2">
-        <Skeleton className="h-9 w-24" />
-        <Skeleton className="h-4 w-40" />
+      <Skeleton className="h-3 w-16 mb-2" />
+      <div className="mb-5 flex items-center gap-5">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-3 w-40" />
+        </div>
+        <Skeleton className="h-[54px] w-[54px] rounded-full" />
       </div>
-      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-10 w-72" />
       {isCount ? (
         <div className="mt-8">
-          <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-            Week by week
-          </h3>
-          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-3 w-24 mb-3" />
+          <Skeleton className="h-8 w-full max-w-xs" />
         </div>
       ) : null}
     </div>
