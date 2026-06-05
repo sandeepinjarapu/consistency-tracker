@@ -20,6 +20,27 @@ export function todayIn(timezone: string, ref: Date = new Date()): string {
 }
 
 /**
+ * The hour the habit "day" rolls over, in local time. Before this hour reads as
+ * the tail of the previous day (for night owls), not the start of a new one.
+ * Shared so the "late night" bucket, the "Still up" greeting, and the
+ * time-of-day live-check all agree on one boundary.
+ */
+export const DAY_START_HOUR = 5;
+
+/** Current local hour (0-23) in the given timezone. */
+export function hourIn(timezone: string, ref: Date = new Date()): number {
+  const h = parseInt(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "numeric",
+      hour12: false,
+    }).format(ref),
+    10
+  );
+  return h % 24; // some engines render midnight as "24"
+}
+
+/**
  * Day of week (0=Sun..6=Sat) for the given date in the user's timezone.
  */
 export function dayOfWeekIn(timezone: string, ref: Date = new Date()): number {

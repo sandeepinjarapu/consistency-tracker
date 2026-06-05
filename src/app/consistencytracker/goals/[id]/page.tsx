@@ -32,7 +32,7 @@ import Motivation from "@/components/motivation";
 import ProgressRing from "@/components/progress-ring";
 import WeekRows from "@/components/week-rows";
 import FullHistory from "@/components/full-history";
-import WeeklyStrip from "@/components/weekly-strip";
+import WeekQuotaRows from "@/components/week-quota-rows";
 import TimeHistogram from "@/components/time-histogram";
 import MarkReactionsSeen from "@/components/mark-reactions-seen";
 import Skeleton from "@/components/skeleton";
@@ -360,6 +360,10 @@ async function RecordSection({
         })
       : [];
 
+  // Recent weeks for the frequency quota rows: drop the current week (the live
+  // grid already shows it), newest first, capped to a recent window.
+  const pastWeeks = weeklyMet.filter((w) => !w.current).slice(-6).reverse();
+
   const timePattern = computeTimePattern({
     entries: checkIns
       .filter((c) => c.status === "done")
@@ -413,13 +417,14 @@ async function RecordSection({
         </p>
       </div>
 
-      {weeklyTarget != null ? (
+      {weeklyTarget != null && pastWeeks.length > 0 ? (
         <div className="mb-8">
           <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-3">
-            Week by week
+            Recent weeks
           </h3>
-          <WeeklyStrip
-            weeks={weeklyMet}
+          <WeekQuotaRows
+            weeks={pastWeeks}
+            currentWeekStart={weekStart}
             weeklyTarget={weeklyTarget}
             doneColor={categoryColor}
           />

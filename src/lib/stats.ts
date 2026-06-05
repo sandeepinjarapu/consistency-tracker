@@ -1,4 +1,4 @@
-import { addDays, dayOfWeekForDateString, isoWeekStart } from "./dates";
+import { addDays, dayOfWeekForDateString, isoWeekStart, DAY_START_HOUR } from "./dates";
 import type { HeatmapCell, CellStatus } from "@/components/heatmap";
 
 type RawCheckIn = { date: string; status: "done" | "skipped" };
@@ -376,11 +376,14 @@ export function computeTimePattern({
   const hourly = new Array(24).fill(0);
   const minutes: number[] = [];
   for (const { createdAt, date } of entries) {
-    // Skip non-live check-ins (backfills, later re-checks) — see doc above.
-    const localDate = new Date(createdAt).toLocaleDateString("en-CA", {
-      timeZone: timezone,
-    });
-    if (localDate !== date) continue;
+    // "Live" = logged within the same *logical* day it's for, where the day
+    // rolls over at DAY_START_HOUR, not midnight. So a 2am log for "yesterday"
+    // still counts (a night owl's real do-time), while a genuine backfill days
+    // later does not. The bucket hour below stays the real clock hour.
+    const logicalDate = new Date(
+      new Date(createdAt).getTime() - DAY_START_HOUR * 3_600_000
+    ).toLocaleDateString("en-CA", { timeZone: timezone });
+    if (logicalDate !== date) continue;
 
     const local = new Date(createdAt).toLocaleString("en-CA", {
       timeZone: timezone,
@@ -426,7 +429,7 @@ function hourRangeLabel(hour: number): string {
 }
 
 function partOfDay(hour: number): string {
-  if (hour < 5) return "late at night";
+  if (hour < DAY_START_HOUR) return "late at night";
   if (hour < 12) return "in the morning";
   if (hour < 17) return "in the afternoon";
   if (hour < 21) return "in the evening";
