@@ -217,6 +217,10 @@ function ShareSheet({
         ))}
 
         <form onSubmit={submit} className="mt-3 border-t border-[color:var(--border)] pt-3">
+          <p className="mb-2 text-[11px] text-[color:var(--muted)]">
+            Inviting adds a partner. You choose whether to share this goal with
+            them after they accept.
+          </p>
           <div className="flex items-center gap-2">
             <input
               type="email"
@@ -224,12 +228,12 @@ function ShareSheet({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="partner@email.com"
-              className="h-10 min-w-0 flex-1 rounded-lg border border-[color:var(--border)] px-3 text-sm focus:border-black focus:outline-none"
+              className="h-11 min-w-0 flex-1 rounded-lg border border-[color:var(--border)] px-3 text-sm focus:border-black focus:outline-none"
             />
             <button
               type="submit"
               disabled={sending || !email.trim()}
-              className="h-10 shrink-0 rounded-lg bg-black px-3 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              className="h-11 shrink-0 rounded-lg bg-black px-3 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
             >
               {sending ? "Sending…" : "Send invite"}
             </button>

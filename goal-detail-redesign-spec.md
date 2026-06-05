@@ -1,6 +1,6 @@
 # Goal Detail Redesign — Behavioral Spec
 
-Status: **draft for sign-off**. No component code until this is approved.
+Status: **implemented in PR #99.** This is the design record for that change.
 
 This specifies the redesigned owner goal-detail page (`/consistencytracker/goals/[id]`).
 It does not change the partner view, the goals list, or the edit page (except that

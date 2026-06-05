@@ -94,7 +94,7 @@ export default function WeekRows({
     <div className="overflow-x-auto">
       <div className="min-w-max">
         {/* weekday header */}
-        <div className="flex gap-1.5 pl-[68px] mb-2">
+        <div className="flex gap-2 pl-[68px] mb-2">
           {WEEKDAY.map((d, i) => (
             <span
               key={i}
@@ -122,7 +122,7 @@ export default function WeekRows({
             >
               {week.label}
             </span>
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               {week.cells.map((raw, i) => {
                 const cell = effective(raw);
                 return (
@@ -186,7 +186,10 @@ function Cell({
         type="button"
         onClick={onClick}
         aria-label={aria}
-        className={`${base} ${
+        // 36px visual chip, but the ::before extends the hit area to ~44px so
+        // logging/removing evidence meets the touch-target floor (gap-2 keeps
+        // adjacent hit areas from overlapping).
+        className={`${base} before:absolute before:-inset-1 before:content-[''] ${
           cell.state === "open" ? "hover:border-black" : ""
         } transition`}
         style={editableStyle(cell.state, isCount, doneColor)}
@@ -220,14 +223,14 @@ function Cell({
               <button
                 type="button"
                 onClick={onConfirmRemove}
-                className="flex-1 h-8 rounded-md bg-black text-white text-xs hover:bg-gray-800"
+                className="flex-1 min-h-[44px] rounded-md bg-black text-white text-xs hover:bg-gray-800"
               >
                 Remove
               </button>
               <button
                 type="button"
                 onClick={onCancel}
-                className="flex-1 h-8 rounded-md border border-[color:var(--border)] text-xs text-[color:var(--muted)] hover:text-black hover:border-black"
+                className="flex-1 min-h-[44px] rounded-md border border-[color:var(--border)] text-xs text-[color:var(--muted)] hover:text-black hover:border-black"
               >
                 Keep
               </button>

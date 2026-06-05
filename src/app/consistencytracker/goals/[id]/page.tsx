@@ -308,8 +308,12 @@ async function RecordSection({
     for (let d = 0; d < 7; d++) {
       const date = addDays(weekStart, d);
       if (!targetDays.includes(dayOfWeekForDateString(date))) continue;
+      // Don't count scheduled days from before the goal existed — the grid shows
+      // them as rest, so the "X of N" headline must agree (a goal created
+      // mid-week shouldn't read "0 of 5").
+      if (date < goalStartDate) continue;
       total++;
-      if (date < today && date >= goalStartDate && statusByDate[date] === undefined) {
+      if (date < today && statusByDate[date] === undefined) {
         missedSoFar++;
       }
     }
@@ -408,6 +412,12 @@ async function RecordSection({
             doneColor={categoryColor}
           />
         </div>
+
+        {isCount ? (
+          <p className="mt-2 text-xs text-[color:var(--muted)]">
+            Any day this week counts toward your {weeklyTarget}.
+          </p>
+        ) : null}
 
         <p className="mt-4 text-xs text-[color:var(--muted)]">
           {weekStatus.secondary}
