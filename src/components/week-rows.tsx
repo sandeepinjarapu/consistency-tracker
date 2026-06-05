@@ -120,7 +120,7 @@ export default function WeekRows({
       <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="w-fit py-1">
           <div className="flex items-center gap-1.5 px-2">
-            <span className="w-14 shrink-0" />
+            <span className="w-16 shrink-0" />
             {WEEKDAY.map((d, i) => (
               <span
                 key={i}
@@ -137,14 +137,19 @@ export default function WeekRows({
               className="flex items-center gap-1.5 rounded-xl px-2 py-1.5"
               style={week.isCurrent ? { background: washOf(doneColor) } : undefined}
             >
-              <span
-                className={`w-14 shrink-0 text-xs ${
-                  week.isCurrent
-                    ? "font-semibold text-[color:var(--foreground)]"
-                    : "text-[color:var(--muted)]"
-                }`}
-              >
-                {week.label}
+              <span className="w-16 shrink-0 leading-tight">
+                <span
+                  className={`block text-xs ${
+                    week.isCurrent
+                      ? "font-semibold text-[color:var(--foreground)]"
+                      : "text-[color:var(--muted)]"
+                  }`}
+                >
+                  {week.label}
+                </span>
+                <span className="block text-[10px] text-[color:var(--muted)]">
+                  {week.dateRange}
+                </span>
               </span>
               {week.cells.map((raw, i) => {
                 const cell = effective(raw);

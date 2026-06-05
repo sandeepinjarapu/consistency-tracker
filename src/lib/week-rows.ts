@@ -32,6 +32,7 @@ export type GridCell = {
 export type GridWeek = {
   weekStart: string; // ISO Monday
   label: string; // "This week" | "Last week" | "May 19"
+  dateRange: string; // "May 12–18" (Mon..Sun)
   isCurrent: boolean;
   cells: GridCell[]; // exactly 7, Monday..Sunday
 };
@@ -48,6 +49,16 @@ export function weekLabel(weekStart: string, currentWeekStart: string): string {
   return `${MONTH_ABBR[parseInt(m, 10) - 1]} ${parseInt(d, 10)}`;
 }
 
+/** The Mon..Sun span of a week as "May 12–18" (or "Apr 28 – May 4"). */
+export function weekDateRange(weekStart: string): string {
+  const weekEnd = addDays(weekStart, 6);
+  const [, sm, sd] = weekStart.split("-");
+  const [, em, ed] = weekEnd.split("-");
+  const start = `${MONTH_ABBR[parseInt(sm, 10) - 1]} ${parseInt(sd, 10)}`;
+  if (sm === em) return `${start}–${parseInt(ed, 10)}`;
+  return `${start} – ${MONTH_ABBR[parseInt(em, 10) - 1]} ${parseInt(ed, 10)}`;
+}
+
 export function buildWeekRows(opts: {
   goalStartDate: string;
   today: string;
@@ -56,8 +67,20 @@ export function buildWeekRows(opts: {
   statusByDate: Record<string, "done" | "skipped">;
   /** Total weeks to include, newest first (current week counts as one). */
   weeksToShow: number;
+  /**
+   * Frequency goals have no per-day "missed" state ("any day counts"), so a
+   * locked unlogged eligible day reads as a neutral rest cell, not a miss.
+   */
+  isCount?: boolean;
 }): GridWeek[] {
-  const { goalStartDate, today, targetDays, statusByDate, weeksToShow } = opts;
+  const {
+    goalStartDate,
+    today,
+    targetDays,
+    statusByDate,
+    weeksToShow,
+    isCount = false,
+  } = opts;
   const currentWeekStart = isoWeekStart(today);
   const goalWeekStart = isoWeekStart(goalStartDate);
   const window = { goalStartDate, today, targetDays };
@@ -84,13 +107,15 @@ export function buildWeekRows(opts: {
       else if (status === "skipped") state = "skipped";
       else if (date === today) state = "today";
       else if (date > today) state = "upcoming";
-      else state = editable ? "open" : "missed";
+      else if (editable) state = "open";
+      else state = isCount ? "rest" : "missed";
       cells.push({ date, state, editable });
     }
 
     rows.push({
       weekStart,
       label: weekLabel(weekStart, currentWeekStart),
+      dateRange: weekDateRange(weekStart),
       isCurrent: weekStart === currentWeekStart,
       cells,
     });

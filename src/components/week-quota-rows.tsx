@@ -1,5 +1,5 @@
 import type { WeekMet } from "@/lib/stats";
-import { weekLabel } from "@/lib/week-rows";
+import { weekLabel, weekDateRange } from "@/lib/week-rows";
 
 /**
  * Recent-weeks history for a frequency goal: one labeled row per week, each a
@@ -31,8 +31,13 @@ export default function WeekQuotaRows({
         const filled = Math.min(w.done, weeklyTarget);
         return (
           <div key={w.weekStart} className="flex items-center gap-3">
-            <span className="w-16 shrink-0 text-xs text-[color:var(--muted)]">
-              {weekLabel(w.weekStart, currentWeekStart)}
+            <span className="w-16 shrink-0 leading-tight">
+              <span className="block text-xs text-[color:var(--muted)]">
+                {weekLabel(w.weekStart, currentWeekStart)}
+              </span>
+              <span className="block text-[10px] text-[color:var(--muted)]">
+                {weekDateRange(w.weekStart)}
+              </span>
             </span>
             <div
               className="flex w-28 shrink-0 gap-1"
