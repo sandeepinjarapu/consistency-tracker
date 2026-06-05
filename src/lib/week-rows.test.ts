@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildWeekRows } from "./week-rows";
+import { buildWeekRows, weekDateRange } from "./week-rows";
 import { isoWeekStart, addDays } from "./dates";
 
 // A fixed reference day; the week is derived via the same helper the code uses,
@@ -116,5 +116,62 @@ describe("buildWeekRows", () => {
       weeksToShow: 6,
     });
     expect(rows).toHaveLength(1);
+  });
+
+  it("attaches a date range to every week", () => {
+    const rows = buildWeekRows({
+      goalStartDate: "2026-01-01",
+      today,
+      targetDays: daily,
+      statusByDate: {},
+      weeksToShow: 2,
+    });
+    expect(rows[0].dateRange).toBe(weekDateRange(rows[0].weekStart));
+    expect(rows[0].dateRange).toMatch(/^[A-Z][a-z]{2} \d/);
+  });
+
+  it("during grace, last week's tail stays open while locked frequency days read neutral", () => {
+    // Force "today" to be a Monday so last week's Sat/Sun are still in grace.
+    const monday = isoWeekStart(today);
+    const rows = buildWeekRows({
+      goalStartDate: "2026-01-01",
+      today: monday,
+      targetDays: daily,
+      statusByDate: {},
+      weeksToShow: 2,
+      isCount: true,
+    });
+    const lastWeek = rows[1];
+    // Sunday (col 6) and Saturday (col 5) of last week are inside the grace.
+    expect(lastWeek.cells[6].state).toBe("open");
+    expect(lastWeek.cells[6].editable).toBe(true);
+    expect(lastWeek.cells[5].editable).toBe(true);
+    // Monday of last week (col 0) is locked + unlogged. For a frequency goal it
+    // is a neutral rest cell, never a "miss".
+    expect(lastWeek.cells[0].state).toBe("rest");
+    expect(lastWeek.cells[0].editable).toBe(false);
+  });
+
+  it("a specific-day goal still locks the same day as 'missed'", () => {
+    const monday = isoWeekStart(today);
+    const rows = buildWeekRows({
+      goalStartDate: "2026-01-01",
+      today: monday,
+      targetDays: daily,
+      statusByDate: {},
+      weeksToShow: 2,
+      // isCount omitted → specific-day
+    });
+    expect(rows[1].cells[0].state).toBe("missed");
+  });
+});
+
+describe("weekDateRange", () => {
+  it("formats a same-month week as 'May 11–17'", () => {
+    expect(weekDateRange("2026-05-11")).toBe("May 11–17");
+  });
+
+  it("spans months as 'Apr 27 – May 3'", () => {
+    expect(weekDateRange("2026-04-27")).toBe("Apr 27 – May 3");
   });
 });

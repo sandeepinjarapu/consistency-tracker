@@ -326,15 +326,22 @@ async function RecordSection({
     missedSoFar,
   });
 
-  // The record + editor. Specific-day shows recent weeks; frequency shows only
-  // the live week (its history is the week-by-week strip below).
-  const weeks = buildWeekRows({
+  // The record + editor. Specific-day shows 6 recent weeks. Frequency shows the
+  // live week; during the cross-week grace (Mon/Tue) last week still has
+  // loggable days, so it stays a tappable grid row too (and drops out of the
+  // read-only quota rails below). buildWeekRows is count-aware, so a locked
+  // unlogged frequency day reads as a neutral rest cell, never a "miss".
+  const builtWeeks = buildWeekRows({
     goalStartDate,
     today,
     targetDays,
     statusByDate,
-    weeksToShow: isCount ? 1 : 6,
+    weeksToShow: isCount ? 2 : 6,
+    isCount,
   });
+  const weeks = isCount
+    ? builtWeeks.filter((w) => w.isCurrent || w.cells.some((c) => c.editable))
+    : builtWeeks;
   const anyEditable = weeks.some((w) => w.cells.some((c) => c.editable));
 
   // Opt-in full-history heatmap (compact recent window, same as before).
@@ -362,9 +369,14 @@ async function RecordSection({
         })
       : [];
 
-  // Recent weeks for the frequency quota rows: drop the current week (the live
-  // grid already shows it), newest first, capped to a recent window.
-  const pastWeeks = weeklyMet.filter((w) => !w.current).slice(-6).reverse();
+  // Recent weeks for the frequency quota rows: drop any week already shown as a
+  // live grid row above (the current week, plus last week while it's still in
+  // its grace window), newest first, capped to a recent window.
+  const gridWeekStarts = new Set(weeks.map((w) => w.weekStart));
+  const pastWeeks = weeklyMet
+    .filter((w) => !w.current && !gridWeekStarts.has(w.weekStart))
+    .slice(-6)
+    .reverse();
 
   const timePattern = computeTimePattern({
     entries: checkIns
