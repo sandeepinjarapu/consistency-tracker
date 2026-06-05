@@ -6,7 +6,7 @@ import { listGoalShares } from "@/lib/actions/partners";
 import { listGoalsWithUnseenReactions } from "@/lib/actions/reactions";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { buildAggregateCells } from "@/lib/stats";
-import { todayIn, addDays } from "@/lib/dates";
+import { todayIn, addDays, dateInTimezone } from "@/lib/dates";
 import GoalRowMenu from "@/components/goal-row-menu";
 import Heatmap from "@/components/heatmap";
 
@@ -65,10 +65,11 @@ export default async function GoalsPage({
   if (!showArchived && (goals ?? []).length >= 3) {
     const activeGoals = goals as GoalRow[];
     const profile = await getCurrentProfile();
-    const today = todayIn(profile?.timezone ?? "UTC");
+    const timezone = profile?.timezone ?? "UTC";
+    const today = todayIn(timezone);
     const earliest = activeGoals.reduce(
       (min, g) => {
-        const d = g.created_at.slice(0, 10);
+        const d = dateInTimezone(g.created_at, timezone);
         return d < min ? d : min;
       },
       today
@@ -99,7 +100,7 @@ export default async function GoalsPage({
         goals: activeGoals.map((g) => ({
           id: g.id,
           target_days: g.target_days,
-          created_at: g.created_at,
+          created_at: dateInTimezone(g.created_at, timezone),
           weekly_target: g.weekly_target,
         })),
         checkIns,

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
-import { addDays, todayIn, isoWeekStart } from "@/lib/dates";
+import { addDays, todayIn, isoWeekStart, dateInTimezone } from "@/lib/dates";
 import { listReflections } from "@/lib/actions/reflections";
 import {
   computeWeekStats,
@@ -116,18 +116,30 @@ export default async function ReflectionsPage({
     end: string;
     stats: WeekStats;
   };
+  // A goal's start date must be compared in the user's timezone, not the raw
+  // UTC slice, so a goal created after local midnight isn't counted a day early.
+  const localGoals = goals.map((g) => ({
+    ...g,
+    created_at: dateInTimezone(g.created_at, timezone),
+  }));
   const weeks: Week[] = [];
   for (let i = 0; i <= weeksToShow; i++) {
     const start = addDays(currentWeekStart, -i * 7);
     const end = addDays(start, 6);
-    const stats = computeWeekStats({ start, end, today, goals, checkIns });
+    const stats = computeWeekStats({
+      start,
+      end,
+      today,
+      goals: localGoals,
+      checkIns,
+    });
     weeks.push({ start, end, stats });
   }
 
   // Is there history older than the current window? Show "earlier weeks" only
   // if a goal was created — or a reflection written — before it. Uses
   // already-fetched data (no extra query).
-  const oldestGoalStart = goals.reduce<string | null>(
+  const oldestGoalStart = localGoals.reduce<string | null>(
     (min, g) => {
       const d = g.created_at.slice(0, 10);
       return min === null || d < min ? d : min;

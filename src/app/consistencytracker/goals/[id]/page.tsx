@@ -8,6 +8,7 @@ import {
   isoWeekStart,
   formatTime,
   dayOfWeekForDateString,
+  dateInTimezone,
 } from "@/lib/dates";
 import { computeWeekStatus } from "@/lib/goal-week-status";
 import {
@@ -79,7 +80,7 @@ export default async function GoalPage({
   const streakUnit = isCount ? "weeks" : "days";
 
   const startDate = addDays(today, -364);
-  const goalStartDate = (goal.created_at as string).slice(0, 10);
+  const goalStartDate = dateInTimezone(goal.created_at as string, timezone);
 
   // Reminder lives in the Connections column (specific-day goals only). The
   // CalendarReminder keeps its own "Added ✓ · Add again" honesty.

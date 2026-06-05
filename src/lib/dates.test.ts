@@ -10,7 +10,28 @@ import {
   dayOfWeekForDateString,
   formatCheckInTime,
   formatTime,
+  dateInTimezone,
 } from "./dates";
+
+describe("dateInTimezone", () => {
+  // 2024-01-15T19:45:00Z is Jan 16 01:15 in IST (UTC+5:30), still Jan 15 in UTC.
+  const ts = "2024-01-15T19:45:00Z";
+
+  it("uses the UTC calendar date in UTC", () => {
+    expect(dateInTimezone(ts, "UTC")).toBe("2024-01-15");
+  });
+
+  it("rolls forward to the local date in eastward timezones", () => {
+    expect(dateInTimezone(ts, "Asia/Kolkata")).toBe("2024-01-16");
+  });
+
+  it("can roll back a day in westward timezones", () => {
+    // 2024-01-15T03:00:00Z is still Jan 14 (7 PM) in LA (UTC-8).
+    expect(dateInTimezone("2024-01-15T03:00:00Z", "America/Los_Angeles")).toBe(
+      "2024-01-14"
+    );
+  });
+});
 
 describe("todayIn", () => {
   // Reference: 2024-01-15 22:00 UTC (Monday 10 PM UTC)
