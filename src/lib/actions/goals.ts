@@ -159,3 +159,21 @@ export async function unarchiveGoal(id: string): Promise<void> {
   revalidatePath("/consistencytracker", "layout");
 }
 
+// Set just the "why this matters" line, so it can be added inline from the
+// goal-detail page without a trip to the edit form. RLS scopes the update to
+// the owner; the 400-char cap mirrors the form's validation.
+export async function setGoalMotivation(
+  id: string,
+  motivation: string
+): Promise<void> {
+  const trimmed = motivation.trim();
+  if (trimmed.length > 400) throw new Error("Why this matters is too long");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("goals")
+    .update({ motivation: trimmed || null })
+    .eq("id", id);
+  if (error) throw error;
+  revalidatePath("/consistencytracker", "layout");
+}
+
