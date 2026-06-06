@@ -36,6 +36,10 @@ Wed / Thu, asking "which one is the extra?" is meaningless and breaks under undo
 (remove Tuesday and the "extra" has to migrate). So eligible-day dones are all
 ordinary `done` cells; the surplus is a week-level annotation (`+1 extra`).
 
+**One row per day.** The schema allows a single check-in per `(goal, date)`, so
+an extra is an extra *day* of showing up, never a second session on the same
+day. V1 does not add multiple same-day check-ins.
+
 ## 3. Metric vocabulary (the contract that prevents leaks)
 
 Defined per goal, per ISO week. These names go in the code and in
@@ -93,12 +97,22 @@ Keep the scheduled path exactly as-is. Add a separate, narrow extra path:
 - `markExtraDone(goalId, date)` — asserts ownership, **active** goal, and
   `isExtraLoggable`. Writes `status: "done"` only. **No skip variant.**
 - `removeExtra(goalId, date)` — asserts ownership and that the date currently
-  holds an **off-target done** within the window, then deletes. (It must not be
-  a back door to delete scheduled check-ins; those keep using `unmark`.)
+  holds an **off-target row** (done *or* skipped) within the window, then
+  deletes. (It must not be a back door to delete scheduled check-ins; those keep
+  using `unmark`.) Removing a skip is supported so an out-of-cadence skip left
+  behind by a cadence edit (below) can be cleaned up; `markExtraDone` still only
+  ever *writes* `done`, so no new off-target skip can be created.
 
 Over-quota extras (eligible-day dones beyond the quota) need **no new action** —
 they go through the existing `markDone` / `unmark` because the day is already an
 eligible weekday. Only their *display* changes.
+
+**Off-target skips after a cadence edit.** A skip can only ever be written on a
+scheduled day. But narrowing the cadence later (e.g. Daily → Weekdays) can leave
+an old skip on a now-off-target weekday. Such a row is **never shown as extra
+and never counted** (every scorer already filters by `target_days`). If it falls
+inside the editable window it can be removed via `removeExtra`; otherwise it
+simply sits in locked history, ignored.
 
 Net new server surface: one predicate, two actions. The scheduled-day actions
 and `isBackfillable` are untouched, so their existing tests stay green.
@@ -111,13 +125,23 @@ and `isBackfillable` are untouched, so their existing tests stay green.
 | **Progress ring** | fills to `scoredDone / targetCount`, caps at full | small `+N` beside the ring; ring never overfills |
 | **Week rows** (`buildWeekRows`) | scheduled cells as today | off-target done → new **`extra`** cell state (editable iff `isExtraLoggable`); over-quota eligible dones stay ordinary `done` cells (no per-cell tag) |
 | **Today** (§8) | scheduled cards unchanged | off-day logging via the §8 affordance; over-quota already works via the existing card (pace caps at `✓ N of N`) |
-| **Partner** | `streak · scoredDone check-ins` | append `· K extra` when `K > 0`; calendar shows extras as evidence (per below) |
+| **Partner** (evidence surface) | streak from scored | `totalDone check-ins logged · K extra` when `K > 0` — e.g. 3 scored + 1 extra → `4 check-ins logged · 1 extra`; calendar shows extras as evidence |
 | **Reflection narrative** | strongest/weakest + % use `scoredDone` / `completionRate` | "you showed up `totalDone` times"; notes may quietly label an extra |
 | **Reflection % / highlights** | `scoredDone / targetCount` only — **unchanged** | extras excluded |
-| **Weekly email** | report `scoredDone / targetCount`; never `6 / 5` | optional `· +N extra` note; **fix the asymmetry** (specific-day `done` must be the scored count, not raw) |
-| **Aggregate calendar** | scheduled adherence drives intensity as today | a day with only an extra still reads as **"showed up"** (evidence), never grey "no goals scheduled" |
+| **Weekly email** | report `scoredDone / targetCount`; never `6 / 5` | `· +N extra` shown **deterministically** when `N > 0`; **fix the asymmetry** (specific-day `done` must be the scored count, not raw) |
+| **Aggregate calendar** | scheduled adherence drives intensity as today | see the precise rule below |
 | **Per-goal calendar / month intensity** | adherence level **unchanged** by extras | extra shown as evidence (distinct mark + tooltip/aria), does not raise the completion/intensity level |
 | **Time-of-day** (`computeTimePattern`) | — | live extras already flow in (no `target_days` filter); leave as-is so they count as real behavior |
+
+**Aggregate-calendar intensity rule (V1):**
+
+- A day with any scheduled/scored activity keeps its **existing** intensity
+  (extras never raise the level).
+- A day with **only** extras renders the **lowest non-zero** evidence level,
+  tooltip `1 extra check-in` (plural as needed) — never grey "no goals
+  scheduled."
+- When a day has both, the tooltip names them separately
+  (`2 of 3 done · 1 extra`).
 
 ## 7. The weekly-email asymmetry (must fix before extras ship)
 
@@ -125,7 +149,9 @@ In `weekly-summary.ts`, a specific-day goal's `done` is currently a raw count of
 done rows with no `target_days` filter, while its `target` counts only scheduled
 days. With no extras this is invisible; once extras exist it would print
 `6 done / 5 target`. Fix: the email's headline number is `scoredDone` (capped at
-`targetCount`); extras, if shown at all, are a separate `+N` note.
+`targetCount`); the percent stays target-based; extras are a separate
+`+N extra` note, shown **deterministically when `N > 0`**. An evidence-only week
+— extras present but no scoreable target — is **not** emailed.
 
 ## 8. Off-day logging surfaces (confirmed: both)
 
@@ -163,9 +189,10 @@ already loggable from the existing Today card.)
 2. A 3×/week goal with 4 eligible-day check-ins reads **target met · +1 extra**,
    never `4 of 3`; the ring shows full, not overfilled.
 3. The Today summary never counts extras as scheduled goals completed.
-4. The weekly email never shows `6 / 5`; it may show `5 / 5 · +1 extra`.
-5. A partner sees extras only on **shared** goals; counts read
-   `3 check-ins logged · 1 extra`.
+4. The weekly email never shows `6 / 5`; it shows `5 / 5 · +1 extra` whenever
+   `extraDone > 0`, and an evidence-only week (no scoreable target) is not sent.
+5. A partner sees extras only on **shared** goals; counts read evidence-accurate
+   `4 check-ins logged · 1 extra` (3 scored + 1 extra).
 6. Reflection % and strongest/weakest are unchanged by extras; the narrative may
    say "you showed up N times" using `totalDone`.
 7. The aggregate calendar shows an extra-only day as "showed up"; per-goal month
@@ -189,16 +216,23 @@ already loggable from the existing Today card.)
   recomputes (it's derived per week).
 - Off-target done, then cadence widens to include that weekday: it becomes a
   scored check-in automatically.
-- Weekly email for an evidence-only week (extras but no scoreable target): do
-  not send on extras alone unless explicitly decided otherwise.
+- Off-target **skip** left by a narrowing cadence edit: never shown as extra,
+  never counted; removable via `removeExtra` if in window; no new off-target
+  skip can ever be created.
+- One row per `(goal, date)`: a second same-day check-in is not possible; an
+  extra is an extra day, not a second session.
+- Weekly email for an evidence-only week (extras but no scoreable target): not
+  sent.
 - Time-of-day pattern counts a live extra (it reflects real behavior).
 
 ## 12. Phasing — two PRs
 
 **PR 1 — logic contract (no visual polish).** The shared classifier + tests;
 the weekly-email asymmetry fix; the current-week scored/extra split feeding the
-headline; `isExtraLoggable` + `markExtraDone` / `removeExtra` with tests. Pure
-logic and server actions; UI still renders today's behavior.
+headline; `isExtraLoggable` + `markExtraDone` / `removeExtra` with tests. Tests
+cover cadence edits (re-derivation, off-target skip cleanup), the
+one-row-per-date rule, and the over-quota weekly count. Pure logic and server
+actions; UI still renders today's behavior.
 
 **PR 2 — UX.** Week-rows `extra` cell state; the §8 Today affordance;
 progress-ring `+N`; partner / reflection / email copy; aggregate + per-goal
