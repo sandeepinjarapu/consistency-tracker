@@ -156,7 +156,10 @@ export default function MonthCalGrid({
                   fontVariantNumeric: "tabular-nums",
                 }}
                 title={hc?.tooltip ?? dateStr}
-                aria-label={`${dateStr}: ${isFuture ? "future" : isPreStart ? "not-started" : status}`}
+                aria-label={
+                  hc?.tooltip ??
+                  `${dateStr}: ${isFuture ? "future" : isPreStart ? "not-started" : status}`
+                }
               >
                 {day}
               </div>

@@ -118,6 +118,23 @@ describe("computeWeeklyGoalStats", () => {
     expect(stats).toEqual([]);
   });
 
+  it("omits an evidence-only goal (no scheduled days that week) from the email", () => {
+    // g2 was created Saturday, so it has no scheduled weekday this week — only
+    // an off-target extra. It must not produce a "0 / 0 · +1 extra" email row.
+    const stats = computeWeeklyGoalStats(
+      [goal({ id: "g1" }), goal({ id: "g2", created_at: "2024-01-20T00:00:00Z" })],
+      [
+        { goal_id: "g1", date: "2024-01-15", status: "done" },
+        { goal_id: "g2", date: "2024-01-20", status: "done" }, // Sat, off-target
+      ],
+      WEEK_START,
+      WEEK_END
+    );
+    expect(stats).toEqual([
+      { name: "Goal", done: 1, target: 5, skipped: 0, extra: 0 },
+    ]);
+  });
+
   it("totalTarget sums targets", () => {
     const stats = computeWeeklyGoalStats(
       [goal({ id: "g1" }), goal({ id: "g2", weekly_target: 2, target_days: [0, 6] })],

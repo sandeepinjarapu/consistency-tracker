@@ -12,6 +12,7 @@ export type GoalDayStatus =
   | "done"
   | "skipped"
   | "missed"
+  | "extra" // an off-target done — evidence of showing up, never scored
   | "no-target"
   | "before-goal"
   | "future";
@@ -125,9 +126,14 @@ export function computeWeekStats({
       } else if (cursor < goalStart) {
         status = "before-goal";
       } else if (!g.target_days.includes(dow)) {
-        status = "no-target";
-        // An off-target done is an extra: evidence of showing up, never scored.
-        if (checkInByKey.get(`${g.id}:${cursor}`)?.status === "done") extraDone++;
+        // An off-target done is an extra: evidence of showing up, never scored;
+        // it shows in the grid as a distinct "extra" cell, not a blank.
+        if (checkInByKey.get(`${g.id}:${cursor}`)?.status === "done") {
+          status = "extra";
+          extraDone++;
+        } else {
+          status = "no-target";
+        }
       } else {
         const ci = checkInByKey.get(`${g.id}:${cursor}`);
         if (ci?.status === "done") {

@@ -57,6 +57,26 @@ describe("computeWeekStats", () => {
     expect(g2.skipReasons).toEqual({ travel: 1 });
   });
 
+  it("marks an off-target done as an extra cell, counted as extraDone, never scored", () => {
+    const r = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [
+        { id: "g1", name: "Writing", target_days: [1, 3, 5], created_at: "2024-01-01T00:00:00Z" },
+      ],
+      checkIns: [
+        { goal_id: "g1", date: "2024-01-15", status: "done", skip_reason: null, note: null }, // Mon, scored
+        { goal_id: "g1", date: "2024-01-16", status: "done", skip_reason: null, note: null }, // Tue, off-target extra
+      ],
+    });
+    const g1 = r.perGoal[0];
+    expect(g1.done).toBe(1); // only Mon counts toward the schedule
+    expect(g1.extraDone).toBe(1); // Tue is an extra
+    expect(r.extraDone).toBe(1);
+    expect(g1.dailyStatus[1]).toBe("extra"); // Tue cell renders as extra, not blank
+    expect(g1.completion).toBeCloseTo(1 / 3, 5); // 1 of 3 scheduled (Mon/Wed/Fri)
+  });
+
   it("dailyStatus is length 7 in Mon..Sun order", () => {
     const r = computeWeekStats({
       ...WEEK,
