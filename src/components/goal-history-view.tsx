@@ -34,8 +34,8 @@ export default function GoalHistoryView({
       <div
         className={
           recentMonths.length === 2
-            ? "grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3"
-            : "mb-3"
+            ? "grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 max-w-[620px]"
+            : "max-w-[300px] mb-3"
         }
       >
         {recentMonths.map((m) => (

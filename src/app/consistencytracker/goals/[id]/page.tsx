@@ -408,7 +408,7 @@ async function RecordSection({
         {anyEditable ? (
           <p className="mt-2 text-xs text-[color:var(--muted)]">
             {isCount
-              ? `Any day counts toward your ${weeklyTarget}. Tap a day to log it.`
+              ? `Any open day can count toward this week's ${weeklyTarget}. Tap one to log it.`
               : "Tap an open day to log it. Tap a logged day to undo."}
           </p>
         ) : null}
