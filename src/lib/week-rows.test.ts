@@ -146,6 +146,24 @@ describe("buildWeekRows", () => {
     expect(cell.editable).toBe(false);
   });
 
+  it("offers last weekend as extra-open during the Monday grace (follows the server window)", () => {
+    const monday = isoWeekStart(today); // force today onto a Monday
+    const weekdays = [1, 2, 3, 4, 5]; // Sat/Sun off-target
+    const rows = buildWeekRows({
+      goalStartDate: "2026-01-01",
+      today: monday,
+      targetDays: weekdays,
+      statusByDate: {},
+      weeksToShow: 2,
+    });
+    const lastWeek = rows[1];
+    // Last week's Sat (col 5) and Sun (col 6) are off-target but still in grace.
+    expect(lastWeek.cells[5].state).toBe("extra-open");
+    expect(lastWeek.cells[5].editable).toBe(true);
+    expect(lastWeek.cells[6].state).toBe("extra-open");
+    expect(lastWeek.cells[6].editable).toBe(true);
+  });
+
   it("shows a single week for frequency goals (weeksToShow=1)", () => {
     const rows = buildWeekRows({
       goalStartDate: "2026-01-01",

@@ -2,20 +2,24 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { markExtraDone } from "@/lib/actions/check-ins";
+import { markExtraDone, removeExtra } from "@/lib/actions/check-ins";
 
 export type ExtraGoal = {
   id: string;
   name: string;
   categoryColor: string;
-  loggedToday: boolean;
+  /** Today's check-in for this off-schedule goal: a logged extra, a stray skip
+   *  (left by a cadence edit), or none. */
+  status: "done" | "skipped" | null;
 };
 
 /**
  * A quiet "log something extra" affordance for the Today loop: the goals that
  * aren't scheduled today, offered as one-tap extra check-ins (done-only — an
- * extra is evidence, never scored, and there is no extra-skip). Collapsed by
- * default so it never competes with the day's actual schedule.
+ * extra is evidence, never scored, and there is no extra-skip). Each row
+ * toggles: tap to log an extra, tap again to undo (via removeExtra). A rare
+ * stray skip can be removed but is never overwritten. Collapsed by default so
+ * it never competes with the day's actual schedule.
  */
 export default function LogExtra({
   goals,
@@ -27,25 +31,23 @@ export default function LogExtra({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [logged, setLogged] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(goals.filter((g) => g.loggedToday).map((g) => [g.id, true]))
+  const [status, setStatus] = useState<Record<string, "done" | "skipped" | null>>(
+    () => Object.fromEntries(goals.map((g) => [g.id, g.status]))
   );
 
   if (goals.length === 0) return null;
 
-  function logExtra(id: string) {
-    if (logged[id] || pending) return;
-    setLogged((m) => ({ ...m, [id]: true }));
+  function toggle(id: string) {
+    if (pending) return;
+    const prev = status[id] ?? null;
+    const next = prev ? null : "done"; // empty → log; logged/skip → remove
+    setStatus((s) => ({ ...s, [id]: next }));
     startTransition(async () => {
       try {
-        await markExtraDone(id, date);
+        await (next === "done" ? markExtraDone(id, date) : removeExtra(id, date));
         router.refresh();
       } catch {
-        setLogged((m) => {
-          const n = { ...m };
-          delete n[id];
-          return n;
-        });
+        setStatus((s) => ({ ...s, [id]: prev }));
       }
     });
   }
@@ -73,14 +75,20 @@ export default function LogExtra({
       </p>
       <ul className="border border-[color:var(--border)] rounded-lg divide-y divide-[color:var(--border)]">
         {goals.map((g) => {
-          const isLogged = logged[g.id];
+          const st = status[g.id] ?? null;
+          const label =
+            st === "done"
+              ? "✓ Extra logged · Undo"
+              : st === "skipped"
+                ? "Skipped · Remove"
+                : "+ Log extra";
           return (
             <li key={g.id}>
               <button
                 type="button"
-                onClick={() => logExtra(g.id)}
-                disabled={isLogged || pending}
-                className="flex w-full min-h-[44px] items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-gray-50 disabled:hover:bg-transparent"
+                onClick={() => toggle(g.id)}
+                disabled={pending}
+                className="flex w-full min-h-[44px] items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-gray-50 disabled:opacity-60"
               >
                 <span className="flex min-w-0 items-center gap-3">
                   <span
@@ -91,10 +99,10 @@ export default function LogExtra({
                   <span className="truncate text-sm">{g.name}</span>
                 </span>
                 <span
-                  className="shrink-0 text-xs"
-                  style={isLogged ? { color: g.categoryColor } : undefined}
+                  className="shrink-0 text-xs text-[color:var(--muted)]"
+                  style={st === "done" ? { color: g.categoryColor } : undefined}
                 >
-                  {isLogged ? "✓ Extra logged" : "+ Log extra"}
+                  {label}
                 </span>
               </button>
             </li>

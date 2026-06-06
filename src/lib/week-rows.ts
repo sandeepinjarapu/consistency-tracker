@@ -98,7 +98,6 @@ export function buildWeekRows(opts: {
     const weekStart = addDays(currentWeekStart, -7 * w);
     // Stop once the whole week predates the goal — nothing to show before it.
     if (weekStart < goalWeekStart) break;
-    const isCurrentWeek = weekStart === currentWeekStart;
 
     const cells: GridCell[] = [];
     for (let i = 0; i < 7; i++) {
@@ -138,7 +137,7 @@ export function buildWeekRows(opts: {
             ? { date, state: "skipped", editable: true, extra: true }
             : { date, state: "rest", editable: false, extra: false }
         );
-      } else if (isCurrentWeek && extraEditable) {
+      } else if (extraEditable) {
         cells.push({ date, state: "extra-open", editable: true, extra: true });
       } else {
         cells.push({ date, state: "rest", editable: false, extra: false });

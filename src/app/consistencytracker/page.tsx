@@ -179,12 +179,22 @@ async function TodaySection() {
       id: g.id,
       name: g.name,
       categoryColor: g.category?.color ?? UNCATEGORIZED_COLOR,
-      loggedToday: checkInByGoal.get(g.id)?.status === "done",
+      status: (checkInByGoal.get(g.id)?.status ?? null) as
+        | "done"
+        | "skipped"
+        | null,
     }));
 
-  const doneCount = todayCheckIns.filter((c) => c.status === "done").length;
-  const skippedCount = todayCheckIns.filter((c) => c.status === "skipped").length;
+  // Header progress counts SCHEDULED goals only — extras are evidence, never
+  // part of "done of scheduled". Extras logged today are surfaced separately so
+  // the two never share a denominator.
+  const todayGoalIds = new Set(goalsToday.map((g) => g.id));
+  const scheduledToday = todayCheckIns.filter((c) => todayGoalIds.has(c.goal_id));
+  const doneCount = scheduledToday.filter((c) => c.status === "done").length;
+  const skippedCount = scheduledToday.filter((c) => c.status === "skipped").length;
   const remaining = goalsToday.length - doneCount - skippedCount;
+  const extraToday = offTodayGoals.filter((g) => g.status === "done").length;
+  const extraSuffix = extraToday > 0 ? ` · ${extraToday} extra` : "";
 
   // doneThisWeek (for count-goal pace) only depends on the current week.
   const paceByGoal = new Map<string, number>();
@@ -211,8 +221,8 @@ async function TodaySection() {
           goalsToday.length > 0
             ? `${doneCount} of ${goalsToday.length} done${
                 skippedCount > 0 ? `, ${skippedCount} skipped` : ""
-              }${remaining > 0 ? `, ${remaining} left` : ""}`
-            : "Nothing scheduled today."
+              }${remaining > 0 ? `, ${remaining} left` : ""}${extraSuffix}`
+            : `Nothing scheduled today.${extraSuffix}`
         }
       />
 
