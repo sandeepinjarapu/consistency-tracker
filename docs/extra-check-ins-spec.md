@@ -225,7 +225,7 @@ already loggable from the existing Today card.)
   sent.
 - Time-of-day pattern counts a live extra (it reflects real behavior).
 
-## 12. Phasing — two PRs
+## 12. Phasing — three PRs
 
 **PR 1 — logic contract (no visual polish).** The shared classifier + tests;
 the weekly-email asymmetry fix; the current-week scored/extra split feeding the
