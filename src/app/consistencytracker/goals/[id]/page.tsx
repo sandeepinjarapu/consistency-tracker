@@ -292,13 +292,15 @@ async function RecordSection({
   const weekDoneDates = checkIns
     .filter((c) => c.status === "done" && c.date >= weekStart && c.date <= today)
     .map((c) => c.date);
-  const doneThisWeek = classifyWeek({
+  const weekClass = classifyWeek({
     weekStart,
     goalStartDate,
     targetDays,
     weeklyTarget,
     doneDates: weekDoneDates,
-  }).scoredDone;
+  });
+  const doneThisWeek = weekClass.scoredDone;
+  const extraThisWeek = weekClass.extraDone;
   let total = weeklyTarget ?? 0;
   let missedSoFar = 0;
   if (weeklyTarget == null) {
@@ -402,7 +404,17 @@ async function RecordSection({
             </p>
             <p className="mt-1 text-sm max-w-[32ch]">{weekStatus.note}</p>
           </div>
-          <ProgressRing done={doneThisWeek} total={total} color={categoryColor} />
+          <div className="flex flex-col items-center gap-1">
+            <ProgressRing done={doneThisWeek} total={total} color={categoryColor} />
+            {extraThisWeek > 0 ? (
+              <span
+                className="text-[11px] font-medium leading-none"
+                style={{ color: categoryColor }}
+              >
+                +{extraThisWeek} extra
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-5">
@@ -419,7 +431,7 @@ async function RecordSection({
           <p className="mt-2 text-xs text-[color:var(--muted)]">
             {isCount
               ? `Any open day can count toward this week's ${weeklyTarget}. Tap one to log it.`
-              : "Tap an open day to log it. Tap a logged day to undo."}
+              : "Tap an open day to log it, or an off day to add an extra. Tap a logged day to undo."}
           </p>
         ) : null}
 

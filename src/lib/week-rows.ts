@@ -1,5 +1,5 @@
 import { addDays, dayOfWeekForDateString, isoWeekStart } from "./dates";
-import { isBackfillable } from "./heatmap-backfill";
+import { isBackfillable, isExtraLoggable } from "./heatmap-backfill";
 
 /**
  * The "Week Rows" model behind the goal-detail record: one row per ISO week
@@ -21,12 +21,20 @@ export type GridCellState =
   | "open" // a past scheduled day still inside the editable window
   | "missed" // a past scheduled day that has locked (specific-day history only)
   | "upcoming" // a future scheduled day
+  | "extra" // a logged done on an off-target (unscheduled) day — evidence, unscored
+  | "extra-open" // an off-target current-week day you can log an extra on
   | "rest"; // not a scheduled day (or before the goal existed)
 
 export type GridCell = {
   date: string; // YYYY-MM-DD
   state: GridCellState;
   editable: boolean;
+  /**
+   * True for off-target cells (`extra`, `extra-open`, and a stray off-target
+   * skip): these log/remove via the extra server actions, not the scheduled
+   * backfill ones. Lets the editor route the right action without re-deriving.
+   */
+  extra: boolean;
 };
 
 export type GridWeek = {
@@ -90,26 +98,51 @@ export function buildWeekRows(opts: {
     const weekStart = addDays(currentWeekStart, -7 * w);
     // Stop once the whole week predates the goal — nothing to show before it.
     if (weekStart < goalWeekStart) break;
+    const isCurrentWeek = weekStart === currentWeekStart;
 
     const cells: GridCell[] = [];
     for (let i = 0; i < 7; i++) {
       const date = addDays(weekStart, i);
       const dow = dayOfWeekForDateString(date);
       const scheduled = targetDays.includes(dow);
-      if (!scheduled || date < goalStartDate) {
-        cells.push({ date, state: "rest", editable: false });
+      const status = statusByDate[date]; // "done" | "skipped" | undefined
+
+      if (date < goalStartDate) {
+        cells.push({ date, state: "rest", editable: false, extra: false });
         continue;
       }
-      const status = statusByDate[date];
-      const editable = isBackfillable(date, window);
-      let state: GridCellState;
-      if (status === "done") state = "done";
-      else if (status === "skipped") state = "skipped";
-      else if (date === today) state = "today";
-      else if (date > today) state = "upcoming";
-      else if (editable) state = "open";
-      else state = isCount ? "rest" : "missed";
-      cells.push({ date, state, editable });
+
+      if (scheduled) {
+        const editable = isBackfillable(date, window);
+        let state: GridCellState;
+        if (status === "done") state = "done";
+        else if (status === "skipped") state = "skipped";
+        else if (date === today) state = "today";
+        else if (date > today) state = "upcoming";
+        else if (editable) state = "open";
+        else state = isCount ? "rest" : "missed";
+        cells.push({ date, state, editable, extra: false });
+        continue;
+      }
+
+      // Off-target weekday (on/after goal start). A done here is an extra
+      // (evidence, never scored); an empty current-week day can take one; a
+      // stray skip — only ever left by later narrowing the cadence — is
+      // removable while still in window, else hidden as a rest cell.
+      const extraEditable = isExtraLoggable(date, window);
+      if (status === "done") {
+        cells.push({ date, state: "extra", editable: extraEditable, extra: true });
+      } else if (status === "skipped") {
+        cells.push(
+          extraEditable
+            ? { date, state: "skipped", editable: true, extra: true }
+            : { date, state: "rest", editable: false, extra: false }
+        );
+      } else if (isCurrentWeek && extraEditable) {
+        cells.push({ date, state: "extra-open", editable: true, extra: true });
+      } else {
+        cells.push({ date, state: "rest", editable: false, extra: false });
+      }
     }
 
     rows.push({

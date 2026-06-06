@@ -9,6 +9,7 @@ import { UNCATEGORIZED_COLOR } from "@/lib/colors";
 import { computeTodayBanner } from "@/lib/today-banner";
 import { computeGoalRowState, type GoalRowState } from "@/lib/today-goal-row";
 import TodayGoalCard from "@/components/today-goal-card";
+import LogExtra from "@/components/log-extra";
 import Skeleton from "@/components/skeleton";
 import type { CheckIn } from "@/lib/actions/check-ins";
 
@@ -171,6 +172,16 @@ async function TodaySection() {
   const todayCheckIns = weekCheckIns.filter((c) => c.date === today);
   const checkInByGoal = new Map(todayCheckIns.map((c) => [c.goal_id, c]));
 
+  // Goals not scheduled today, offered as one-tap "log something extra".
+  const offTodayGoals = goals
+    .filter((g) => !g.target_days.includes(dow))
+    .map((g) => ({
+      id: g.id,
+      name: g.name,
+      categoryColor: g.category?.color ?? UNCATEGORIZED_COLOR,
+      loggedToday: checkInByGoal.get(g.id)?.status === "done",
+    }));
+
   const doneCount = todayCheckIns.filter((c) => c.status === "done").length;
   const skippedCount = todayCheckIns.filter((c) => c.status === "skipped").length;
   const remaining = goalsToday.length - doneCount - skippedCount;
@@ -230,6 +241,8 @@ async function TodaySection() {
           })}
         </div>
       )}
+
+      <LogExtra goals={offTodayGoals} date={today} />
 
       {lastNightGoals.length > 0 ? (
         <div className="mt-8">

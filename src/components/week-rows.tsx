@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { backfillCheckIn, clearBackfillCheckIn } from "@/lib/actions/check-ins";
+import {
+  backfillCheckIn,
+  clearBackfillCheckIn,
+  markExtraDone,
+  removeExtra,
+} from "@/lib/actions/check-ins";
 import type { GridWeek, GridCell, GridCellState } from "@/lib/week-rows";
 
 const WEEKDAY = ["M", "T", "W", "T", "F", "S", "S"];
@@ -36,7 +41,7 @@ export default function WeekRows({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [override, setOverride] = useState<Record<string, "done" | "empty">>({});
-  const [confirm, setConfirm] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<GridCell | null>(null);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
@@ -65,18 +70,22 @@ export default function WeekRows({
 
   function effective(cell: GridCell): GridCell {
     const ov = override[cell.date];
-    if (ov === "done") return { ...cell, state: "done", editable: true };
-    if (ov === "empty")
+    if (ov === "done")
+      return { ...cell, state: cell.extra ? "extra" : "done", editable: true };
+    if (ov === "empty") {
+      if (cell.extra) return { ...cell, state: "extra-open", editable: true };
       return { ...cell, state: cell.date === today ? "today" : "open", editable: true };
+    }
     return cell;
   }
 
-  function log(date: string) {
+  function log(cell: GridCell) {
     if (pending) return;
+    const { date, extra } = cell;
     setOverride((o) => ({ ...o, [date]: "done" }));
     startTransition(async () => {
       try {
-        await backfillCheckIn(goalId, date);
+        await (extra ? markExtraDone(goalId, date) : backfillCheckIn(goalId, date));
         router.refresh();
       } catch {
         setOverride((o) => {
@@ -88,13 +97,14 @@ export default function WeekRows({
     });
   }
 
-  function remove(date: string) {
+  function remove(cell: GridCell) {
     setConfirm(null);
     if (pending) return;
+    const { date, extra } = cell;
     setOverride((o) => ({ ...o, [date]: "empty" }));
     startTransition(async () => {
       try {
-        await clearBackfillCheckIn(goalId, date);
+        await (extra ? removeExtra(goalId, date) : clearBackfillCheckIn(goalId, date));
         router.refresh();
       } catch {
         setOverride((o) => {
@@ -109,8 +119,9 @@ export default function WeekRows({
   function onCell(cell: GridCell) {
     hideTip();
     if (!cell.editable) return;
-    if (cell.state === "done" || cell.state === "skipped") setConfirm(cell.date);
-    else log(cell.date);
+    if (cell.state === "done" || cell.state === "skipped" || cell.state === "extra")
+      setConfirm(cell);
+    else log(cell);
   }
 
   return (
@@ -187,7 +198,8 @@ export default function WeekRows({
       {confirm ? (
         <div className="mt-2 flex flex-wrap items-center gap-2.5 text-xs">
           <span className="text-[color:var(--muted)]">
-            Remove the check-in for {formatDate(confirm)}?
+            Remove the {confirm.extra ? "extra " : ""}check-in for{" "}
+            {formatDate(confirm.date)}?
           </span>
           <button
             type="button"
@@ -245,6 +257,7 @@ function Cell({
         {cell.state === "rest" ? (
           <span className="w-1 h-1 rounded-full bg-[#e6e6e6]" />
         ) : null}
+        {cell.state === "extra" ? <Check color={doneColor} /> : null}
       </span>
     );
   }
@@ -264,19 +277,23 @@ function Cell({
       style={editableStyle(cell.state, isCount, doneColor)}
     >
       {cell.state === "done" ? <Check /> : null}
+      {cell.state === "extra" ? <Check color={doneColor} /> : null}
       {cell.state === "today" ? (
         <span className="w-[7px] h-[7px] rounded-full" style={{ background: doneColor }} />
       ) : null}
       {cell.state === "open" ? (
         <span className="text-[15px] leading-none text-[#aab1ba]">+</span>
       ) : null}
+      {cell.state === "extra-open" ? (
+        <span className="text-[12px] leading-none text-[#c3c9d0]">+</span>
+      ) : null}
     </button>
   );
 }
 
-function Check() {
+function Check({ color = "#fff" }: { color?: string }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 13l4 4L19 7" />
     </svg>
   );
@@ -289,6 +306,8 @@ const LABEL: Record<GridCellState, string> = {
   open: "open to log",
   missed: "missed",
   upcoming: "upcoming",
+  extra: "extra day",
+  "extra-open": "off day, open to log an extra",
   rest: "rest day",
 };
 
@@ -300,6 +319,8 @@ const TIP_STATUS: Record<GridCellState, string> = {
   open: "Open to log",
   missed: "Missed",
   upcoming: "Upcoming",
+  extra: "Extra day",
+  "extra-open": "Log an extra",
   rest: "Not scheduled",
 };
 
@@ -316,6 +337,14 @@ function editableStyle(
     case "today":
       // Inset ring only (no outer glow, which the scroll wrapper would clip).
       return { background: "#fff", boxShadow: `inset 0 0 0 2px ${doneColor}` };
+    case "extra":
+      // A logged extra: outlined accent (not a filled scheduled done) — present
+      // and warm, but visibly subordinate to a day you promised.
+      return { background: washOf(doneColor), boxShadow: `inset 0 0 0 1.5px ${doneColor}` };
+    case "extra-open":
+      // Off-day invitation: fainter than a scheduled "open" well so the
+      // scheduled days stay primary. A quiet dotted outline, no fill.
+      return { background: "#fff", border: "1.5px dotted #d8dce1" };
     case "open":
     default:
       // Specific-day: a passed scheduled day reads "was due, still open" (soft
@@ -334,6 +363,10 @@ function lockedStyle(state: GridCellState, doneColor: string): React.CSSProperti
       return { background: doneColor, opacity: 0.92 };
     case "skipped":
       return { background: "#fde68a" };
+    case "extra":
+      // Locked extra: the same outlined accent as its editable form, so a logged
+      // extra reads identically whether or not it's still inside the window.
+      return { background: washOf(doneColor), boxShadow: `inset 0 0 0 1.5px ${doneColor}` };
     case "missed":
       return { background: "#e5e7eb" };
     case "upcoming":
