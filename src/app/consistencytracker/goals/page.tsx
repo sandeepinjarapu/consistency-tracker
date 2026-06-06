@@ -66,6 +66,7 @@ export default async function GoalsPage({
   type AggregateMonth = { year: number; month: number; cells: Awaited<ReturnType<typeof buildAggregateCells>> };
   let aggregateMonths: AggregateMonth[] | null = null;
   let aggregateToday: string | undefined;
+  let aggregateTrimBefore: string | undefined;
   if (!showArchived && (goals ?? []).length > 0) {
     const activeGoals = goals as GoalRow[];
     const [profile, { data: profileFlags }] = await Promise.all([
@@ -80,6 +81,7 @@ export default async function GoalsPage({
     const today = todayIn(timezone);
     aggregateToday = today;
     const twelveWeeksAgo = addDays(today, -83);
+    aggregateTrimBefore = twelveWeeksAgo;
 
     const goalsForAggregate = activeGoals.map((g) => ({
       id: g.id,
@@ -193,6 +195,7 @@ export default async function GoalsPage({
                 cells={am.cells}
                 doneColor="#216e39"
                 today={aggregateToday}
+                trimBefore={aggregateTrimBefore}
               />
             ))}
           </div>

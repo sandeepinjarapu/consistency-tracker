@@ -70,6 +70,7 @@ export default function FullHistory({
             doneColor={doneColor}
             isCount={weeklyTarget != null}
             today={today}
+            goalStartDate={goalStartDate}
           />
         </div>
       ) : null}
