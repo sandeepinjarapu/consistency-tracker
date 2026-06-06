@@ -19,6 +19,7 @@ export default function GoalHistoryView({
   doneColor,
   isCount,
   today,
+  goalStartDate,
 }: {
   recentMonths: MonthData[];
   olderMonths: MonthData[];
@@ -27,21 +28,28 @@ export default function GoalHistoryView({
   isCount: boolean;
   /** YYYY-MM-DD today. Passed to MonthCalGrid so future days render distinctly. */
   today?: string;
+  /** YYYY-MM-DD goal creation date. Trims leading empty weeks before the goal started. */
+  goalStartDate?: string;
 }) {
   if (recentMonths.length === 0) return null;
 
+  // Render oldest month first (left) so the sequence reads chronologically
+  // left → right on desktop. On mobile the columns stack top → bottom, which
+  // is also the natural past-to-present reading order.
+  const displayMonths = [...recentMonths].reverse();
+
   return (
     <div>
-      {/* Recent months — calendar grids. recentMonths[0] is the current
-          (newest) month → left column. Stacks on narrow screens. */}
+      {/* Recent months — calendar grids. Oldest month left, current right.
+          Stacks oldest-top → current-bottom on narrow screens. */}
       <div
         className={
-          recentMonths.length === 2
+          displayMonths.length === 2
             ? "grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 max-w-[620px]"
             : "max-w-[300px] mb-3"
         }
       >
-        {recentMonths.map((m) => (
+        {displayMonths.map((m) => (
           <MonthCalGrid
             key={`${m.year}-${m.month}`}
             year={m.year}
@@ -49,6 +57,7 @@ export default function GoalHistoryView({
             cells={m.cells}
             doneColor={doneColor}
             today={today}
+            trimBefore={goalStartDate}
           />
         ))}
       </div>
