@@ -1,4 +1,4 @@
-import { classifyWeek } from "./extra-check-ins";
+import { classifyWeek, isExtraDate } from "./extra-check-ins";
 import type { WeeklyGoalStat } from "./email";
 
 export type SummaryGoal = {
@@ -40,7 +40,16 @@ export function computeWeeklyGoalStats(
     const goalCheckIns = checkIns.filter(
       (c) => c.goal_id === g.id && c.date >= weekStart && c.date <= weekEnd
     );
-    const skipped = goalCheckIns.filter((c) => c.status === "skipped").length;
+    // Only on-target skips on/after the goal's start count. An off-target skip
+    // can only be left behind by narrowing the cadence later; like an off-target
+    // done it is never shown as extra and never counted (it isn't a skipped
+    // extra — extras are done-only).
+    const skipped = goalCheckIns.filter(
+      (c) =>
+        c.status === "skipped" &&
+        c.date >= goalStart &&
+        !isExtraDate(c.date, g.target_days)
+    ).length;
 
     // The email is a scoring surface, so `done` is the scored count, capped at
     // target: a frequency over-quota week reports 3/3, not 4/3, and (once

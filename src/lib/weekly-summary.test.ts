@@ -83,6 +83,21 @@ describe("computeWeeklyGoalStats", () => {
     expect(stats).toEqual([{ name: "Goal", done: 2, target: 5, skipped: 0 }]);
   });
 
+  it("does not count an off-target skip left by a cadence edit", () => {
+    // Weekday goal; the Saturday skip is now off-target (e.g. after a
+    // Daily → Weekdays edit) and must not appear in the email count.
+    const stats = computeWeeklyGoalStats(
+      [goal({ id: "g1" })],
+      [
+        { goal_id: "g1", date: "2024-01-16", status: "done" },
+        { goal_id: "g1", date: "2024-01-20", status: "skipped" }, // Saturday, off-target
+      ],
+      WEEK_START,
+      WEEK_END
+    );
+    expect(stats).toEqual([{ name: "Goal", done: 1, target: 5, skipped: 0 }]);
+  });
+
   it("skips a count goal created after the week started", () => {
     const stats = computeWeeklyGoalStats(
       [goal({ weekly_target: 3, created_at: "2024-01-18T00:00:00Z" })],

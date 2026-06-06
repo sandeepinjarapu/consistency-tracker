@@ -63,7 +63,7 @@ describe("cross-surface metrics consistency (one shared week)", () => {
     expect(reflectionCompletionRate(stats)).toBeCloseTo(0.5, 5);
   });
 
-  it("Email: raw done / target / skipped per goal (no percentage)", () => {
+  it("Email: scored done / target / on-target skipped per goal (no percentage)", () => {
     const stats = computeWeeklyGoalStats(
       goals.map((g) => ({
         id: g.id,
