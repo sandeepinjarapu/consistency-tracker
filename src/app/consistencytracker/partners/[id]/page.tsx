@@ -6,12 +6,13 @@ import { isPartner } from "@/lib/actions/partners";
 import { listMyReactions } from "@/lib/actions/reactions";
 import { getPartnerReflections, type Reflection } from "@/lib/actions/reflections";
 import { addDays, todayIn, isoWeekStart, dateInTimezone } from "@/lib/dates";
-import { buildHeatmapCells, computeStats, computeWeeklyMet } from "@/lib/stats";
+import { computeStats, computeWeeklyMet } from "@/lib/stats";
+import { buildMonthHistory } from "@/lib/month-history";
 import { notableForWeek } from "@/lib/partner-notable";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { safeExternalUrl } from "@/lib/url";
 import { UNCATEGORIZED_COLOR } from "@/lib/colors";
-import Heatmap from "@/components/heatmap";
+import GoalHistoryView from "@/components/goal-history-view";
 import WeeklyStrip from "@/components/weekly-strip";
 import MarkSharesSeen from "@/components/mark-shares-seen";
 import ReactionButtons from "@/components/reaction-buttons";
@@ -68,9 +69,6 @@ export default async function PartnerPage({
   const partnerTz = partnerProfile.timezone ?? "UTC";
   const today = todayIn(partnerTz);
   const yearStart = addDays(today, -364);
-  // The heatmap shows a compact recent window (last ~12 weeks, trimmed to the
-  // goal's start); stats below still span the year.
-  const twelveWeeksAgo = addDays(today, -83);
 
   // RLS will filter to only goals shared with the current user
   const { data: rawGoals } = await supabase
@@ -199,14 +197,13 @@ export default async function PartnerPage({
           {goals.map((goal) => {
             const checkIns = checkInsByGoal.get(goal.id) ?? [];
             const goalStart = dateInTimezone(goal.created_at, partnerTz);
-            const cells = buildHeatmapCells({
-              startDate: goalStart > twelveWeeksAgo ? goalStart : twelveWeeksAgo,
-              endDate: today,
-              targetDays: goal.target_days,
+            const { recentMonths, olderMonths } = buildMonthHistory({
               checkIns,
               goalStartDate: goalStart,
-              todayStr: today,
+              targetDays: goal.target_days,
               weeklyTarget: goal.weekly_target,
+              today,
+              historyStart: yearStart,
             });
             const stats = computeStats({
               startDate: goalStart > yearStart ? goalStart : yearStart,
@@ -278,17 +275,11 @@ export default async function PartnerPage({
                     />
                   </div>
                 ) : null}
-                <p className="text-xs text-[color:var(--muted)] mb-2">
-                  Each square is a day.
-                </p>
-                <Heatmap
-                  cells={cells}
+                <GoalHistoryView
+                  recentMonths={recentMonths}
+                  olderMonths={olderMonths}
                   doneColor={color}
-                  schedule={{
-                    goalStartDate: goalStart,
-                    today,
-                    targetDays: goal.target_days,
-                  }}
+                  isCount={goal.weekly_target != null}
                 />
                 <div className="mt-4">
                   <p className="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-2">

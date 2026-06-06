@@ -6,10 +6,11 @@ import { listGoalShares } from "@/lib/actions/partners";
 import { listGoalsWithUnseenReactions } from "@/lib/actions/reactions";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { buildAggregateCells } from "@/lib/stats";
+import { buildMonthList } from "@/lib/month-history";
 import { UNCATEGORIZED_COLOR } from "@/lib/colors";
 import { todayIn, addDays, dateInTimezone } from "@/lib/dates";
 import GoalRowMenu from "@/components/goal-row-menu";
-import Heatmap from "@/components/heatmap";
+import MonthCalGrid from "@/components/month-cal-grid";
 
 type GoalRow = {
   id: string;
@@ -57,35 +58,29 @@ export default async function GoalsPage({
     goalsByCategory.get(key)!.push(g);
   }
 
-  // All-goals heatmap summary (active view only). A compact recent window of
-  // the last ~12 weeks, trimmed so it never starts before the first goal.
-  // Only shown once there are a few goals (3+): with one or two, the per-goal
-  // detail page already tells that story, and an aggregate of a single goal is
-  // just a sparser copy of its own record.
-  let heatmapCells: Awaited<ReturnType<typeof buildAggregateCells>> | null = null;
+  // All-goals calendar summary (active view only): recent 2 calendar months
+  // as aggregate grids, shown once there are 3+ active goals.
+  type AggregateMonth = { year: number; month: number; cells: Awaited<ReturnType<typeof buildAggregateCells>> };
+  let aggregateMonths: AggregateMonth[] | null = null;
   if (!showArchived && (goals ?? []).length >= 3) {
     const activeGoals = goals as GoalRow[];
     const profile = await getCurrentProfile();
     const timezone = profile?.timezone ?? "UTC";
     const today = todayIn(timezone);
-    const earliest = activeGoals.reduce(
-      (min, g) => {
-        const d = dateInTimezone(g.created_at, timezone);
-        return d < min ? d : min;
-      },
-      today
-    );
     const twelveWeeksAgo = addDays(today, -83);
-    const rangeStart = earliest > twelveWeeksAgo ? earliest : twelveWeeksAgo;
+
+    const goalsForAggregate = activeGoals.map((g) => ({
+      id: g.id,
+      target_days: g.target_days,
+      created_at: dateInTimezone(g.created_at, timezone),
+      weekly_target: g.weekly_target,
+    }));
 
     const { data: ciRaw } = await supabase
       .from("check_ins")
       .select("goal_id, date, status")
-      .in(
-        "goal_id",
-        activeGoals.map((g) => g.id)
-      )
-      .gte("date", rangeStart)
+      .in("goal_id", activeGoals.map((g) => g.id))
+      .gte("date", twelveWeeksAgo)
       .lte("date", today);
     const checkIns = (ciRaw ?? []) as Array<{
       goal_id: string;
@@ -94,17 +89,29 @@ export default async function GoalsPage({
     }>;
 
     if (checkIns.length > 0) {
-      heatmapCells = buildAggregateCells({
-        startDate: rangeStart,
-        endDate: today,
-        todayStr: today,
-        goals: activeGoals.map((g) => ({
-          id: g.id,
-          target_days: g.target_days,
-          created_at: dateInTimezone(g.created_at, timezone),
-          weekly_target: g.weekly_target,
-        })),
-        checkIns,
+      const earliest = goalsForAggregate.reduce(
+        (min, g) => (g.created_at < min ? g.created_at : min),
+        today
+      );
+      // Recent 2 calendar months, newest first
+      const monthList = buildMonthList(earliest, today).slice(0, 2);
+      aggregateMonths = monthList.map(([y, m]) => {
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const firstDay = `${y}-${pad(m)}-01`;
+        const lastDay = `${y}-${pad(m)}-${pad(new Date(Date.UTC(y, m, 0)).getUTCDate())}`;
+        const rangeStart = firstDay < twelveWeeksAgo ? twelveWeeksAgo : firstDay;
+        const rangeEnd = lastDay > today ? today : lastDay;
+        return {
+          year: y,
+          month: m,
+          cells: buildAggregateCells({
+            startDate: rangeStart,
+            endDate: rangeEnd,
+            todayStr: today,
+            goals: goalsForAggregate,
+            checkIns,
+          }),
+        };
       });
     }
   }
@@ -141,25 +148,30 @@ export default async function GoalsPage({
         )}
       </header>
 
-      {heatmapCells ? (
+      {aggregateMonths && aggregateMonths.length > 0 ? (
         <div className="mb-10">
           <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-1">
             Recent activity — all goals
           </h2>
           <p className="text-xs text-[color:var(--muted)] mb-3">
-            Each square is a day. The greener it is, the more you did.
+            Each square is a day. Darker days mean more goals were checked in.
           </p>
-          <Heatmap cells={heatmapCells} hideLegend />
-          <div className="mt-2 flex items-center gap-2 text-[10px] text-[color:var(--muted)]">
-            <span>Less</span>
-            {["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"].map((c) => (
-              <span
-                key={c}
-                className="inline-block rounded-sm"
-                style={{ width: 11, height: 11, background: c }}
+          <div
+            className={
+              aggregateMonths.length === 2
+                ? "grid grid-cols-1 sm:grid-cols-2 gap-4"
+                : ""
+            }
+          >
+            {aggregateMonths.map((am) => (
+              <MonthCalGrid
+                key={`${am.year}-${am.month}`}
+                year={am.year}
+                month={am.month}
+                cells={am.cells}
+                doneColor="#216e39"
               />
             ))}
-            <span>More</span>
           </div>
         </div>
       ) : null}
