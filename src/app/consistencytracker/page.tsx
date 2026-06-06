@@ -222,7 +222,9 @@ async function TodaySection() {
             ? `${doneCount} of ${goalsToday.length} done${
                 skippedCount > 0 ? `, ${skippedCount} skipped` : ""
               }${remaining > 0 ? `, ${remaining} left` : ""}${extraSuffix}`
-            : `Nothing scheduled today.${extraSuffix}`
+            : extraToday > 0
+              ? `Nothing scheduled today · ${extraToday} extra`
+              : "Nothing scheduled today."
         }
       />
 
