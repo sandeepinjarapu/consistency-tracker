@@ -1,6 +1,6 @@
 # Consistency Tracker
 
-A minimal, timezone-aware habit tracker built around a GitHub-style consistency heatmap — with flexible weekly-count goals, weekly reflections, and partner accountability.
+A private, timezone-aware habit tracker for keeping a few goals visible: check in each day, reflect once a week, and optionally share a goal with an accountability partner.
 
 **Live demo → https://consistency-tracker-demo.vercel.app/consistencytracker** (sign in with Google)
 
@@ -10,8 +10,8 @@ Built with Next.js 15 (App Router), Supabase (Postgres + Auth + Row-Level Securi
 
 - **Goals, your way** — track a habit on **specific days** (e.g. weekdays) or as a **weekly count** ("3× a week, any day"). Group goals by category with colors, an optional reflection-doc link, and a "why this matters" note that gives later reflection some context.
 - **Fast daily check-ins** — mark a goal *done* or *skipped* (with a reason: travel / illness / mood / other) and jot a short note. Cards take on a calm done/skipped tint so the day is scannable at a glance.
-- **Consistency heatmap** — a GitHub-style year view per goal plus an aggregate across all goals. Click a day to **backfill** a missed check-in (within the current week + a short grace period).
-- **Honest streaks & stats** — day streaks for specific-day goals, **week streaks** for weekly-count goals, completion rate, longest streak, and your "typical" time of day — plus a short, descriptive read of each goal ("you usually do this in the morning").
+- **Calendar history** — goal pages show recent months as calendar grids and older months as a compact strip. The Goals page unlocks an aggregate calendar across all goals after 3+ active goals with some check-in history. The history is read-only; recent days are edited in the "This week" rows on a goal page (the current week plus a short grace period).
+- **Streaks and progress, not grades** — day streaks for specific-day goals, **week streaks** and quota progress for weekly-count goals, plus longest streak, this week's progress, and your typical time of day ("you usually do this in the morning"). Completion percentages are reserved for finished weekly reflections and the summary email.
 - **Weekly reflections** — a Continue / Stop / Improve journal with auto-computed weekly stats, highlights, and a plain-language recap of how the week actually went.
 - **Weekly summary email** — every Monday you get a recap of the past week across all your goals, for personal accountability — no partner required.
 - **Partner accountability** — invite a friend by email and share individual goals read-only. A quiet "shared with…" badge keeps it clear what's exposed (everything is private by default), the partners list shows when each partner last showed up, and they get a weekly summary of just the shared goals, CC'd to you so you share the same view.
@@ -75,7 +75,7 @@ Open http://localhost:3000.
 - `npm run test` / `npm run test:run` — Vitest (watch / run once)
 
 ## Testing
-The pure logic — timezone date math, streak/completion scoring, weekly-count cadence, link safety, and heatmap-backfill rules — is unit-tested with Vitest:
+The pure logic — timezone date math, streak/completion scoring, weekly-count cadence, link safety, and the catch-up editable-window rules — is unit-tested with Vitest:
 ```bash
 npm run test:run
 ```
