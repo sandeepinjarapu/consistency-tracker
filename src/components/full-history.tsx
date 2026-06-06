@@ -1,24 +1,38 @@
 "use client";
 
 import { useState } from "react";
-import Heatmap, { type HeatmapCell } from "./heatmap";
+import { buildMonthHistory } from "@/lib/month-history";
+import GoalHistoryView from "./goal-history-view";
 
 /**
- * The full-history heatmap, opt-in behind a single in-place toggle. The recent
- * weeks (Week Rows) are the default record; this is the dense year view for
- * people attached to a long-kept goal. The toggle stays put and flips its label
- * and chevron, with the heatmap expanding below it.
+ * The full-history view, opt-in behind a single in-place toggle.
+ * The recent weeks (WeekRows) remain the default record; this is the
+ * calendar month view for people invested in a long-kept goal.
  */
 export default function FullHistory({
-  cells,
+  checkIns,
   doneColor,
-  schedule,
+  goalStartDate,
+  targetDays,
+  weeklyTarget,
+  today,
 }: {
-  cells: HeatmapCell[];
+  checkIns: Array<{ date: string; status: "done" | "skipped" }>;
   doneColor: string;
-  schedule: { goalStartDate: string; today: string; targetDays: number[] };
+  goalStartDate: string;
+  targetDays: number[];
+  weeklyTarget: number | null | undefined;
+  today: string;
 }) {
   const [open, setOpen] = useState(false);
+
+  const { recentMonths, olderMonths } = buildMonthHistory({
+    checkIns,
+    goalStartDate,
+    targetDays,
+    weeklyTarget,
+    today,
+  });
 
   return (
     <div className="mt-4">
@@ -46,10 +60,11 @@ export default function FullHistory({
 
       {open ? (
         <div className="mt-3">
-          <p className="mb-2 text-xs text-[color:var(--muted)]">
-            Each square is a day, from the start of this goal.
-          </p>
-          <Heatmap cells={cells} doneColor={doneColor} schedule={schedule} />
+          <GoalHistoryView
+            recentMonths={recentMonths}
+            olderMonths={olderMonths}
+            doneColor={doneColor}
+          />
         </div>
       ) : null}
     </div>

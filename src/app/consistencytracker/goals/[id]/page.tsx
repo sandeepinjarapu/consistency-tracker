@@ -12,7 +12,6 @@ import {
 } from "@/lib/dates";
 import { computeWeekStatus } from "@/lib/goal-week-status";
 import {
-  buildHeatmapCells,
   buildGoalInsight,
   computeStats,
   computeTimePattern,
@@ -344,19 +343,7 @@ async function RecordSection({
     : builtWeeks;
   const anyEditable = weeks.some((w) => w.cells.some((c) => c.editable));
 
-  // Opt-in full-history heatmap (compact recent window, same as before).
-  const twelveWeeksAgo = addDays(today, -83);
-  const heatmapStart =
-    goalStartDate > twelveWeeksAgo ? goalStartDate : twelveWeeksAgo;
-  const cells = buildHeatmapCells({
-    startDate: heatmapStart,
-    endDate: today,
-    targetDays,
-    checkIns,
-    goalStartDate,
-    todayStr: today,
-    weeklyTarget,
-  });
+  // FullHistory receives the raw checkIns and builds its own calendar view.
 
   const weeklyMet =
     weeklyTarget != null
@@ -447,9 +434,12 @@ async function RecordSection({
 
       <div className="mb-10">
         <FullHistory
-          cells={cells}
+          checkIns={checkIns}
           doneColor={categoryColor}
-          schedule={{ goalStartDate, today, targetDays }}
+          goalStartDate={goalStartDate}
+          targetDays={targetDays}
+          weeklyTarget={weeklyTarget}
+          today={today}
         />
       </div>
 
