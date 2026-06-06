@@ -1,8 +1,8 @@
 # Extra check-ins — spec
 
-Status: **engineering contract, ready for implementation review.** One product
-lever (the Today affordance, §8) is still a call to confirm; everything else is
-settled. No code until §8 is confirmed.
+Status: **engineering contract, ready for implementation.** All product levers
+are settled (the off-day logging surfaces in §8 are confirmed: both goal-detail
+cells and a Today affordance).
 
 ## 1. Why
 
@@ -127,22 +127,23 @@ days. With no extras this is invisible; once extras exist it would print
 `6 done / 5 target`. Fix: the email's headline number is `scoredDone` (capped at
 `targetCount`); extras, if shown at all, are a separate `+N` note.
 
-## 8. Open product lever — the Today affordance
+## 8. Off-day logging surfaces (confirmed: both)
 
 Off-day extras have no home in the daily loop: Today only renders goals
-scheduled for today. Two options:
+scheduled for today. V1 ships **both** entry points:
 
-- **(A) Minimal Today affordance (recommended).** A quiet section *below* the
-  scheduled cards — "Log something extra" — that opens a picker of your other
-  active goals and marks an extra `done` for today. No skip, never above
-  scheduled work. Without this, the feature is real but practically hidden.
-- **(B) Goal-detail only.** Log an extra from the goal page's "This week" rows
-  (tap an off-day cell) and nowhere else. Simpler, but most users won't discover
-  it.
+- **Goal detail.** The "This week" rows make off-day cells loggable: an
+  unscheduled weekday inside the window offers **Log** (and, once logged,
+  **Remove**), distinct from a scheduled cell. This is the precise, in-context
+  place to add or correct an extra.
+- **Today affordance.** A quiet section *below* the scheduled cards — "Log
+  something extra" — that opens a picker of your other active goals and marks an
+  extra `done` for today. No skip, never above scheduled work. This is what
+  makes the feature discoverable in the daily loop.
 
-Recommendation: **(A)**, kept deliberately small. This is the one decision that
-materially changes V1 scope. (Over-quota frequency extras need neither option —
-they're already loggable from the existing Today card.)
+Both write through `markExtraDone` / `removeExtra` (§5), so they share one guard
+and one definition. (Over-quota frequency extras need neither surface — they're
+already loggable from the existing Today card.)
 
 ## 9. Out of scope
 
