@@ -231,12 +231,27 @@ drop policy if exists "profiles: update own" on public.profiles;
 create policy "profiles: update own" on public.profiles
   for update to authenticated using (auth.uid() = id) with check (auth.uid() = id);
 
--- categories: full CRUD on own rows only
+-- categories: full CRUD on own rows; partners may read (for FK join on shared goals)
 drop policy if exists "categories: all own" on public.categories;
 create policy "categories: all own" on public.categories
   for all to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+drop policy if exists "categories: read partner" on public.categories;
+create policy "categories: read partner" on public.categories
+  for select to authenticated
+  using (
+    auth.uid() = user_id
+    or exists (
+      select 1 from public.partner_invites pi
+      where pi.accepted_at is not null
+        and (
+          (pi.inviter_id = auth.uid() and pi.accepted_by = categories.user_id)
+          or (pi.accepted_by = auth.uid() and pi.inviter_id = categories.user_id)
+        )
+    )
+  );
 
 -- goals: own + read if shared with you
 drop policy if exists "goals: read own or shared" on public.goals;
