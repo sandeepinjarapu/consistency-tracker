@@ -275,12 +275,6 @@ export default async function PartnerPage({
                     />
                   </div>
                 ) : null}
-                <GoalHistoryView
-                  recentMonths={recentMonths}
-                  olderMonths={olderMonths}
-                  doneColor={color}
-                  isCount={goal.weekly_target != null}
-                />
                 <div className="mt-4">
                   <p className="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-2">
                     Let them know you noticed
@@ -322,6 +316,15 @@ export default async function PartnerPage({
                       );
                     })}
                   </div>
+                </div>
+                <div className="mt-6">
+                  <GoalHistoryView
+                    recentMonths={recentMonths}
+                    olderMonths={olderMonths}
+                    doneColor={color}
+                    isCount={goal.weekly_target != null}
+                    today={today}
+                  />
                 </div>
               </div>
             );

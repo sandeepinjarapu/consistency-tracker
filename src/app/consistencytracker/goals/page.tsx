@@ -7,6 +7,7 @@ import { listGoalsWithUnseenReactions } from "@/lib/actions/reactions";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { buildAggregateCells } from "@/lib/stats";
 import { buildMonthList } from "@/lib/month-history";
+import { shouldShowAggregateCalendar } from "@/lib/calendar-unlock";
 import { UNCATEGORIZED_COLOR } from "@/lib/colors";
 import { todayIn, addDays, dateInTimezone } from "@/lib/dates";
 import GoalRowMenu from "@/components/goal-row-menu";
@@ -59,14 +60,25 @@ export default async function GoalsPage({
   }
 
   // All-goals calendar summary (active view only): recent 2 calendar months
-  // as aggregate grids, shown once there are 3+ active goals.
+  // as aggregate grids. Shown once the user has 3+ active goals. Once unlocked
+  // the flag is persisted in profiles.calendar_unlocked so the section stays
+  // visible even if goals later drop below 3 (requires check-ins to render).
   type AggregateMonth = { year: number; month: number; cells: Awaited<ReturnType<typeof buildAggregateCells>> };
   let aggregateMonths: AggregateMonth[] | null = null;
-  if (!showArchived && (goals ?? []).length >= 3) {
+  let aggregateToday: string | undefined;
+  if (!showArchived && (goals ?? []).length > 0) {
     const activeGoals = goals as GoalRow[];
-    const profile = await getCurrentProfile();
+    const [profile, { data: profileFlags }] = await Promise.all([
+      getCurrentProfile(),
+      supabase
+        .from("profiles")
+        .select("calendar_unlocked")
+        .eq("id", user.id)
+        .single(),
+    ]);
     const timezone = profile?.timezone ?? "UTC";
     const today = todayIn(timezone);
+    aggregateToday = today;
     const twelveWeeksAgo = addDays(today, -83);
 
     const goalsForAggregate = activeGoals.map((g) => ({
@@ -88,7 +100,17 @@ export default async function GoalsPage({
       status: "done" | "skipped";
     }>;
 
-    if (checkIns.length > 0) {
+    // Unlock condition: 3+ active goals. Once met the flag is written to the DB
+    // so the section persists even if goals drop below the threshold later.
+    const alreadyUnlocked = profileFlags?.calendar_unlocked ?? false;
+    const freshUnlock = activeGoals.length >= 3;
+
+    // Await the write so the flag is reliably set before the next page load.
+    if (freshUnlock && !alreadyUnlocked) {
+      await supabase.from("profiles").update({ calendar_unlocked: true }).eq("id", user.id);
+    }
+
+    if (shouldShowAggregateCalendar(alreadyUnlocked, activeGoals.length, checkIns.length > 0)) {
       const earliest = goalsForAggregate.reduce(
         (min, g) => (g.created_at < min ? g.created_at : min),
         today
@@ -159,8 +181,8 @@ export default async function GoalsPage({
           <div
             className={
               aggregateMonths.length === 2
-                ? "grid grid-cols-1 sm:grid-cols-2 gap-4"
-                : ""
+                ? "grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[620px]"
+                : "max-w-[300px]"
             }
           >
             {aggregateMonths.map((am) => (
@@ -170,6 +192,7 @@ export default async function GoalsPage({
                 month={am.month}
                 cells={am.cells}
                 doneColor="#216e39"
+                today={aggregateToday}
               />
             ))}
           </div>

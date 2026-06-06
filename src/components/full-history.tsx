@@ -69,6 +69,7 @@ export default function FullHistory({
             olderMonths={olderMonths}
             doneColor={doneColor}
             isCount={weeklyTarget != null}
+            today={today}
           />
         </div>
       ) : null}

@@ -4,7 +4,7 @@ import Skeleton from "@/components/skeleton";
 // Partner detail skeleton: real back link, pulsing header and heatmaps.
 export default function Loading() {
   return (
-    <section aria-busy>
+    <section className="space-y-10" aria-busy>
       <span className="sr-only">Loading…</span>
       <Link
         href="/consistencytracker/partners"
@@ -12,10 +12,13 @@ export default function Loading() {
       >
         ← All partners
       </Link>
-      <div className="mt-4 mb-8">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="mt-2 h-4 w-64" />
-      </div>
+      <header className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-full bg-gray-200 shrink-0" />
+        <div>
+          <Skeleton className="h-6 w-36" />
+          <Skeleton className="mt-1 h-3 w-24" />
+        </div>
+      </header>
       <div className="space-y-8">
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-32 w-full" />

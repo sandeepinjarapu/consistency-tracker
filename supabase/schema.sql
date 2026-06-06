@@ -18,6 +18,9 @@ create table if not exists public.profiles (
   display_name text,
   avatar_url text,
   timezone text not null default 'UTC',
+  -- Progressive aggregate-calendar unlock — set true once the user reaches the
+  -- threshold (3+ active goals). Never reset to false. Added 0015.
+  calendar_unlocked boolean not null default false,
   created_at timestamptz not null default now()
 );
 
