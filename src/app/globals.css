@@ -16,3 +16,10 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Always reserve the vertical scrollbar's gutter so the centered layout
+   (max-w-* mx-auto) doesn't shift horizontally between tall pages (scrollbar
+   present) and short ones like Partners (no scrollbar). */
+html {
+  scrollbar-gutter: stable;
+}
