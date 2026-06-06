@@ -19,17 +19,13 @@ export default function PartnerReflection({
   const [overflows, setOverflows] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // line-clamp-3 sets display:-webkit-box, which makes scrollHeight equal
-  // clientHeight (the clamped height). To get the TRUE content height we must
-  // briefly remove the class, measure, then restore it — all synchronously so
-  // the browser never paints the unclamped state.
+  // line-clamp can't clamp across multiple block-level <p> children, so we use
+  // a max-height collapse instead. Compare the content's true scrollHeight
+  // against the collapsed clientHeight to decide whether "more" is needed.
   useEffect(() => {
     const el = contentRef.current;
     if (!el) return;
-    el.classList.remove("line-clamp-3");
-    const full = el.scrollHeight;
-    el.classList.add("line-clamp-3");
-    setOverflows(full > el.clientHeight + 2);
+    setOverflows(el.scrollHeight > el.clientHeight + 2);
   }, []);
 
   const lines: Array<{ label: string | null; text: string }> = [];
@@ -49,7 +45,8 @@ export default function PartnerReflection({
       </p>
       <div
         ref={contentRef}
-        className={`space-y-2 overflow-hidden ${expanded ? "" : "line-clamp-3"}`}
+        className="space-y-2 overflow-hidden"
+        style={{ maxHeight: expanded ? undefined : "4.5rem" }}
       >
         {lines.map((l, i) => (
           <p key={i} className="text-sm leading-relaxed">

@@ -19,6 +19,7 @@ import ReflectionEditor, {
   type PartnerState,
 } from "@/components/reflection-editor";
 import WeekGrid from "@/components/week-grid";
+import ReflectionNotes from "@/components/reflection-notes";
 
 // Weeks shown by default and per "Show earlier weeks" step. The visible
 // window grows via the ?weeks= search param so each request stays bounded.
@@ -396,14 +397,13 @@ function WeekDetailBody({
           <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
             In your own words
           </h3>
-          <ul className="space-y-1 text-sm max-w-prose">
-            {stats.notes.map((n, i) => (
-              <li key={i} className="text-[color:var(--muted)]">
-                <span className="italic">&ldquo;{n.note}&rdquo;</span> —{" "}
-                {n.goalName}, {shortDate(n.date)}
-              </li>
-            ))}
-          </ul>
+          <ReflectionNotes
+            notes={stats.notes.map((n) => ({
+              note: n.note,
+              goalName: n.goalName,
+              dateLabel: shortDate(n.date),
+            }))}
+          />
         </div>
       ) : null}
 

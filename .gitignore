@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Browser MCP session artifacts
 .playwright-mcp/
+
+# Local Claude tooling artifacts
+.claude/
