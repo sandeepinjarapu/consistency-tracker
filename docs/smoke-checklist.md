@@ -22,7 +22,8 @@ negative check.
       Weekdays. It appears on Goals under its category, and on Today (if
       scheduled today).
 - [ ] **Create a frequency goal**: "Times per week", set e.g. 3×. Goal detail
-      shows the segmented **quota rail**, not weekday chips.
+      shows quota progress (a **progress ring** + count-aware "This week" rows);
+      past frequency weeks use **quota rows**.
 - [ ] **Edit a goal**: change cadence → save → past weeks re-score under the new
       cadence; check-ins are preserved.
 - [ ] **Archive / Unarchive** from the goal `⋯` menu and the detail page.
@@ -38,15 +39,19 @@ negative check.
 - [ ] **Add note** on a checked-in goal → saves → re-edit works.
 - [ ] Buttons are thumb-sized (≥44px) on a phone.
 
-## 4. Catch up + heatmap (goal detail)
+## 4. This week + history (goal detail)
 
-- [ ] Catch up lists today + the recent editable days as dated rows. **Log** a
-      past day → row flips to Done, heatmap + streak update.
-- [ ] **Undo** a Catch up row clears it.
-- [ ] A day outside the window (older than this week + 2-day grace) is **not**
-      listed.
-- [ ] The heatmap is **read-only** (no click-to-edit); status text reads
-      "your record of showing up".
+- [ ] The **This week** rows show the current week plus recent weeks (Monday on
+      the left); the current week is editable, past weeks are read-only.
+- [ ] **Tap** an open day in the current week → it flips to Done; the headline,
+      progress ring, streak, and history update.
+- [ ] **Tap** a logged day → an inline **Remove / Keep** confirm appears;
+      **Remove** clears the check-in.
+- [ ] A day outside the editable window (older than this week + 2-day grace)
+      offers no **Log / Remove** and cannot change history (a read-only cell may
+      still show its date tooltip).
+- [ ] The **calendar history** (recent month grids + older year strip) is
+      **read-only** (no click-to-edit).
 
 ## 5. Reflections
 
@@ -63,10 +68,12 @@ negative check.
 - [ ] **A invites B**: Partners → enter B's email → Send invite. A pending
       invite row appears with Copy link / Revoke.
 - [ ] **B accepts** via the invite link → B sees A under "Your partners".
-- [ ] **A shares a goal**: goal detail → Manage → check B → the Manage UI looks
-      on-brand (no jarring blue checkbox), Done is a real button.
+- [ ] **A shares a goal**: goal detail → tap the **Private / Shared with…**
+      status → toggle B in the share sheet → close the sheet. The status line
+      updates and the sheet stays on-brand.
 - [ ] **B opens A's partner page**: sees A's name, avatar, the shared goal, its
-      heatmap, and "N-day streak · M check-ins logged" (no %).
+      history, the goal's **category name + color** (not "Uncategorized"), and
+      "N-day streak · M check-ins logged" (no %).
 - [ ] **B reacts** "Saw it" / "Proud" on a recent week → A sees the reaction on
       that goal; the Partners blue "new" dot clears after A visits.
 - [ ] A reflection B marked **Partner** shows in A's partner page "In their
@@ -91,7 +98,7 @@ negative check.
 ## 9. Cross-cutting
 
 - [ ] No console errors on any page (DevTools).
-- [ ] Mobile width: tap targets, day-of-week toggles, weekday chips, and the
-      Catch up rows all read cleanly.
+- [ ] Mobile width: tap targets, day-of-week toggles, and the "This week" rows
+      all read cleanly.
 - [ ] If a separate **demo** Supabase project exists, the latest migration
-      (currently `0014_partner_trust_boundary.sql`) has been applied there too.
+      (currently `0016_categories_partner_read.sql`) has been applied there too.
