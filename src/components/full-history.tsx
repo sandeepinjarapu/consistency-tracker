@@ -46,7 +46,7 @@ export default function FullHistory({
         aria-expanded={open}
         className="inline-flex items-center gap-1.5 text-xs text-[color:var(--muted)] hover:text-black"
       >
-        {open ? "Hide full history" : "View full history"}
+        {open ? "Hide history" : "View history"}
         <svg
           width="13"
           height="13"
