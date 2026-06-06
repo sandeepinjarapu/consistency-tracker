@@ -33,7 +33,7 @@ export default function ReflectionNotes({
           type="button"
           aria-expanded={expanded}
           onClick={() => setExpanded((e) => !e)}
-          className="mt-2 text-xs text-[color:var(--muted)] hover:text-black"
+          className="mt-2 min-h-[44px] flex items-center text-xs text-[color:var(--muted)] hover:text-black"
         >
           {expanded
             ? "less"
