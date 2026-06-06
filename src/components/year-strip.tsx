@@ -57,10 +57,13 @@ export default function YearStrip({
               {Array.from({ length: 12 }, (_, i) => {
                 const month = i + 1;
                 const md = mdMap.get(month);
-                const bg = md
-                  ? tint(doneColor, LEVEL_OPACITY[md.level])
-                  : "#f3f4f6";
-                const textColor = md && md.level >= 3 ? "rgba(255,255,255,0.8)" : "#bbb";
+                const lvl = md?.level ?? null;
+                const bg =
+                  md && lvl !== null
+                    ? tint(doneColor, LEVEL_OPACITY[lvl])
+                    : "#f3f4f6";
+                const textColor =
+                  lvl !== null && lvl >= 3 ? "rgba(255,255,255,0.8)" : "#bbb";
 
                 return (
                   <div

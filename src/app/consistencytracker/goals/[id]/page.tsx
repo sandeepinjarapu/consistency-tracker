@@ -440,6 +440,7 @@ async function RecordSection({
           targetDays={targetDays}
           weeklyTarget={weeklyTarget}
           today={today}
+          historyStart={startDate}
         />
       </div>
 

@@ -203,6 +203,7 @@ export default async function PartnerPage({
               targetDays: goal.target_days,
               weeklyTarget: goal.weekly_target,
               today,
+              historyStart: yearStart,
             });
             const stats = computeStats({
               startDate: goalStart > yearStart ? goalStart : yearStart,
@@ -278,6 +279,7 @@ export default async function PartnerPage({
                   recentMonths={recentMonths}
                   olderMonths={olderMonths}
                   doneColor={color}
+                  isCount={goal.weekly_target != null}
                 />
                 <div className="mt-4">
                   <p className="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-2">

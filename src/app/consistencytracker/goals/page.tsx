@@ -154,12 +154,12 @@ export default async function GoalsPage({
             Recent activity — all goals
           </h2>
           <p className="text-xs text-[color:var(--muted)] mb-3">
-            Each square is a day. The greener it is, the more you did.
+            Each square is a day. Darker days mean more goals were checked in.
           </p>
           <div
             className={
               aggregateMonths.length === 2
-                ? "grid grid-cols-2 gap-4"
+                ? "grid grid-cols-1 sm:grid-cols-2 gap-4"
                 : ""
             }
           >

@@ -16,6 +16,7 @@ export default function FullHistory({
   targetDays,
   weeklyTarget,
   today,
+  historyStart,
 }: {
   checkIns: Array<{ date: string; status: "done" | "skipped" }>;
   doneColor: string;
@@ -23,6 +24,8 @@ export default function FullHistory({
   targetDays: number[];
   weeklyTarget: number | null | undefined;
   today: string;
+  /** Earliest date check-ins were fetched for (clamps older history). */
+  historyStart: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -32,6 +35,7 @@ export default function FullHistory({
     targetDays,
     weeklyTarget,
     today,
+    historyStart,
   });
 
   return (
@@ -64,6 +68,7 @@ export default function FullHistory({
             recentMonths={recentMonths}
             olderMonths={olderMonths}
             doneColor={doneColor}
+            isCount={weeklyTarget != null}
           />
         </div>
       ) : null}
