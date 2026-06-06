@@ -283,13 +283,9 @@ export function buildAggregateCells({
   }>;
   checkIns: Array<{ goal_id: string; date: string; status: "done" | "skipped" }>;
 }): HeatmapCell[] {
-  const doneByDate = new Map<string, number>();
   const doneByGoalDate = new Set<string>();
   for (const ci of checkIns) {
-    if (ci.status === "done") {
-      doneByDate.set(ci.date, (doneByDate.get(ci.date) ?? 0) + 1);
-      doneByGoalDate.add(`${ci.goal_id}:${ci.date}`);
-    }
+    if (ci.status === "done") doneByGoalDate.add(`${ci.goal_id}:${ci.date}`);
   }
 
   const goalStarts = goals.map((g) => ({
@@ -301,35 +297,63 @@ export function buildAggregateCells({
   let cursor = startDate;
   while (cursor <= endDate) {
     const dow = dayOfWeekForDateString(cursor);
-    // Specific-day goals count toward a day's denominator on their target
-    // days. Count goals have no mandatory day, so they only count on days
-    // they were actually done — they never drag a day toward "missed".
-    const targetCount = goalStarts.reduce((n, g) => {
-      if (cursor < g.startDate) return n;
+
+    // Intensity is driven by SCORED activity only — scheduled (on-target) days
+    // and the dones that landed on them. Extras (off-target dones) are counted
+    // separately as evidence: they mark a day as "showed up" but never raise
+    // the scored ratio.
+    let scheduledTarget = 0;
+    let scoredDone = 0;
+    let extraCount = 0;
+    for (const g of goalStarts) {
+      if (cursor < g.startDate) continue;
+      const done = doneByGoalDate.has(`${g.id}:${cursor}`);
+      const onTarget = g.target_days.includes(dow);
       if (g.weekly_target != null) {
-        return doneByGoalDate.has(`${g.id}:${cursor}`) ? n + 1 : n;
+        // Count goal: no mandatory day, so only days it was actually done
+        // matter — an on-eligible-day done is scored, an off-day done is extra.
+        if (done && onTarget) {
+          scheduledTarget++;
+          scoredDone++;
+        } else if (done) {
+          extraCount++;
+        }
+      } else if (onTarget) {
+        scheduledTarget++;
+        if (done) scoredDone++;
+      } else if (done) {
+        extraCount++;
       }
-      return g.target_days.includes(dow) ? n + 1 : n;
-    }, 0);
-    const done = doneByDate.get(cursor) ?? 0;
+    }
 
     let color: string;
     let tooltip: string;
-    if (cursor > todayStr || targetCount === 0) {
+    if (cursor > todayStr) {
       color = NO_TARGET_COLOR;
       tooltip = `${formatDate(cursor)} · No goals scheduled`;
-    } else {
-      const ratio = targetCount > 0 ? done / targetCount : 0;
+    } else if (scheduledTarget > 0) {
+      const ratio = scoredDone / scheduledTarget;
       const level =
         ratio === 0 ? 0 :
         ratio < 0.34 ? 1 :
         ratio < 0.67 ? 2 :
         ratio < 1 ? 3 : 4;
       color = LEVEL_COLORS[level];
-      tooltip =
-        cursor === todayStr && done === 0
-          ? `${formatDate(cursor)} · ${done} of ${targetCount} done — keep going`
-          : `${formatDate(cursor)} · ${done} of ${targetCount} done`;
+      const base =
+        cursor === todayStr && scoredDone === 0
+          ? `${formatDate(cursor)} · ${scoredDone} of ${scheduledTarget} done — keep going`
+          : `${formatDate(cursor)} · ${scoredDone} of ${scheduledTarget} done`;
+      tooltip = extraCount > 0 ? `${base} · ${extraCount} extra` : base;
+    } else if (extraCount > 0) {
+      // Only extras that day — still "showed up", shown at the lowest non-zero
+      // evidence level so the day never reads as empty/grey.
+      color = LEVEL_COLORS[1];
+      tooltip = `${formatDate(cursor)} · ${extraCount} extra check-in${
+        extraCount === 1 ? "" : "s"
+      }`;
+    } else {
+      color = NO_TARGET_COLOR;
+      tooltip = `${formatDate(cursor)} · No goals scheduled`;
     }
     cells.push({ date: cursor, status: "empty", color, tooltip });
     cursor = addDays(cursor, 1);
@@ -499,16 +523,24 @@ export function buildHeatmapCells({
   let cursor = startDate;
   while (cursor <= endDate) {
     const dow = dayOfWeekForDateString(cursor);
+    const ci = map.get(cursor);
     let status: CellStatus;
-    if (cursor > todayStr || cursor < goalStartDate || !targetDays.includes(dow)) {
+    if (cursor > todayStr || cursor < goalStartDate) {
       status = "empty";
+    } else if (!targetDays.includes(dow)) {
+      // Off-target day: a done is an extra (evidence, never scored); a stray
+      // off-target skip stays hidden as empty.
+      status = ci === "done" ? "extra" : "empty";
+    } else if (ci === "done") {
+      status = "done";
+    } else if (ci === "skipped") {
+      status = "skipped";
+    } else if (cursor === todayStr) {
+      status = "empty"; // today pending
+    } else if (weeklyTarget != null) {
+      status = "empty"; // count goal: a gap isn't a miss
     } else {
-      const ci = map.get(cursor);
-      if (ci === "done") status = "done";
-      else if (ci === "skipped") status = "skipped";
-      else if (cursor === todayStr) status = "empty"; // today pending
-      else if (weeklyTarget != null) status = "empty"; // count goal: a gap isn't a miss
-      else status = "missed";
+      status = "missed";
     }
     cells.push({ date: cursor, status });
     cursor = addDays(cursor, 1);

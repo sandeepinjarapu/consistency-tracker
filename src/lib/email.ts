@@ -76,9 +76,10 @@ function inviteText({
 
 export type WeeklyGoalStat = {
   name: string;
-  done: number;
+  done: number; // scored toward target (capped); never exceeds target
   target: number;
   skipped: number;
+  extra: number; // extra check-ins beyond schedule/quota — evidence, not scored
 };
 
 /**
@@ -151,10 +152,11 @@ function weeklyHtml({
   const rows = goals
     .map((g) => {
       const pct = g.target > 0 ? Math.round((g.done / g.target) * 100) : 0;
+      const extra = g.extra > 0 ? ` <span style="color:#6b7280;">· +${g.extra} extra</span>` : "";
       const skipped = g.skipped > 0 ? ` <span style="color:#92400e;">· ${g.skipped} skipped</span>` : "";
       return `<tr>
         <td style="padding: 6px 12px 6px 0; font-size: 14px; color: #0a0a0a;">${escapeHtml(g.name)}</td>
-        <td style="padding: 6px 0; font-size: 14px; color: #374151; text-align: right; white-space: nowrap;">${g.done} / ${g.target} this week <span style="color:#9ca3af;">· ${pct}%</span>${skipped}</td>
+        <td style="padding: 6px 0; font-size: 14px; color: #374151; text-align: right; white-space: nowrap;">${g.done} / ${g.target} this week <span style="color:#9ca3af;">· ${pct}%</span>${extra}${skipped}</td>
       </tr>`;
     })
     .join("");
@@ -192,8 +194,9 @@ function weeklyText({
     : `${SITE}/consistencytracker/partners/${ownerId}`;
   const lines = goals.map((g) => {
     const pct = g.target > 0 ? Math.round((g.done / g.target) * 100) : 0;
+    const extra = g.extra > 0 ? ` (+${g.extra} extra)` : "";
     const skipped = g.skipped > 0 ? ` (${g.skipped} skipped)` : "";
-    return `  • ${g.name}: ${g.done}/${g.target} this week · ${pct}%${skipped}`;
+    return `  • ${g.name}: ${g.done}/${g.target} this week · ${pct}%${extra}${skipped}`;
   });
   return [
     `${self ? "Your" : `${ownerName}'s`} week (${weekLabel}):`,

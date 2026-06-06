@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { addDays, dayOfWeekForDateString } from "@/lib/dates";
 import HeatmapScroller from "./heatmap-scroller";
 
-export type CellStatus = "done" | "skipped" | "missed" | "empty";
+export type CellStatus = "done" | "skipped" | "missed" | "empty" | "extra";
 
 export type HeatmapCell = {
   date: string; // YYYY-MM-DD
@@ -27,6 +27,7 @@ const COLOR: Record<CellStatus, string> = {
   missed: "#e5e7eb",
   skipped: "#fde68a",
   done: "#22c55e",
+  extra: "#bbf7d0", // a lighter done — evidence of an off-schedule check-in
 };
 
 const MONTH_LABELS = [
@@ -300,6 +301,7 @@ function tooltipFor(
   const date = formatDate(cell.date);
   switch (cell.status) {
     case "done": return `${date} · Done`;
+    case "extra": return `${date} · Extra`;
     case "skipped": return `${date} · Skipped`;
     case "missed": return `${date} · Missed`;
     case "empty": {

@@ -1,4 +1,4 @@
-import { addDays, dayOfWeekForDateString } from "./dates";
+import { addDays, dayOfWeekForDateString, isoWeekStart } from "./dates";
 
 /**
  * Whether a date's weekday falls outside the goal's eligible window
@@ -104,4 +104,50 @@ export function classifyWeek({
     totalDone,
     completionRate,
   };
+}
+
+/**
+ * All-time scored / extra / total `done` counts for a goal, summed across every
+ * ISO week of its history via classifyWeek (so over-quota is counted per week,
+ * never as a tagged date). The shared evidence counter for read-only "seen"
+ * surfaces — the partner page and any aggregate — so they never re-derive
+ * "extra" their own way. `totalDone` is the headline evidence number; `extraDone`
+ * is the "· N extra" annotation. Pure.
+ */
+export function classifyHistory({
+  goalStartDate,
+  targetDays,
+  weeklyTarget,
+  doneDates,
+}: {
+  goalStartDate: string;
+  targetDays: number[];
+  weeklyTarget: number | null;
+  doneDates: string[];
+}): { scoredDone: number; extraDone: number; totalDone: number } {
+  const byWeek = new Map<string, string[]>();
+  for (const d of doneDates) {
+    if (d < goalStartDate) continue;
+    const ws = isoWeekStart(d);
+    const arr = byWeek.get(ws);
+    if (arr) arr.push(d);
+    else byWeek.set(ws, [d]);
+  }
+
+  let scoredDone = 0;
+  let extraDone = 0;
+  let totalDone = 0;
+  for (const [ws, dates] of byWeek) {
+    const c = classifyWeek({
+      weekStart: ws,
+      goalStartDate,
+      targetDays,
+      weeklyTarget,
+      doneDates: dates,
+    });
+    scoredDone += c.scoredDone;
+    extraDone += c.extraDone;
+    totalDone += c.totalDone;
+  }
+  return { scoredDone, extraDone, totalDone };
 }

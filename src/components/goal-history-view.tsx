@@ -80,6 +80,7 @@ export default function GoalHistoryView({
 function Legend({ doneColor, isCount }: { doneColor: string; isCount: boolean }) {
   const items: Array<{ label: string; color: string }> = [
     { label: "Done", color: doneColor },
+    { label: "Extra", color: `color-mix(in srgb, ${doneColor} 30%, white)` },
     { label: "Skipped", color: "#fde68a" },
   ];
   // Specific-day goals can leave a scheduled day unlogged ("missed"); a gap on

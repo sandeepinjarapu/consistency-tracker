@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyWeek, isExtraDate } from "./extra-check-ins";
+import { classifyWeek, classifyHistory, isExtraDate } from "./extra-check-ins";
 
 // Week: Mon 2024-01-15 … Sun 2024-01-21. Weekdays = 1..5; Sat = 01-20, Sun = 01-21.
 const WEEK_START = "2024-01-15";
@@ -128,5 +128,41 @@ describe("classifyWeek — frequency goals", () => {
       totalDone: 5,
     });
     expect(r.completionRate).toBe(1);
+  });
+});
+
+describe("classifyHistory — all-time scored vs extra", () => {
+  it("sums scored and off-target extras for a specific-day goal across weeks", () => {
+    // Mon/Wed/Fri goal. Week of Jan 15: Mon + Wed done + Sat (off-target).
+    // Week of Jan 8: Mon done.
+    const r = classifyHistory({
+      goalStartDate: "2024-01-01",
+      targetDays: [1, 3, 5],
+      weeklyTarget: null,
+      doneDates: ["2024-01-08", "2024-01-15", "2024-01-17", "2024-01-20"],
+    });
+    expect(r).toEqual({ scoredDone: 3, extraDone: 1, totalDone: 4 });
+  });
+
+  it("counts frequency over-quota per week, never across weeks", () => {
+    // 2×/week, every day eligible. Week Jan 15: 3 done (1 over quota).
+    // Week Jan 8: 1 done (under quota, no extra).
+    const r = classifyHistory({
+      goalStartDate: "2024-01-01",
+      targetDays: [0, 1, 2, 3, 4, 5, 6],
+      weeklyTarget: 2,
+      doneDates: ["2024-01-08", "2024-01-15", "2024-01-16", "2024-01-17"],
+    });
+    expect(r).toEqual({ scoredDone: 3, extraDone: 1, totalDone: 4 });
+  });
+
+  it("ignores dones before the goal started", () => {
+    const r = classifyHistory({
+      goalStartDate: "2024-01-15",
+      targetDays: [0, 1, 2, 3, 4, 5, 6],
+      weeklyTarget: null,
+      doneDates: ["2024-01-10", "2024-01-15"],
+    });
+    expect(r).toEqual({ scoredDone: 1, extraDone: 0, totalDone: 1 });
   });
 });

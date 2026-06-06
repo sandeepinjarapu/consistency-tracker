@@ -23,6 +23,10 @@ export type GoalWeekStats = {
   done: number;
   skipped: number;
   missed: number;
+  // Off-target done check-ins this week — evidence of showing up, never scored.
+  // Excluded from completion; used only to widen the "you showed up N times"
+  // narrative count.
+  extraDone: number;
   completion: number; // done / targetCount, 0..1 (0 if no targets this week)
   // A count goal's *first* week, when the goal was created after that week's
   // Monday: it never had a full week to hit its quota, so it's grace — excluded
@@ -39,6 +43,7 @@ export type WeekStats = {
   done: number;
   skipped: number;
   missed: number;
+  extraDone: number; // off-target dones across goals — evidence, never scored
   skipReasons: Record<string, number>;
   notes: Array<{ date: string; goalName: string; note: string }>;
   perGoal: GoalWeekStats[];
@@ -106,6 +111,7 @@ export function computeWeekStats({
     let done = 0;
     let skipped = 0;
     let missed = 0;
+    let extraDone = 0;
     let targetCount = 0;
     const skipReasons: Record<string, number> = {};
     const notes: Array<{ date: string; note: string }> = [];
@@ -120,6 +126,8 @@ export function computeWeekStats({
         status = "before-goal";
       } else if (!g.target_days.includes(dow)) {
         status = "no-target";
+        // An off-target done is an extra: evidence of showing up, never scored.
+        if (checkInByKey.get(`${g.id}:${cursor}`)?.status === "done") extraDone++;
       } else {
         const ci = checkInByKey.get(`${g.id}:${cursor}`);
         if (ci?.status === "done") {
@@ -168,6 +176,7 @@ export function computeWeekStats({
       done,
       skipped,
       missed,
+      extraDone,
       completion,
       partial: isCount && goalStart > start,
       skipReasons,
@@ -180,12 +189,14 @@ export function computeWeekStats({
   let aggDone = 0;
   let aggSkipped = 0;
   let aggMissed = 0;
+  let aggExtra = 0;
   const aggSkipReasons: Record<string, number> = {};
   const aggNotes: Array<{ date: string; goalName: string; note: string }> = [];
   for (const g of perGoal) {
     aggDone += g.done;
     aggSkipped += g.skipped;
     aggMissed += g.missed;
+    aggExtra += g.extraDone;
     for (const [r, n] of Object.entries(g.skipReasons)) {
       aggSkipReasons[r] = (aggSkipReasons[r] ?? 0) + n;
     }
@@ -199,6 +210,7 @@ export function computeWeekStats({
     done: aggDone,
     skipped: aggSkipped,
     missed: aggMissed,
+    extraDone: aggExtra,
     skipReasons: aggSkipReasons,
     notes: aggNotes,
     perGoal,
@@ -345,17 +357,19 @@ export function buildWeeklyNarrative(
   trend: WeekTrend | null,
   highlights: Highlights
 ): string | null {
-  const total = stats.done + stats.skipped + stats.missed;
+  const total = stats.done + stats.skipped + stats.missed + stats.extraDone;
   if (total === 0) return null;
 
   const sentences: string[] = [];
 
-  // 1. Showing-up clause.
-  if (stats.done === 0) {
+  // 1. Showing-up clause. Counts all check-ins, scored plus extra — an extra is
+  // still showing up, even though it never moves a score.
+  const showedUp = stats.done + stats.extraDone;
+  if (showedUp === 0) {
     sentences.push("A quiet week — no completions logged.");
   } else {
     sentences.push(
-      `You showed up ${stats.done} ${stats.done === 1 ? "time" : "times"} this week.`
+      `You showed up ${showedUp} ${showedUp === 1 ? "time" : "times"} this week.`
     );
   }
 

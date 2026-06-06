@@ -276,6 +276,7 @@ describe("reflectionCompletionRate", () => {
         done: 0,
         skipped: 0,
         missed: 0,
+        extraDone: 0,
         skipReasons: {},
         notes: [],
         perGoal: [],
@@ -380,6 +381,7 @@ describe("compareWeeks", () => {
       done,
       skipped,
       missed,
+      extraDone: 0,
       skipReasons: {},
       notes: [],
       perGoal: [
@@ -390,6 +392,7 @@ describe("compareWeeks", () => {
           done,
           skipped,
           missed,
+          extraDone: 0,
           completion: targetCount > 0 ? done / targetCount : 0,
           skipReasons: {},
           notes: [],
@@ -502,6 +505,7 @@ describe("buildHighlights", () => {
       skipped: Object.values(skipReasons).reduce((s, n) => s + n, 0),
       missed: target - done - Object.values(skipReasons).reduce((s, n) => s + n, 0),
       targetCount: target,
+      extraDone: 0,
       completion: target > 0 ? done / target : 0,
       skipReasons,
       notes: [],
@@ -513,6 +517,7 @@ describe("buildHighlights", () => {
       done: perGoal.reduce((s, g) => s + g.done, 0),
       skipped: 0,
       missed: 0,
+      extraDone: 0,
       skipReasons: {},
       notes: [],
       perGoal,
@@ -586,7 +591,7 @@ describe("buildHighlights", () => {
 
 describe("buildWeeklyNarrative", () => {
   function ws(done: number, skipped: number, missed: number): WeekStats {
-    return { done, skipped, missed, skipReasons: {}, notes: [], perGoal: [] };
+    return { done, skipped, missed, extraDone: 0, skipReasons: {}, notes: [], perGoal: [] };
   }
   function goalStat(name: string): GoalWeekStats {
     return {
@@ -596,6 +601,7 @@ describe("buildWeeklyNarrative", () => {
       done: 0,
       skipped: 0,
       missed: 0,
+      extraDone: 0,
       completion: 0,
       skipReasons: {},
       notes: [],
@@ -616,6 +622,21 @@ describe("buildWeeklyNarrative", () => {
 
   it("returns null when there's no activity", () => {
     expect(buildWeeklyNarrative(ws(0, 0, 0), null, noHighlights)).toBeNull();
+  });
+
+  it("counts extras toward 'showed up' (evidence, never scored)", () => {
+    const s: WeekStats = {
+      done: 3,
+      skipped: 0,
+      missed: 0,
+      extraDone: 2,
+      skipReasons: {},
+      notes: [],
+      perGoal: [],
+    };
+    expect(buildWeeklyNarrative(s, null, noHighlights)).toBe(
+      "You showed up 5 times this week."
+    );
   });
 
   it("reports the count of completions (pluralized)", () => {

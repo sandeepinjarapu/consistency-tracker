@@ -7,6 +7,7 @@ import { listMyReactions } from "@/lib/actions/reactions";
 import { getPartnerReflections } from "@/lib/actions/reflections";
 import { addDays, todayIn, isoWeekStart, dateInTimezone } from "@/lib/dates";
 import { computeStats, computeWeeklyMet } from "@/lib/stats";
+import { classifyHistory } from "@/lib/extra-check-ins";
 import { buildMonthHistory } from "@/lib/month-history";
 import { notableForWeek } from "@/lib/partner-notable";
 import { targetDaysLabel } from "@/lib/target-days-label";
@@ -214,6 +215,17 @@ export default async function PartnerPage({
               checkIns,
               weeklyTarget: goal.weekly_target,
             });
+            // Evidence counts for the partner line: total check-ins (scored +
+            // extra) with the extras called out, so a partner sees effort beyond
+            // the schedule without it touching the streak.
+            const evidence = classifyHistory({
+              goalStartDate: goalStart,
+              targetDays: goal.target_days,
+              weeklyTarget: goal.weekly_target,
+              doneDates: checkIns
+                .filter((c) => c.status === "done")
+                .map((c) => c.date),
+            });
             const color = goal.category?.color ?? UNCATEGORIZED_COLOR;
             const docUrl = safeExternalUrl(goal.doc_url);
             const cadenceLabel =
@@ -265,7 +277,9 @@ export default async function PartnerPage({
                     {stats.currentStreak > 0
                       ? `${stats.currentStreak} ${stats.streakUnit} streak · `
                       : ""}
-                    {stats.doneCount} {stats.doneCount === 1 ? "check-in" : "check-ins"} logged
+                    {evidence.totalDone}{" "}
+                    {evidence.totalDone === 1 ? "check-in" : "check-ins"} logged
+                    {evidence.extraDone > 0 ? ` · ${evidence.extraDone} extra` : ""}
                   </p>
                 </div>
                 {goal.weekly_target != null ? (

@@ -57,14 +57,20 @@ export function computeWeeklyGoalStats(
     const doneDates = goalCheckIns
       .filter((c) => c.status === "done")
       .map((c) => c.date);
-    const { scoredDone, targetCount } = classifyWeek({
+    const { scoredDone, targetCount, extraDone } = classifyWeek({
       weekStart,
       goalStartDate: goalStart,
       targetDays: g.target_days,
       weeklyTarget: g.weekly_target,
       doneDates,
     });
-    return { name: g.name, done: scoredDone, target: targetCount, skipped };
+    return {
+      name: g.name,
+      done: scoredDone,
+      target: targetCount,
+      skipped,
+      extra: extraDone,
+    };
   });
 }
 
