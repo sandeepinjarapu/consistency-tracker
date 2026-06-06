@@ -256,7 +256,7 @@ function CurrentWeekHero({
       <p className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
         This week · {formatRange(start, end)} · in progress
       </p>
-      <p className="text-2xl font-light tracking-tight leading-snug mb-6 max-w-prose">
+      <p className="text-lg font-light tracking-tight leading-snug mb-6 max-w-prose">
         {narrative ??
           "Log a few check-ins this week, then this becomes your read on what helped and what got in the way."}
       </p>

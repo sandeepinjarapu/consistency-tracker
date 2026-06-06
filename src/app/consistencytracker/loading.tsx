@@ -3,8 +3,7 @@ import Skeleton from "@/components/skeleton";
 // Dashboard (Today) skeleton: greeting, today cards, all-goals list.
 export default function Loading() {
   return (
-    <section className="space-y-12" aria-busy>
-      <span className="sr-only">Loading…</span>
+    <section className="space-y-12" aria-busy aria-label="Loading">
       <div>
         <Skeleton className="h-6 w-44" />
         <Skeleton className="mt-2 h-4 w-64" />

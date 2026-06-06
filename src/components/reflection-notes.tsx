@@ -33,11 +33,9 @@ export default function ReflectionNotes({
           type="button"
           aria-expanded={expanded}
           onClick={() => setExpanded((e) => !e)}
-          className="mt-2 min-h-[44px] flex items-center text-xs text-[color:var(--muted)] hover:text-black"
+          className="mt-1 inline-flex items-center py-1.5 text-xs text-[color:var(--muted)] hover:text-black"
         >
-          {expanded
-            ? "less"
-            : `more (${notes.length - COLLAPSED_COUNT})`}
+          {expanded ? "less" : "more"}
         </button>
       ) : null}
     </div>
