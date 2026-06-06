@@ -47,26 +47,31 @@ wrong.
 1. **Evidence, not grades.** Show the record of showing up. A completion
    percentage only appears where the job is to *score* (Reflections on a
    finished week, the weekly email) — never where the job is to *notice* (the
-   Today loop, the Partner view, the daily heatmap).
+   Today loop, the Partner view, the calendar history).
 2. **Anti-shame by default.** A blank or partial week reads as "still time" or
    "fresh week", not failure. Copy stays encouraging and points at the next
    action.
-3. **Shape follows job.** Each concept gets its own visual language: weekday
-   **chips** = this week's schedule, a segmented **rail** = a weekly quota, the
-   **heatmap** = long-term history, dated **rows** = editable recent days.
-   Never make one shape do three jobs (the heatmap is history, not a control).
+3. **Shape follows job.** Each concept gets its own visual language: the current
+   week is a headline, a progress **ring**, and an editable grid of weekday
+   cells (the **"This week" rows**); past frequency weeks are **quota rows**;
+   the **calendar history** is the long-term record. Never make one shape do
+   another's job (the calendar history is a record, not a control).
 4. **Calm over clever.** Restraint, whitespace, one quiet category accent at a
    time. Monochrome carries the structure; color carries meaning, never
    decoration.
 5. **Partners are the trust boundary.** Sharing is per-goal, partner-only, and
-   reversible. Privacy is the default; nothing is shared until you choose it.
+   reversible. Privacy is the default; nothing is shared until you choose it. A
+   shared goal also exposes its category name and color, so a partner sees how
+   you've grouped it.
 
 ## Accessibility & Inclusion
 
-- **44px minimum touch targets** (iOS HIG / Material) on every interactive
-  control — enforced via a shared sizing convention (`src/lib/ui.ts`).
-- **Color is never the only signal.** State always has a label or text
-  (weekday chips carry `aria-label`s; the heatmap and progress visuals have
-  spoken summaries).
+- **44px minimum touch targets** (iOS HIG / Material) on primary actions and
+  row controls, via the shared `tapTarget` convention (`src/lib/ui.ts`). A few
+  low-risk inline text toggles (e.g. a "more" / "less" link) stay smaller and
+  subordinate by design.
+- **Color is never the only signal.** State always has a label or text (the
+  "This week" cells carry `aria-label`s; the calendar history and progress
+  visuals have spoken summaries).
 - Semantic HTML, native `<details>` for collapsibles, real `<label>`/`htmlFor`
   associations, focus-visible borders. WCAG AA is the intent.

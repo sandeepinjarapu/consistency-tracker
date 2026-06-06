@@ -99,23 +99,23 @@ showing up.
 - Monochrome structure, one category accent at a time.
 - Flat by default; depth only where an element genuinely floats (menus).
 - Generous whitespace, a single centered reading column.
-- Distinct visual languages per concept (chips, rail, heatmap, rows).
+- Distinct visual languages per concept (week rows, progress ring, calendar).
 - Plain, humane, second-person copy.
 
 ## 2. Colors
 
 A two-grey monochrome base with a single per-goal accent and a small set of
-fixed status hues for the heatmap.
+fixed status hues for the calendar history.
 
 ### Primary
 - **Category Accent** (per goal; default green `#22c55e`): the goal's chosen
   category color. The *only* saturated color on most screens. Used for the
-  category dot, the Today card's left rail, a "done" heatmap cell, this week's
-  filled progress (chips / quota rail / weekly strip), and the Catch Up "Log"
-  action. Uncategorized falls back to a quiet dusty rose `#bd8a9c` (its own
-  muted hue, not a category color and distinct from the missed grey, so an
-  uncategorized goal still reads as a live row). Centralized in
-  `src/lib/colors.ts` as `UNCATEGORIZED_COLOR`.
+  category dot, the Today card's left rail, a done day in the calendar history,
+  this week's filled progress (the "This week" rows, progress ring, and the
+  count-goal weekly strip), and a "This week" row's Log action. Uncategorized
+  falls back to a quiet dusty rose `#bd8a9c` (its own muted hue, not a category
+  color and distinct from the missed grey, so an uncategorized goal still reads
+  as a live row). Centralized in `src/lib/colors.ts` as `UNCATEGORIZED_COLOR`.
 
 ### Neutral
 - **Ink** (`#0a0a0a`): all primary text and the primary-button fill.
@@ -124,12 +124,12 @@ fixed status hues for the heatmap.
 - **Border** (`#e5e7eb`): hairline dividers, card and input strokes, section
   separators.
 
-### Tertiary (status hues — heatmap and check-in state only)
+### Tertiary (status hues — calendar history and check-in state only)
 - **Skipped Amber** (`#fde68a`): a skipped day (a deliberate, guilt-free skip),
   paired with a soft amber wash (`bg-amber-50/60`) on the Today card.
 - **Done Green wash** (`bg-green-50/60`): a logged Today card's tint.
 - **Heatmap Empty** (`#f3f4f6`) and **Missed** (`#e5e7eb`): unlogged days. The
-  all-goals summary heatmap uses a GitHub-style green ramp
+  all-goals summary calendar uses a GitHub-style green ramp
   (`#ebedf0 → #9be9a8 → #40c463 → #30a14e → #216e39`) to encode intensity.
 
 ### Named Rules
@@ -161,7 +161,7 @@ face, no pairing — the restraint is deliberate.
   inputs. Prose capped at 65–75ch (`max-w-prose`).
 - **Label** (500, 0.75rem / `text-xs`): field labels, metadata, button text.
 - **Section header** (500, 0.75rem, `uppercase tracking-wider`, muted): the
-  divider label that opens each section ("DETAILS", "CATCH UP", "THIS WEEK").
+  divider label that opens each section ("DETAILS", "THIS WEEK", "RECENT WEEKS").
 - **Fine print** (0.625–0.6875rem / `text-[10px]`/`text-[11px]`): legends,
   counters, timestamps.
 
@@ -179,7 +179,7 @@ that genuinely float above the page.
 ### Shadow Vocabulary
 - **Menu lift** (`box-shadow: shadow-sm` / `shadow-md`): the only shadow in the
   system — dropdowns (the Skip-reason menu, the goal `⋯` overflow menu) and the
-  near-instant heatmap tooltip (a near-opaque ink chip).
+  near-instant history-cell tooltip (a near-opaque ink chip).
 
 ### Named Rules
 **The Flat-By-Default Rule.** Surfaces are flat at rest. If something has a
@@ -200,17 +200,21 @@ border, full stop.
 - **Hover / Focus:** quiet — border or background shifts toward ink; no lift,
   no glow. Transitions are short (`transition`, ~150ms).
 
-### Chips (this week's schedule, specific-day goals)
-- **Style:** small `rounded-md` weekday markers ("Mon", "Tue") whose own fill
-  encodes state — **done** fills with the category accent (white text),
-  **today** is a category-color ring, **missed** is a quiet grey fill,
-  **upcoming** is a faint outline.
-- Each chip carries an `aria-label` ("Monday: done"). No separate status dot.
+### Weekday cells (the "This week" rows, `WeekRows`)
+- **Style:** small weekday markers ("Mon", "Tue"), Monday on the left, whose
+  own fill encodes state — **done** fills with the category accent, **today**
+  is a category-color ring, **missed** is a quiet grey fill, an **open** day is
+  a faint outline (count goals show non-target days as a neutral "rest" cell).
+- The current week's cells are tap-to-log controls; past weeks are flat
+  history. Each cell shows a date + status tooltip. Logging is one tap;
+  removing a logged day asks first via an inline confirm.
 
-### Quota Rail (this week's progress, frequency goals)
-- A thin segmented horizontal bar of N segments (the weekly target); filled
-  segments use the category accent, the rest are `#e5e7eb`. Reads as "2 of 5",
-  not a calendar.
+### Progress ring (this week's progress, `ProgressRing`)
+- A calm ring that fills `done / total` in the category accent on a near-
+  invisible track — no percent, nothing in the center. At completion it closes
+  with a quiet check. It shows what you did, never a deficit. Frequency goals
+  pair it with count-aware "This week" rows; past frequency weeks use **quota
+  rows** (`WeekQuotaRows`).
 
 ### Cards / Containers
 - **Corner Style:** `rounded-lg` (8px).
@@ -236,13 +240,29 @@ border, full stop.
 - A surface is divided into sections by a hairline (`pt-6 border-t
   border-[#e5e7eb]`) plus an uppercase-muted header. The goal form
   (Details / How often / Reminder) and the goal-detail page (This week /
-  Catch up / Recent activity) both use this single rhythm, so a page reads as
+  Recent weeks / history) both use this single rhythm, so a page reads as
   one coherent set of sections.
 
-### Heatmap (signature component)
-- A GitHub-style 7×N SVG grid, Monday-on-top, small rounded cells. **Read-only
-  everywhere** — it is the record of showing up, not an editor. Editing recent
-  days lives in the separate "Catch up" list of 44px dated rows.
+### Calendar history (signature component)
+- Recent months render as 7-column Mon–Sun **calendar grids** (`MonthCalGrid`);
+  older months collapse into a compact **year strip** of intensity-tinted
+  blocks (`YearStrip`), composed by `GoalHistoryView` / `FullHistory`. A done
+  day carries the category accent; aggregate cells use a GitHub-style green
+  intensity ramp. **Read-only everywhere** — it is the record of showing up,
+  not an editor. Editing recent days lives in the "This week" rows
+  (`WeekRows`).
+
+### Truncated lists (`ReflectionNotes`)
+- A long list collapses to the first few items with a quiet **more** / **less**
+  text toggle (used by the "In your own words" notes on Reflections). The
+  toggle is plain text, not a button-chip, so it stays subordinate to the
+  content it reveals.
+
+### Layout stability
+- `html { scrollbar-gutter: stable; }` reserves the scrollbar gutter on every
+  page, so the centered `max-w-* mx-auto` column doesn't shift horizontally
+  between a tall page (scrollbar present) and a short one (no scrollbar) when
+  switching tabs.
 
 ## 6. Do's and Don'ts
 
@@ -268,8 +288,9 @@ border, full stop.
 - **Don't** add a decorative `border-left` stripe to callouts or list items.
   (The Today card's left rail is the one sanctioned use — a functional category
   marker, not decoration.)
-- **Don't** reuse the heatmap's square grid for current-week progress — chips
-  are the schedule, the rail is the quota, the heatmap is history. One shape per
-  job.
-- **Don't** make the heatmap clickable; editing is the Catch up list.
+- **Don't** reuse the history calendar for current-week progress — the "This
+  week" rows and progress ring are this week, the calendar is long-term
+  history. One shape per job.
+- **Don't** make the history calendar clickable; editing is the "This week"
+  rows.
 - **Don't** use em dashes in copy; use periods, colons, or parentheses.
