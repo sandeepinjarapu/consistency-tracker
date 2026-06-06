@@ -26,7 +26,9 @@ describe("computeWeeklyGoalStats", () => {
       WEEK_START,
       WEEK_END
     );
-    expect(stats).toEqual([{ name: "Goal", done: 2, target: 5, skipped: 1 }]);
+    expect(stats).toEqual([
+      { name: "Goal", done: 2, target: 5, skipped: 1, extra: 0 },
+    ]);
   });
 
   it("only counts target days on/after the goal's start", () => {
@@ -50,7 +52,9 @@ describe("computeWeeklyGoalStats", () => {
       WEEK_START,
       WEEK_END
     );
-    expect(stats).toEqual([{ name: "Goal", done: 2, target: 3, skipped: 0 }]);
+    expect(stats).toEqual([
+      { name: "Goal", done: 2, target: 3, skipped: 0, extra: 0 },
+    ]);
   });
 
   it("caps an over-quota count goal at target (3/3, never 4/3)", () => {
@@ -65,7 +69,9 @@ describe("computeWeeklyGoalStats", () => {
       WEEK_START,
       WEEK_END
     );
-    expect(stats).toEqual([{ name: "Goal", done: 3, target: 3, skipped: 0 }]);
+    expect(stats).toEqual([
+      { name: "Goal", done: 3, target: 3, skipped: 0, extra: 1 },
+    ]);
   });
 
   it("excludes an off-target day from a specific-day goal's scored count", () => {
@@ -80,7 +86,9 @@ describe("computeWeeklyGoalStats", () => {
       WEEK_START,
       WEEK_END
     );
-    expect(stats).toEqual([{ name: "Goal", done: 2, target: 5, skipped: 0 }]);
+    expect(stats).toEqual([
+      { name: "Goal", done: 2, target: 5, skipped: 0, extra: 1 },
+    ]);
   });
 
   it("does not count an off-target skip left by a cadence edit", () => {
@@ -95,7 +103,9 @@ describe("computeWeeklyGoalStats", () => {
       WEEK_START,
       WEEK_END
     );
-    expect(stats).toEqual([{ name: "Goal", done: 1, target: 5, skipped: 0 }]);
+    expect(stats).toEqual([
+      { name: "Goal", done: 1, target: 5, skipped: 0, extra: 0 },
+    ]);
   });
 
   it("skips a count goal created after the week started", () => {
@@ -106,6 +116,23 @@ describe("computeWeeklyGoalStats", () => {
       WEEK_END
     );
     expect(stats).toEqual([]);
+  });
+
+  it("omits an evidence-only goal (no scheduled days that week) from the email", () => {
+    // g2 was created Saturday, so it has no scheduled weekday this week — only
+    // an off-target extra. It must not produce a "0 / 0 · +1 extra" email row.
+    const stats = computeWeeklyGoalStats(
+      [goal({ id: "g1" }), goal({ id: "g2", created_at: "2024-01-20T00:00:00Z" })],
+      [
+        { goal_id: "g1", date: "2024-01-15", status: "done" },
+        { goal_id: "g2", date: "2024-01-20", status: "done" }, // Sat, off-target
+      ],
+      WEEK_START,
+      WEEK_END
+    );
+    expect(stats).toEqual([
+      { name: "Goal", done: 1, target: 5, skipped: 0, extra: 0 },
+    ]);
   });
 
   it("totalTarget sums targets", () => {

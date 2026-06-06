@@ -120,23 +120,27 @@ export default function MonthCalGrid({
             const isPreStart = trimBefore != null && dateStr < trimBefore;
             const isNA = isFuture || isPreStart;
 
-            // color override (aggregate cells) → status color → empty/NA
+            // color override (aggregate cells) → status color → empty/NA.
+            // "extra" (off-target done) is a light tint of the accent: clearly
+            // evidence, visibly lighter than a solid scored "done".
             const bg = isNA
               ? "transparent"
               : hc?.color ??
                 (status === "done"
                   ? doneColor
-                  : status === "skipped"
-                    ? "#fde68a"
-                    : status === "missed"
-                      ? "#e5e7eb"
-                      : "#f3f4f6");
+                  : status === "extra"
+                    ? `color-mix(in srgb, ${doneColor} 30%, white)`
+                    : status === "skipped"
+                      ? "#fde68a"
+                      : status === "missed"
+                        ? "#e5e7eb"
+                        : "#f3f4f6");
 
             const textColor = isNA
               ? "#d1d5db"
               : status === "done" && !hc?.color
                 ? "rgba(255,255,255,0.85)"
-                : status === "skipped"
+                : status === "skipped" || status === "extra"
                   ? "#78716c"
                   : "#bbb";
 
@@ -151,8 +155,12 @@ export default function MonthCalGrid({
                   color: textColor,
                   fontVariantNumeric: "tabular-nums",
                 }}
-                title={hc?.tooltip ?? dateStr}
-                aria-label={`${dateStr}: ${isFuture ? "future" : isPreStart ? "not-started" : status}`}
+                title={isNA ? dateStr : (hc?.tooltip ?? dateStr)}
+                aria-label={
+                  isNA
+                    ? `${dateStr}: ${isFuture ? "future" : "not-started"}`
+                    : (hc?.tooltip ?? `${dateStr}: ${status}`)
+                }
               >
                 {day}
               </div>

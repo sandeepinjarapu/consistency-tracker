@@ -389,6 +389,24 @@ describe("buildHeatmapCells", () => {
     expect(cells[1].status).toBe("skipped");
     expect(cells[2].status).toBe("empty"); // today pending
   });
+
+  it("marks an off-target done as an extra; an off-target skip stays empty", () => {
+    // Target Mon only. Jan 13 = Sat, Jan 14 = Sun, Jan 15 = Mon.
+    const cells = buildHeatmapCells({
+      startDate: "2024-01-13",
+      endDate: "2024-01-15",
+      targetDays: [1],
+      checkIns: [
+        { date: "2024-01-13", status: "done" }, // Sat, off-target → extra
+        { date: "2024-01-14", status: "skipped" }, // Sun, off-target → hidden
+      ],
+      goalStartDate: "2024-01-01",
+      todayStr: "2024-01-16",
+    });
+    expect(cells[0].status).toBe("extra");
+    expect(cells[1].status).toBe("empty");
+    expect(cells[2].status).toBe("missed"); // Mon, scheduled, unlogged, past
+  });
 });
 
 describe("buildAggregateCells", () => {
@@ -480,6 +498,58 @@ describe("buildAggregateCells", () => {
       checkIns: [{ goal_id: "g1", date: "2024-01-16", status: "done" }],
     });
     expect(cells[0].color).toBe("#216e39"); // 1 of 1 effective → full intensity
+  });
+
+  it("shows a day with only extras at the lowest non-zero level", () => {
+    // Goal targets Mon only; Jan 16 = Tue (off-target) but done → extra-only day.
+    const cells = buildAggregateCells({
+      startDate: "2024-01-16",
+      endDate: "2024-01-16",
+      todayStr: "2024-01-16",
+      goals: [
+        { id: "g1", target_days: [1], created_at: "2024-01-01T00:00:00Z" },
+      ],
+      checkIns: [{ goal_id: "g1", date: "2024-01-16", status: "done" }],
+    });
+    expect(cells[0].color).toBe("#9be9a8"); // LEVEL_COLORS[1]
+    expect(cells[0].tooltip).toContain("1 extra check-in");
+  });
+
+  it("keeps scheduled intensity and appends extras when both occur", () => {
+    // Jan 15 = Mon. g1 daily done (scored). g2 targets Wed only, done Mon (extra).
+    const cells = buildAggregateCells({
+      startDate: "2024-01-15",
+      endDate: "2024-01-15",
+      todayStr: "2024-01-15",
+      goals: [
+        { id: "g1", target_days: ALL_DAYS, created_at: "2024-01-01T00:00:00Z" },
+        { id: "g2", target_days: [3], created_at: "2024-01-01T00:00:00Z" },
+      ],
+      checkIns: [
+        { goal_id: "g1", date: "2024-01-15", status: "done" },
+        { goal_id: "g2", date: "2024-01-15", status: "done" }, // off-target extra
+      ],
+    });
+    expect(cells[0].color).toBe("#216e39"); // 1 of 1 scored → full
+    expect(cells[0].tooltip).toContain("1 of 1 done");
+    expect(cells[0].tooltip).toContain("1 extra");
+  });
+
+  it("never lets extras raise the scored ratio", () => {
+    // g1 scheduled but NOT done; g2 off-target done. Ratio stays 0 of 1.
+    const cells = buildAggregateCells({
+      startDate: "2024-01-15",
+      endDate: "2024-01-15",
+      todayStr: "2024-01-16", // Jan 15 is past, so no "keep going" copy
+      goals: [
+        { id: "g1", target_days: ALL_DAYS, created_at: "2024-01-01T00:00:00Z" },
+        { id: "g2", target_days: [3], created_at: "2024-01-01T00:00:00Z" },
+      ],
+      checkIns: [{ goal_id: "g2", date: "2024-01-15", status: "done" }],
+    });
+    expect(cells[0].color).toBe("#ebedf0"); // LEVEL_COLORS[0]: 0 of 1
+    expect(cells[0].tooltip).toContain("0 of 1 done");
+    expect(cells[0].tooltip).toContain("1 extra");
   });
 });
 

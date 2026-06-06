@@ -66,6 +66,8 @@ function statusColor(s: GoalDayStatus): string {
   switch (s) {
     case "done":
       return "#22c55e"; // green-500
+    case "extra":
+      return "#bbf7d0"; // light green — evidence, lighter than a scored done
     case "skipped":
       return "#f59e0b"; // amber-500
     case "missed":
@@ -82,6 +84,8 @@ function statusLabel(s: GoalDayStatus): string {
   switch (s) {
     case "done":
       return "Done";
+    case "extra":
+      return "Extra";
     case "skipped":
       return "Skipped";
     case "missed":

@@ -35,7 +35,8 @@ export function computeWeeklyGoalStats(
       !(g.weekly_target != null && g.created_at.slice(0, 10) > weekStart)
   );
 
-  return eligible.map((g) => {
+  return eligible
+    .map((g) => {
     const goalStart = g.created_at.slice(0, 10);
     const goalCheckIns = checkIns.filter(
       (c) => c.goal_id === g.id && c.date >= weekStart && c.date <= weekEnd
@@ -57,15 +58,24 @@ export function computeWeeklyGoalStats(
     const doneDates = goalCheckIns
       .filter((c) => c.status === "done")
       .map((c) => c.date);
-    const { scoredDone, targetCount } = classifyWeek({
+    const { scoredDone, targetCount, extraDone } = classifyWeek({
       weekStart,
       goalStartDate: goalStart,
       targetDays: g.target_days,
       weeklyTarget: g.weekly_target,
       doneDates,
     });
-    return { name: g.name, done: scoredDone, target: targetCount, skipped };
-  });
+    return {
+      name: g.name,
+      done: scoredDone,
+      target: targetCount,
+      skipped,
+      extra: extraDone,
+    };
+    })
+    // Drop evidence-only rows (a goal with no scheduled days that week): the
+    // email is a scoring surface, so a "0 / 0 · +N extra" line would be noise.
+    .filter((s) => s.target > 0);
 }
 
 /** Total target across stats — used to decide if a summary is worth sending. */
