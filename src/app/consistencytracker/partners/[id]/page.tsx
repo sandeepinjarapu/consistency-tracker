@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { isPartner } from "@/lib/actions/partners";
 import { listMyReactions } from "@/lib/actions/reactions";
-import { getPartnerReflections, type Reflection } from "@/lib/actions/reflections";
+import { getPartnerReflections } from "@/lib/actions/reflections";
 import { addDays, todayIn, isoWeekStart, dateInTimezone } from "@/lib/dates";
 import { computeStats, computeWeeklyMet } from "@/lib/stats";
 import { buildMonthHistory } from "@/lib/month-history";
@@ -13,6 +13,7 @@ import { targetDaysLabel } from "@/lib/target-days-label";
 import { safeExternalUrl } from "@/lib/url";
 import { UNCATEGORIZED_COLOR } from "@/lib/colors";
 import GoalHistoryView from "@/components/goal-history-view";
+import PartnerReflection from "@/components/partner-reflection";
 import WeeklyStrip from "@/components/weekly-strip";
 import MarkSharesSeen from "@/components/mark-shares-seen";
 import ReactionButtons from "@/components/reaction-buttons";
@@ -182,6 +183,7 @@ export default async function PartnerPage({
                 }
               />
             ))}
+
           </div>
         </div>
       ) : null}
@@ -324,6 +326,7 @@ export default async function PartnerPage({
                     doneColor={color}
                     isCount={goal.weekly_target != null}
                     today={today}
+                    goalStartDate={goalStart}
                   />
                 </div>
               </div>
@@ -332,45 +335,6 @@ export default async function PartnerPage({
         </div>
       )}
     </section>
-  );
-}
-
-// A partner-visible reflection, shown as their words for the week. Only the
-// fields they actually filled in appear, each with the same quiet label as the
-// reflection editor so the framing carries over.
-function PartnerReflection({
-  reflection,
-  weekLabel,
-}: {
-  reflection: Reflection;
-  weekLabel: string;
-}) {
-  const lines: Array<{ label: string | null; text: string }> = [];
-  if (reflection.continue_text)
-    lines.push({ label: "Continuing", text: reflection.continue_text });
-  if (reflection.stop_text)
-    lines.push({ label: "Stopping", text: reflection.stop_text });
-  if (reflection.improve_text)
-    lines.push({ label: "Improving", text: reflection.improve_text });
-  if (reflection.notes) lines.push({ label: null, text: reflection.notes });
-  if (lines.length === 0) return null;
-
-  return (
-    <div className="border-l-2 border-[color:var(--border)] pl-4">
-      <p className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
-        {weekLabel}
-      </p>
-      <div className="space-y-2">
-        {lines.map((l, i) => (
-          <p key={i} className="text-sm leading-relaxed">
-            {l.label ? (
-              <span className="text-[color:var(--muted)]">{l.label}: </span>
-            ) : null}
-            {l.text}
-          </p>
-        ))}
-      </div>
-    </div>
   );
 }
 

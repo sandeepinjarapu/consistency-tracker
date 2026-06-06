@@ -33,14 +33,18 @@ export default function MonthCalGrid({
   cells,
   doneColor,
   today,
+  trimBefore,
 }: {
   year: number;
   month: number;
   cells: HeatmapCell[];
   doneColor: string;
   /** YYYY-MM-DD today string. When provided, future days render as near-invisible
-   *  so they're clearly distinct from past empty/non-scheduled cells. */
+   *  and trailing all-future rows are trimmed from the grid. */
   today?: string;
+  /** YYYY-MM-DD. Rows where every day falls before this date are omitted.
+   *  Use to strip leading weeks before a goal started. */
+  trimBefore?: string;
 }) {
   const cellMap = new Map(cells.map((c) => [c.date, c]));
   const totalDays = daysInMonth(year, month);
@@ -57,6 +61,31 @@ export default function MonthCalGrid({
 
   const rows: Array<Array<number | null>> = [];
   for (let i = 0; i < slots.length; i += 7) rows.push(slots.slice(i, i + 7));
+
+  // Trim trailing rows that are entirely in the future (all days > today).
+  if (today) {
+    while (rows.length > 0) {
+      const last = rows[rows.length - 1];
+      const days = last.filter((d) => d !== null) as number[];
+      if (days.length > 0 && `${year}-${pad(month)}-${pad(days[0])}` > today) {
+        rows.pop();
+      } else break;
+    }
+  }
+
+  // Trim leading rows that are entirely before the goal start date.
+  if (trimBefore) {
+    while (rows.length > 0) {
+      const first = rows[0];
+      const days = first.filter((d) => d !== null) as number[];
+      if (
+        days.length > 0 &&
+        `${year}-${pad(month)}-${pad(days[days.length - 1])}` < trimBefore
+      ) {
+        rows.shift();
+      } else break;
+    }
+  }
 
   return (
     <div>
