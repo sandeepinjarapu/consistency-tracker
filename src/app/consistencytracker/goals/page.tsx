@@ -7,8 +7,9 @@ import { listGoalsWithUnseenReactions } from "@/lib/actions/reactions";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { buildAggregateCells } from "@/lib/stats";
 import { buildMonthList } from "@/lib/month-history";
+import { shouldShowAggregateCalendar } from "@/lib/calendar-unlock";
 import { UNCATEGORIZED_COLOR } from "@/lib/colors";
-import { todayIn, addDays, dateInTimezone, isoWeekStart } from "@/lib/dates";
+import { todayIn, addDays, dateInTimezone } from "@/lib/dates";
 import GoalRowMenu from "@/components/goal-row-menu";
 import MonthCalGrid from "@/components/month-cal-grid";
 
@@ -98,24 +99,17 @@ export default async function GoalsPage({
       status: "done" | "skipped";
     }>;
 
-    // Unlock condition: 3+ active goals OR any goal with 8+ done check-ins
-    // spanning 3+ distinct ISO weeks (computed from the already-fetched window).
+    // Unlock condition: 3+ active goals. Once met the flag is written to the DB
+    // so the section persists even if goals drop below the threshold later.
     const alreadyUnlocked = profileFlags?.calendar_unlocked ?? false;
-    const freshUnlock = activeGoals.length >= 3 || activeGoals.some((g) => {
-      const done = checkIns.filter(
-        (ci) => ci.goal_id === g.id && ci.status === "done"
-      );
-      if (done.length < 8) return false;
-      const weeks = new Set(done.map((ci) => isoWeekStart(ci.date)));
-      return weeks.size >= 3;
-    });
+    const freshUnlock = activeGoals.length >= 3;
 
-    // Persist the unlock flag if newly earned (fire-and-forget; doesn't block render)
+    // Await the write so the flag is reliably set before the next page load.
     if (freshUnlock && !alreadyUnlocked) {
-      void supabase.from("profiles").update({ calendar_unlocked: true }).eq("id", user.id);
+      await supabase.from("profiles").update({ calendar_unlocked: true }).eq("id", user.id);
     }
 
-    if ((alreadyUnlocked || freshUnlock) && checkIns.length > 0) {
+    if (shouldShowAggregateCalendar(alreadyUnlocked, activeGoals.length, checkIns.length > 0)) {
       const earliest = goalsForAggregate.reduce(
         (min, g) => (g.created_at < min ? g.created_at : min),
         today
