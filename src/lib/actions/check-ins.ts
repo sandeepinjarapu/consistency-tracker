@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { todayIn, dateInTimezone } from "@/lib/dates";
-import { isBackfillable } from "@/lib/heatmap-backfill";
+import { isBackfillable, isExtraLoggable } from "@/lib/heatmap-backfill";
 
 export type SkipReason = "travel" | "illness" | "mood" | "other";
 
@@ -193,6 +193,96 @@ export async function clearBackfillCheckIn(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
   await assertBackfillable(supabase, user.id, goalId, date);
+
+  const { error } = await supabase
+    .from("check_ins")
+    .delete()
+    .eq("goal_id", goalId)
+    .eq("date", date);
+  if (error) throw error;
+  revalidatePath("/consistencytracker", "layout");
+}
+
+/**
+ * Server-side guard for *extra* (off-target) edits: confirms ownership, that
+ * the goal is still active, AND that `date` is off-target but within the
+ * editable time window (mirrors `isExtraLoggable`). Separate from
+ * `assertBackfillable` so the scheduled path is untouched and a skip can never
+ * land on a non-target day.
+ */
+async function assertExtraLoggable(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  goalId: string,
+  date: string
+): Promise<void> {
+  const [{ data: goal, error: goalErr }, { data: profile }] = await Promise.all([
+    supabase
+      .from("goals")
+      .select("user_id, target_days, created_at, active")
+      .eq("id", goalId)
+      .single(),
+    supabase.from("profiles").select("timezone").eq("id", userId).single(),
+  ]);
+  if (goalErr || !goal) throw new Error("Goal not found");
+  if (goal.user_id !== userId) {
+    throw new Error("You can only check in on your own goals");
+  }
+  if (!goal.active) {
+    throw new Error("Can't log an extra on an archived goal");
+  }
+  const timezone = profile?.timezone ?? "UTC";
+  const eligible = isExtraLoggable(date, {
+    goalStartDate: dateInTimezone(goal.created_at as string, timezone),
+    today: todayIn(timezone),
+    targetDays: goal.target_days as number[],
+  });
+  if (!eligible) {
+    throw new Error("That day can't take an extra check-in");
+  }
+}
+
+/**
+ * Log an *extra* "done" on an unscheduled day (a weekday outside the goal's
+ * target_days), inside the editable window. Done-only by design: there is no
+ * extra-skip, so no "skipped extra" can exist. Over-quota frequency extras
+ * (eligible weekday, beyond the count) use the normal `markDone` path instead.
+ */
+export async function markExtraDone(
+  goalId: string,
+  date: string
+): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+  await assertExtraLoggable(supabase, user.id, goalId, date);
+
+  const { error } = await supabase
+    .from("check_ins")
+    .upsert(
+      { goal_id: goalId, user_id: user.id, date, status: "done", skip_reason: null },
+      { onConflict: "goal_id,date" }
+    );
+  if (error) throw error;
+  revalidatePath("/consistencytracker", "layout");
+}
+
+/**
+ * Remove an off-target check-in (done or skipped) inside the editable window.
+ * The `assertExtraLoggable` guard restricts this to off-target days, so it can
+ * never delete a scheduled check-in (those use `unmark`). Supporting skip
+ * removal lets an out-of-cadence skip — only ever created by later narrowing a
+ * goal's cadence — be cleaned up.
+ */
+export async function removeExtra(goalId: string, date: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+  await assertExtraLoggable(supabase, user.id, goalId, date);
 
   const { error } = await supabase
     .from("check_ins")

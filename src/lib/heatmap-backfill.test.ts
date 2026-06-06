@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   backfillAction,
   isBackfillable,
+  isExtraLoggable,
   recentEditableDays,
 } from "./heatmap-backfill";
 
@@ -123,6 +124,41 @@ describe("isBackfillable (shared client/server predicate)", () => {
   it("honors the 2-day grace into the previous week", () => {
     expect(isBackfillable("2024-01-20", { ...base, today: "2024-01-22" })).toBe(true); // prior Sat on Mon
     expect(isBackfillable("2024-01-20", { ...base, today: "2024-01-23" })).toBe(false); // prior Sat not on Tue
+  });
+});
+
+describe("isExtraLoggable (off-target half of the gate)", () => {
+  // Weekday goal; Sat 01-20 and Sun 01-21 are off-target.
+  const base = { goalStartDate: "2024-01-01", targetDays: WEEKDAYS };
+
+  it("is true for an off-target weekday inside the window", () => {
+    // Saturday, today = Saturday.
+    expect(isExtraLoggable("2024-01-20", { ...base, today: "2024-01-20" })).toBe(true);
+  });
+
+  it("is false on a scheduled (target) day — that's the backfill path", () => {
+    expect(isExtraLoggable("2024-01-17", { ...base, today: "2024-01-19" })).toBe(false);
+  });
+
+  it("is false for future, pre-goal, and out-of-window off-target days", () => {
+    expect(isExtraLoggable("2024-01-21", { ...base, today: "2024-01-20" })).toBe(false); // future Sunday
+    expect(
+      isExtraLoggable("2024-01-20", { goalStartDate: "2024-01-22", targetDays: WEEKDAYS, today: "2024-01-20" })
+    ).toBe(false); // before goal start
+    expect(isExtraLoggable("2024-01-13", { ...base, today: "2024-01-22" })).toBe(false); // prior Sat locked on Mon
+  });
+
+  it("honors the same 2-day grace as backfill", () => {
+    // Prior Sunday 01-21 is off-target; loggable on Tue but not Wed.
+    expect(isExtraLoggable("2024-01-21", { ...base, today: "2024-01-23" })).toBe(true);
+    expect(isExtraLoggable("2024-01-21", { ...base, today: "2024-01-24" })).toBe(false);
+  });
+
+  it("is mutually exclusive with isBackfillable (never both)", () => {
+    const opts = { ...base, today: "2024-01-20" };
+    for (const date of ["2024-01-17", "2024-01-18", "2024-01-19", "2024-01-20"]) {
+      expect(isBackfillable(date, opts) && isExtraLoggable(date, opts)).toBe(false);
+    }
   });
 });
 

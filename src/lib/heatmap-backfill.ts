@@ -9,18 +9,35 @@ export type BackfillWindow = {
 };
 
 /**
- * Whether a given day may be edited (logged or cleared) via backfill.
+ * The editable *time* window, independent of the weekday rule: on or after the
+ * goal's start, on or before today (never future), and inside the current ISO
+ * week (Mon→today) plus a 2-day grace into the previous week, i.e.
+ *   date >= min(isoWeekStart(today), addDays(today, -2)).
+ * So the whole current week stays editable through Sunday, and after the week
+ * rolls over you can still fix the prior Sat on Mon and the prior Sun on Tue,
+ * but the previous week locks from Wednesday.
  *
- * A day is editable only when it is:
- *  - on or after the goal's start, on or before today (never future),
- *  - an eligible weekday for the goal (dow in targetDays — same rule for
- *    specific and count goals; no off-window "bonus" credit), and
- *  - inside the editable time window: the current ISO week (Mon→today) plus
- *    a 2-day grace into the previous week, i.e.
- *      date >= min(isoWeekStart(today), addDays(today, -2)).
- *    So the whole current week stays editable through Sunday, and after the
- *    week rolls over you can still fix the prior Sat on Mon and the prior
- *    Sun on Tue, but the previous week locks from Wednesday.
+ * The single source of the time window, shared by scheduled backfill
+ * (`isBackfillable`) and extra logging (`isExtraLoggable`) so they can never
+ * disagree about how far back an edit reaches.
+ */
+export function inEditableWindow(
+  date: string,
+  { goalStartDate, today }: { goalStartDate: string; today: string }
+): boolean {
+  if (date > today) return false; // future
+  if (date < goalStartDate) return false; // before the goal existed
+  // ISO date strings compare chronologically, so min() is a string min.
+  const weekStart = isoWeekStart(today);
+  const twoDaysAgo = addDays(today, -2);
+  const lowerBound = weekStart < twoDaysAgo ? weekStart : twoDaysAgo;
+  return date >= lowerBound; // inside the editable window
+}
+
+/**
+ * Whether a given day may be edited (logged or cleared) via backfill: inside
+ * the editable time window AND an eligible weekday for the goal (dow in
+ * targetDays — same rule for specific and count goals; no off-window credit).
  *
  * Shared by the heatmap UI (affordance) and the backfill server actions
  * (authoritative enforcement) so the two always agree.
@@ -29,15 +46,31 @@ export function isBackfillable(
   date: string,
   { goalStartDate, today, targetDays }: BackfillWindow
 ): boolean {
-  if (date > today) return false; // future
-  if (date < goalStartDate) return false; // before the goal existed
-  if (!targetDays.includes(dayOfWeekForDateString(date))) return false; // off-window
+  return (
+    inEditableWindow(date, { goalStartDate, today }) &&
+    targetDays.includes(dayOfWeekForDateString(date))
+  );
+}
 
-  // ISO date strings compare chronologically, so min() is a string min.
-  const weekStart = isoWeekStart(today);
-  const twoDaysAgo = addDays(today, -2);
-  const lowerBound = weekStart < twoDaysAgo ? weekStart : twoDaysAgo;
-  return date >= lowerBound; // inside the editable window
+/**
+ * Whether a given day may take an *extra* (off-target) `done`: inside the same
+ * editable time window as `isBackfillable`, but the complementary weekday rule
+ * — the weekday is NOT in targetDays. This is the off-target half of the gate;
+ * over-quota frequency extras fall on eligible weekdays and use the normal
+ * scheduled path instead.
+ *
+ * Used by the `markExtraDone` / `removeExtra` server actions and the off-day
+ * affordances. Deliberately done-only: `markSkipped` never consults this, so no
+ * "skipped extra" can ever be created.
+ */
+export function isExtraLoggable(
+  date: string,
+  { goalStartDate, today, targetDays }: BackfillWindow
+): boolean {
+  return (
+    inEditableWindow(date, { goalStartDate, today }) &&
+    !targetDays.includes(dayOfWeekForDateString(date))
+  );
 }
 
 /**

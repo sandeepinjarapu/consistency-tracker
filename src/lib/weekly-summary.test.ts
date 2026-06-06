@@ -53,6 +53,36 @@ describe("computeWeeklyGoalStats", () => {
     expect(stats).toEqual([{ name: "Goal", done: 2, target: 3, skipped: 0 }]);
   });
 
+  it("caps an over-quota count goal at target (3/3, never 4/3)", () => {
+    const stats = computeWeeklyGoalStats(
+      [goal({ weekly_target: 3, target_days: [0, 1, 2, 3, 4, 5, 6] })],
+      [
+        { goal_id: "g1", date: "2024-01-15", status: "done" },
+        { goal_id: "g1", date: "2024-01-16", status: "done" },
+        { goal_id: "g1", date: "2024-01-17", status: "done" },
+        { goal_id: "g1", date: "2024-01-18", status: "done" },
+      ],
+      WEEK_START,
+      WEEK_END
+    );
+    expect(stats).toEqual([{ name: "Goal", done: 3, target: 3, skipped: 0 }]);
+  });
+
+  it("excludes an off-target day from a specific-day goal's scored count", () => {
+    // Weekday goal; Saturday 01-20 is off-target and must not pad the count.
+    const stats = computeWeeklyGoalStats(
+      [goal({ id: "g1" })],
+      [
+        { goal_id: "g1", date: "2024-01-15", status: "done" },
+        { goal_id: "g1", date: "2024-01-16", status: "done" },
+        { goal_id: "g1", date: "2024-01-20", status: "done" },
+      ],
+      WEEK_START,
+      WEEK_END
+    );
+    expect(stats).toEqual([{ name: "Goal", done: 2, target: 5, skipped: 0 }]);
+  });
+
   it("skips a count goal created after the week started", () => {
     const stats = computeWeeklyGoalStats(
       [goal({ weekly_target: 3, created_at: "2024-01-18T00:00:00Z" })],

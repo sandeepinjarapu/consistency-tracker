@@ -1,4 +1,4 @@
-import { addDays, dayOfWeekForDateString } from "./dates";
+import { classifyWeek } from "./extra-check-ins";
 import type { WeeklyGoalStat } from "./email";
 
 export type SummaryGoal = {
@@ -42,29 +42,20 @@ export function computeWeeklyGoalStats(
     );
     const skipped = goalCheckIns.filter((c) => c.status === "skipped").length;
 
-    // Count goals: target is the weekly quota, and only done check-ins on
-    // eligible days count toward it.
-    if (g.weekly_target != null) {
-      const done = goalCheckIns.filter(
-        (c) =>
-          c.status === "done" &&
-          g.target_days.includes(dayOfWeekForDateString(c.date))
-      ).length;
-      return { name: g.name, done, target: g.weekly_target, skipped };
-    }
-
-    // Specific-day goals: target is the number of target days in the window
-    // on/after the goal's start.
-    let target = 0;
-    let cursor = weekStart;
-    while (cursor <= weekEnd) {
-      if (cursor >= goalStart && g.target_days.includes(dayOfWeekForDateString(cursor))) {
-        target++;
-      }
-      cursor = addDays(cursor, 1);
-    }
-    const done = goalCheckIns.filter((c) => c.status === "done").length;
-    return { name: g.name, done, target, skipped };
+    // The email is a scoring surface, so `done` is the scored count, capped at
+    // target: a frequency over-quota week reports 3/3, not 4/3, and (once
+    // extras exist) an off-target day never pads a specific-day goal's count.
+    const doneDates = goalCheckIns
+      .filter((c) => c.status === "done")
+      .map((c) => c.date);
+    const { scoredDone, targetCount } = classifyWeek({
+      weekStart,
+      goalStartDate: goalStart,
+      targetDays: g.target_days,
+      weeklyTarget: g.weekly_target,
+      doneDates,
+    });
+    return { name: g.name, done: scoredDone, target: targetCount, skipped };
   });
 }
 

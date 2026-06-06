@@ -18,6 +18,7 @@ import {
   computeWeeklyMet,
 } from "@/lib/stats";
 import { buildWeekRows } from "@/lib/week-rows";
+import { classifyWeek } from "@/lib/extra-check-ins";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
 import { listPartners, listPendingInvites, listSharesForGoal } from "@/lib/actions/partners";
@@ -284,11 +285,20 @@ async function RecordSection({
   const statusByDate: Record<string, "done" | "skipped"> = {};
   for (const c of checkIns) statusByDate[c.date] = c.status;
 
-  // "Where am I this week?"
+  // "Where am I this week?" — the headline reflects scored progress only, so an
+  // over-quota frequency week reads "3 of 3", never "4 of 3", and (once extras
+  // can be logged) an off-target day never inflates a specific-day headline.
   const weekStart = isoWeekStart(today);
-  const doneThisWeek = checkIns.filter(
-    (c) => c.status === "done" && c.date >= weekStart && c.date <= today
-  ).length;
+  const weekDoneDates = checkIns
+    .filter((c) => c.status === "done" && c.date >= weekStart && c.date <= today)
+    .map((c) => c.date);
+  const doneThisWeek = classifyWeek({
+    weekStart,
+    goalStartDate,
+    targetDays,
+    weeklyTarget,
+    doneDates: weekDoneDates,
+  }).scoredDone;
   let total = weeklyTarget ?? 0;
   let missedSoFar = 0;
   if (weeklyTarget == null) {
