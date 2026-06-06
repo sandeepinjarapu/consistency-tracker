@@ -193,7 +193,8 @@ describe("computeWeekStats", () => {
     expect(g1.dailyStatus.includes("missed")).toBe(false);
   });
 
-  it("count goals: completion caps at 1 when the quota is exceeded", () => {
+  it("count goals: over-quota dones are moved to extraDone; scored done caps at target", () => {
+    // weekly_target: 2, 3 eligible dones → scored 2, extra 1, completion 1
     const r = computeWeekStats({
       ...WEEK,
       today: TODAY_AFTER_WEEK,
@@ -212,8 +213,39 @@ describe("computeWeekStats", () => {
         { goal_id: "g1", date: "2024-01-17", status: "done", skip_reason: null, note: null },
       ],
     });
-    expect(r.perGoal[0].done).toBe(3);
-    expect(r.perGoal[0].completion).toBe(1); // capped
+    expect(r.perGoal[0].done).toBe(2); // capped at weekly_target
+    expect(r.perGoal[0].extraDone).toBe(1); // one over-quota check-in
+    expect(r.perGoal[0].completion).toBe(1); // 2/2
+    expect(r.extraDone).toBe(1);
+  });
+
+  it("count goals: regression — 3×/week goal with 4 eligible dones shows 3 scored · +1 extra", () => {
+    // This was the P1 bug: Reflections showed "4 done · 100%" while everywhere
+    // else the contract says "3 scored · +1 extra". Now done is capped at target.
+    const r = computeWeekStats({
+      ...WEEK,
+      today: TODAY_AFTER_WEEK,
+      goals: [
+        {
+          id: "g1",
+          name: "Workouts",
+          target_days: ALL_DAYS,
+          created_at: "2024-01-01T00:00:00Z",
+          weekly_target: 3,
+        },
+      ],
+      checkIns: [
+        { goal_id: "g1", date: "2024-01-15", status: "done", skip_reason: null, note: null },
+        { goal_id: "g1", date: "2024-01-16", status: "done", skip_reason: null, note: null },
+        { goal_id: "g1", date: "2024-01-17", status: "done", skip_reason: null, note: null },
+        { goal_id: "g1", date: "2024-01-18", status: "done", skip_reason: null, note: null },
+      ],
+    });
+    const g1 = r.perGoal[0];
+    expect(g1.done).toBe(3); // scored, capped at weekly_target
+    expect(g1.extraDone).toBe(1); // over-quota
+    expect(g1.completion).toBe(1); // 3/3
+    expect(r.extraDone).toBe(1);
   });
 });
 

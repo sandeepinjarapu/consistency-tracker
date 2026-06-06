@@ -322,9 +322,9 @@ function PastWeek({
         <span className="flex items-center gap-2 text-xs text-[color:var(--muted)] tabular-nums">
           <span>
             {scoreable
-              ? `${stats.done} done · ${completion}%`
+              ? `${stats.done} done · ${completion}%${stats.extraDone > 0 ? ` · ${stats.extraDone} extra` : ""}`
               : total > 0
-                ? `${stats.done} done`
+                ? `${stats.done} done${stats.extraDone > 0 ? ` · ${stats.extraDone} extra` : ""}`
                 : "no activity"}
           </span>
           <span aria-hidden className="transition-transform group-open:rotate-180">

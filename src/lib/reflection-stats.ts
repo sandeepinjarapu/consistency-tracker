@@ -166,6 +166,14 @@ export function computeWeekStats({
       cursor = addDays(cursor, 1);
     }
 
+    // For count goals, cap scored done at weeklyTarget and move over-quota
+    // into extraDone. Over-quota is a week-level concept — daily cell states
+    // stay as "done" because the order of check-ins is ambiguous under undo.
+    if (isCount && weeklyTarget !== null && done > weeklyTarget) {
+      extraDone += done - weeklyTarget;
+      done = weeklyTarget;
+    }
+
     const effectiveTargetCount =
       weeklyTarget !== null ? weeklyTarget : targetCount;
     const completion =

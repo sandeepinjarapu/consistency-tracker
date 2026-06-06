@@ -155,10 +155,11 @@ export default function MonthCalGrid({
                   color: textColor,
                   fontVariantNumeric: "tabular-nums",
                 }}
-                title={hc?.tooltip ?? dateStr}
+                title={isNA ? dateStr : (hc?.tooltip ?? dateStr)}
                 aria-label={
-                  hc?.tooltip ??
-                  `${dateStr}: ${isFuture ? "future" : isPreStart ? "not-started" : status}`
+                  isNA
+                    ? `${dateStr}: ${isFuture ? "future" : "not-started"}`
+                    : (hc?.tooltip ?? `${dateStr}: ${status}`)
                 }
               >
                 {day}
