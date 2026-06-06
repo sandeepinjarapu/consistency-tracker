@@ -47,8 +47,9 @@ negative check.
       progress ring, streak, and history update.
 - [ ] **Tap** a logged day → an inline **Remove / Keep** confirm appears;
       **Remove** clears the check-in.
-- [ ] A day outside the editable window (older than this week + 2-day grace) is
-      **not** tappable.
+- [ ] A day outside the editable window (older than this week + 2-day grace)
+      offers no **Log / Remove** and cannot change history (a read-only cell may
+      still show its date tooltip).
 - [ ] The **calendar history** (recent month grids + older year strip) is
       **read-only** (no click-to-edit).
 
