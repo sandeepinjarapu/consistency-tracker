@@ -19,11 +19,17 @@ export default function PartnerReflection({
   const [overflows, setOverflows] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Measure after paint to determine whether the content is actually clamped.
+  // line-clamp-3 sets display:-webkit-box, which makes scrollHeight equal
+  // clientHeight (the clamped height). To get the TRUE content height we must
+  // briefly remove the class, measure, then restore it — all synchronously so
+  // the browser never paints the unclamped state.
   useEffect(() => {
     const el = contentRef.current;
     if (!el) return;
-    setOverflows(el.scrollHeight > el.clientHeight + 2); // +2 rounding tolerance
+    el.classList.remove("line-clamp-3");
+    const full = el.scrollHeight;
+    el.classList.add("line-clamp-3");
+    setOverflows(full > el.clientHeight + 2);
   }, []);
 
   const lines: Array<{ label: string | null; text: string }> = [];

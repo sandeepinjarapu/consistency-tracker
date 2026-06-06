@@ -81,6 +81,7 @@ export default async function GoalsPage({
     const today = todayIn(timezone);
     aggregateToday = today;
     const twelveWeeksAgo = addDays(today, -83);
+    // Will be tightened below once we know the earliest goal start date.
     aggregateTrimBefore = twelveWeeksAgo;
 
     const goalsForAggregate = activeGoals.map((g) => ({
@@ -117,7 +118,11 @@ export default async function GoalsPage({
         (min, g) => (g.created_at < min ? g.created_at : min),
         today
       );
-      // Recent 2 calendar months, newest first
+      // Trim to whichever is later: the 12-week fetch boundary or the actual
+      // earliest goal start. Rows and cells before this date are invisible.
+      aggregateTrimBefore = earliest > twelveWeeksAgo ? earliest : twelveWeeksAgo;
+
+      // Recent 2 calendar months, newest first → will be reversed for display
       const monthList = buildMonthList(earliest, today).slice(0, 2);
       aggregateMonths = monthList.map(([y, m]) => {
         const pad = (n: number) => String(n).padStart(2, "0");
@@ -187,7 +192,7 @@ export default async function GoalsPage({
                 : "max-w-[300px]"
             }
           >
-            {aggregateMonths.map((am) => (
+            {[...aggregateMonths].reverse().map((am) => (
               <MonthCalGrid
                 key={`${am.year}-${am.month}`}
                 year={am.year}
