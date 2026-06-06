@@ -4,8 +4,7 @@ import Skeleton from "@/components/skeleton";
 // Goals list skeleton: real title + add button, pulsing category groups.
 export default function Loading() {
   return (
-    <section className="space-y-8" aria-busy>
-      <span className="sr-only">Loading…</span>
+    <section className="space-y-8" aria-busy aria-label="Loading goals">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-light tracking-tight">Goals</h1>

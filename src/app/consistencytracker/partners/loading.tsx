@@ -3,8 +3,7 @@ import Skeleton from "@/components/skeleton";
 // Partners list skeleton: real title + subtitle + section heading, pulsing form/rows.
 export default function Loading() {
   return (
-    <section className="space-y-12" aria-busy>
-      <span className="sr-only">Loading…</span>
+    <section className="space-y-12" aria-busy aria-label="Loading partners">
       <div>
         <h1 className="text-xl font-light tracking-tight">Partners</h1>
         <p className="mt-1 text-sm text-[color:var(--muted)]">
