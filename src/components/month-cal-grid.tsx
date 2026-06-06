@@ -32,11 +32,15 @@ export default function MonthCalGrid({
   month,
   cells,
   doneColor,
+  today,
 }: {
   year: number;
   month: number;
   cells: HeatmapCell[];
   doneColor: string;
+  /** YYYY-MM-DD today string. When provided, future days render as near-invisible
+   *  so they're clearly distinct from past empty/non-scheduled cells. */
+  today?: string;
 }) {
   const cellMap = new Map(cells.map((c) => [c.date, c]));
   const totalDays = daysInMonth(year, month);
@@ -81,20 +85,25 @@ export default function MonthCalGrid({
             const dateStr = `${year}-${pad(month)}-${pad(day)}`;
             const hc = cellMap.get(dateStr);
             const status = hc?.status ?? "empty";
+            const isFuture = today != null && dateStr > today;
 
-            // color override (aggregate cells) → status color → empty
-            const bg =
-              hc?.color ??
-              (status === "done"
-                ? doneColor
-                : status === "skipped"
-                  ? "#fde68a"
-                  : status === "missed"
-                    ? "#e5e7eb"
-                    : "#f3f4f6");
+            // Future cells are near-invisible — they occupy grid space but
+            // clearly haven't happened yet (distinct from "empty past" cells).
+            // color override (aggregate cells) → status color → empty/future
+            const bg = isFuture
+              ? "transparent"
+              : hc?.color ??
+                (status === "done"
+                  ? doneColor
+                  : status === "skipped"
+                    ? "#fde68a"
+                    : status === "missed"
+                      ? "#e5e7eb"
+                      : "#f3f4f6");
 
-            const textColor =
-              status === "done" && !hc?.color
+            const textColor = isFuture
+              ? "#d1d5db"
+              : status === "done" && !hc?.color
                 ? "rgba(255,255,255,0.85)"
                 : status === "skipped"
                   ? "#78716c"
@@ -112,7 +121,7 @@ export default function MonthCalGrid({
                   fontVariantNumeric: "tabular-nums",
                 }}
                 title={hc?.tooltip ?? dateStr}
-                aria-label={`${dateStr}: ${status}`}
+                aria-label={`${dateStr}: ${isFuture ? "future" : status}`}
               >
                 {day}
               </div>

@@ -18,12 +18,15 @@ export default function GoalHistoryView({
   olderMonths,
   doneColor,
   isCount,
+  today,
 }: {
   recentMonths: MonthData[];
   olderMonths: MonthData[];
   doneColor: string;
   /** Frequency goals never mark a day "missed", so the legend drops it. */
   isCount: boolean;
+  /** YYYY-MM-DD today. Passed to MonthCalGrid so future days render distinctly. */
+  today?: string;
 }) {
   if (recentMonths.length === 0) return null;
 
@@ -45,6 +48,7 @@ export default function GoalHistoryView({
             month={m.month}
             cells={m.cells}
             doneColor={doneColor}
+            today={today}
           />
         ))}
       </div>

@@ -323,6 +323,7 @@ export default async function PartnerPage({
                     olderMonths={olderMonths}
                     doneColor={color}
                     isCount={goal.weekly_target != null}
+                    today={today}
                   />
                 </div>
               </div>

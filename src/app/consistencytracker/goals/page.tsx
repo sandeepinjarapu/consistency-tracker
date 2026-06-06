@@ -65,6 +65,7 @@ export default async function GoalsPage({
   // visible even if goals later drop below 3 (requires check-ins to render).
   type AggregateMonth = { year: number; month: number; cells: Awaited<ReturnType<typeof buildAggregateCells>> };
   let aggregateMonths: AggregateMonth[] | null = null;
+  let aggregateToday: string | undefined;
   if (!showArchived && (goals ?? []).length > 0) {
     const activeGoals = goals as GoalRow[];
     const [profile, { data: profileFlags }] = await Promise.all([
@@ -77,6 +78,7 @@ export default async function GoalsPage({
     ]);
     const timezone = profile?.timezone ?? "UTC";
     const today = todayIn(timezone);
+    aggregateToday = today;
     const twelveWeeksAgo = addDays(today, -83);
 
     const goalsForAggregate = activeGoals.map((g) => ({
@@ -190,6 +192,7 @@ export default async function GoalsPage({
                 month={am.month}
                 cells={am.cells}
                 doneColor="#216e39"
+                today={aggregateToday}
               />
             ))}
           </div>
