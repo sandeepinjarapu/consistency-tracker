@@ -60,10 +60,9 @@ export default async function GoalsPage({
   }
 
   // All-goals calendar summary (active view only): recent 2 calendar months
-  // as aggregate grids. Shown once the user has "earned" it: 3+ active goals,
-  // OR any single goal with 8+ done check-ins spanning 3+ distinct ISO weeks.
-  // Once earned the flag is persisted in profiles.calendar_unlocked so the
-  // section never disappears (unless there are no active goals at all).
+  // as aggregate grids. Shown once the user has 3+ active goals. Once unlocked
+  // the flag is persisted in profiles.calendar_unlocked so the section stays
+  // visible even if goals later drop below 3 (requires check-ins to render).
   type AggregateMonth = { year: number; month: number; cells: Awaited<ReturnType<typeof buildAggregateCells>> };
   let aggregateMonths: AggregateMonth[] | null = null;
   if (!showArchived && (goals ?? []).length > 0) {
