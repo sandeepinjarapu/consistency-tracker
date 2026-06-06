@@ -115,11 +115,13 @@ export default function MonthCalGrid({
             const hc = cellMap.get(dateStr);
             const status = hc?.status ?? "empty";
             const isFuture = today != null && dateStr > today;
+            // Days before the goal started are also "not applicable" — same
+            // visual treatment as future days so they don't look like misses.
+            const isPreStart = trimBefore != null && dateStr < trimBefore;
+            const isNA = isFuture || isPreStart;
 
-            // Future cells are near-invisible — they occupy grid space but
-            // clearly haven't happened yet (distinct from "empty past" cells).
-            // color override (aggregate cells) → status color → empty/future
-            const bg = isFuture
+            // color override (aggregate cells) → status color → empty/NA
+            const bg = isNA
               ? "transparent"
               : hc?.color ??
                 (status === "done"
@@ -130,7 +132,7 @@ export default function MonthCalGrid({
                       ? "#e5e7eb"
                       : "#f3f4f6");
 
-            const textColor = isFuture
+            const textColor = isNA
               ? "#d1d5db"
               : status === "done" && !hc?.color
                 ? "rgba(255,255,255,0.85)"
@@ -150,7 +152,7 @@ export default function MonthCalGrid({
                   fontVariantNumeric: "tabular-nums",
                 }}
                 title={hc?.tooltip ?? dateStr}
-                aria-label={`${dateStr}: ${isFuture ? "future" : status}`}
+                aria-label={`${dateStr}: ${isFuture ? "future" : isPreStart ? "not-started" : status}`}
               >
                 {day}
               </div>
