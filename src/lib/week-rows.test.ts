@@ -81,19 +81,87 @@ describe("buildWeekRows", () => {
     expect(missed!.editable).toBe(false);
   });
 
-  it("treats a non-scheduled weekday as a rest cell", () => {
-    const weekdays = [1, 2, 3, 4, 5]; // Mon..Fri (Sun=0, Sat=6 excluded)
+  // today (2026-06-04) is a Thursday. For a Mon/Wed/Fri goal, Tuesday is an
+  // off-target day that has already passed this week and is still in window.
+  const mwf = [1, 3, 5]; // Mon/Wed/Fri
+
+  it("offers an off-target current-week day (past, in window) as a loggable extra well", () => {
     const rows = buildWeekRows({
       goalStartDate: "2026-01-01",
       today,
-      targetDays: weekdays,
+      targetDays: mwf,
       statusByDate: {},
       weeksToShow: 1,
     });
-    const sat = addDays(weekStart, 5); // sixth column is Saturday
+    const tue = addDays(weekStart, 1);
+    const cell = rows[0].cells.find((c) => c.date === tue)!;
+    expect(cell.state).toBe("extra-open");
+    expect(cell.editable).toBe(true);
+    expect(cell.extra).toBe(true);
+  });
+
+  it("does not offer extra wells on future off-target days", () => {
+    const rows = buildWeekRows({
+      goalStartDate: "2026-01-01",
+      today,
+      targetDays: mwf,
+      statusByDate: {},
+      weeksToShow: 1,
+    });
+    const sat = addDays(weekStart, 5); // future, off-target
     const cell = rows[0].cells.find((c) => c.date === sat)!;
     expect(cell.state).toBe("rest");
     expect(cell.editable).toBe(false);
+  });
+
+  it("shows a logged off-target day as an extra; scheduled days stay non-extra", () => {
+    const tue = addDays(weekStart, 1);
+    const mon = weekStart;
+    const rows = buildWeekRows({
+      goalStartDate: "2026-01-01",
+      today,
+      targetDays: mwf,
+      statusByDate: { [tue]: "done", [mon]: "done" },
+      weeksToShow: 1,
+    });
+    const tueCell = rows[0].cells.find((c) => c.date === tue)!;
+    expect(tueCell.state).toBe("extra");
+    expect(tueCell.extra).toBe(true);
+    const monCell = rows[0].cells.find((c) => c.date === mon)!;
+    expect(monCell.state).toBe("done");
+    expect(monCell.extra).toBe(false);
+  });
+
+  it("keeps off-target empty days as rest in past weeks (no extra wells in history)", () => {
+    const rows = buildWeekRows({
+      goalStartDate: "2026-01-01",
+      today,
+      targetDays: mwf,
+      statusByDate: {},
+      weeksToShow: 6,
+    });
+    const pastTue = addDays(rows[3].weekStart, 1); // off-target, past week
+    const cell = rows[3].cells.find((c) => c.date === pastTue)!;
+    expect(cell.state).toBe("rest");
+    expect(cell.editable).toBe(false);
+  });
+
+  it("offers last weekend as extra-open during the Monday grace (follows the server window)", () => {
+    const monday = isoWeekStart(today); // force today onto a Monday
+    const weekdays = [1, 2, 3, 4, 5]; // Sat/Sun off-target
+    const rows = buildWeekRows({
+      goalStartDate: "2026-01-01",
+      today: monday,
+      targetDays: weekdays,
+      statusByDate: {},
+      weeksToShow: 2,
+    });
+    const lastWeek = rows[1];
+    // Last week's Sat (col 5) and Sun (col 6) are off-target but still in grace.
+    expect(lastWeek.cells[5].state).toBe("extra-open");
+    expect(lastWeek.cells[5].editable).toBe(true);
+    expect(lastWeek.cells[6].state).toBe("extra-open");
+    expect(lastWeek.cells[6].editable).toBe(true);
   });
 
   it("shows a single week for frequency goals (weeksToShow=1)", () => {

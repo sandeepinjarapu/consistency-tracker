@@ -9,6 +9,7 @@ import { UNCATEGORIZED_COLOR } from "@/lib/colors";
 import { computeTodayBanner } from "@/lib/today-banner";
 import { computeGoalRowState, type GoalRowState } from "@/lib/today-goal-row";
 import TodayGoalCard from "@/components/today-goal-card";
+import LogExtra from "@/components/log-extra";
 import Skeleton from "@/components/skeleton";
 import type { CheckIn } from "@/lib/actions/check-ins";
 
@@ -171,9 +172,29 @@ async function TodaySection() {
   const todayCheckIns = weekCheckIns.filter((c) => c.date === today);
   const checkInByGoal = new Map(todayCheckIns.map((c) => [c.goal_id, c]));
 
-  const doneCount = todayCheckIns.filter((c) => c.status === "done").length;
-  const skippedCount = todayCheckIns.filter((c) => c.status === "skipped").length;
+  // Goals not scheduled today, offered as one-tap "log something extra".
+  const offTodayGoals = goals
+    .filter((g) => !g.target_days.includes(dow))
+    .map((g) => ({
+      id: g.id,
+      name: g.name,
+      categoryColor: g.category?.color ?? UNCATEGORIZED_COLOR,
+      status: (checkInByGoal.get(g.id)?.status ?? null) as
+        | "done"
+        | "skipped"
+        | null,
+    }));
+
+  // Header progress counts SCHEDULED goals only — extras are evidence, never
+  // part of "done of scheduled". Extras logged today are surfaced separately so
+  // the two never share a denominator.
+  const todayGoalIds = new Set(goalsToday.map((g) => g.id));
+  const scheduledToday = todayCheckIns.filter((c) => todayGoalIds.has(c.goal_id));
+  const doneCount = scheduledToday.filter((c) => c.status === "done").length;
+  const skippedCount = scheduledToday.filter((c) => c.status === "skipped").length;
   const remaining = goalsToday.length - doneCount - skippedCount;
+  const extraToday = offTodayGoals.filter((g) => g.status === "done").length;
+  const extraSuffix = extraToday > 0 ? ` · ${extraToday} extra` : "";
 
   // doneThisWeek (for count-goal pace) only depends on the current week.
   const paceByGoal = new Map<string, number>();
@@ -200,8 +221,10 @@ async function TodaySection() {
           goalsToday.length > 0
             ? `${doneCount} of ${goalsToday.length} done${
                 skippedCount > 0 ? `, ${skippedCount} skipped` : ""
-              }${remaining > 0 ? `, ${remaining} left` : ""}`
-            : "Nothing scheduled today."
+              }${remaining > 0 ? `, ${remaining} left` : ""}${extraSuffix}`
+            : extraToday > 0
+              ? `Nothing scheduled today · ${extraToday} extra`
+              : "Nothing scheduled today."
         }
       />
 
@@ -230,6 +253,8 @@ async function TodaySection() {
           })}
         </div>
       )}
+
+      <LogExtra goals={offTodayGoals} date={today} />
 
       {lastNightGoals.length > 0 ? (
         <div className="mt-8">
