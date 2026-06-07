@@ -82,7 +82,14 @@ export default function LogExtra({
               onClick={() => toggle(g.id)}
               disabled={pending}
               aria-pressed={isDone}
-              className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition disabled:opacity-60
+              aria-label={
+                isDone
+                  ? `Remove extra check-in for ${g.name}`
+                  : isSkip
+                    ? `Remove skipped check-in for ${g.name}`
+                    : `Add extra check-in for ${g.name}`
+              }
+              className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition disabled:opacity-60
                 ${isDone
                   ? "border-[color:var(--border)] bg-gray-50"
                   : "border-[color:var(--border)] hover:bg-gray-50"
@@ -104,13 +111,13 @@ export default function LogExtra({
                 />
               )}
               <span
-                className={
+                className={`max-w-[160px] truncate${
                   isDone
-                    ? "line-through text-[color:var(--muted)]"
+                    ? " line-through text-[color:var(--muted)]"
                     : isSkip
-                      ? "text-[color:var(--muted)]"
+                      ? " text-[color:var(--muted)]"
                       : ""
-                }
+                }`}
               >
                 {g.name}
               </span>
@@ -122,7 +129,7 @@ export default function LogExtra({
           <button
             type="button"
             onClick={() => setExpanded(true)}
-            className="inline-flex min-h-[36px] items-center rounded-full border border-dashed border-[color:var(--border)] px-3 py-1 text-sm text-[color:var(--muted)] hover:bg-gray-50 transition"
+            className="inline-flex min-h-[44px] items-center rounded-full border border-dashed border-[color:var(--border)] px-3 py-1 text-sm text-[color:var(--muted)] hover:bg-gray-50 transition"
           >
             +{hiddenCount} more
           </button>
