@@ -428,7 +428,7 @@ function WeekDetailBody({
 
       {stats.perGoal.length > 0 ? (
         <div className="mb-6">
-          <WeekGrid perGoal={stats.perGoal} />
+          <WeekGrid perGoal={stats.perGoal} weekStart={weekStart} />
         </div>
       ) : null}
 
