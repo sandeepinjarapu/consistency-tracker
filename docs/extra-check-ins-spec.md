@@ -173,11 +173,10 @@ scheduled for today. V1 ships **both** entry points:
   (`extraDate = yesterday`, `extraDow = yesterdayDow`), so a goal not scheduled
   yesterday is the one that appears, and the check-in lands on the day the user
   is mentally still in. Copy follows a "action vs. evidence" rule:
-  - **Action surfaces** (collapsed button, section heading) use "last night" —
-    they describe the logical day the work belongs to:
-    "Log something extra from last night."
-  - **Evidence surfaces** (Today header suffix, once an extra is logged) use
-    "late last night" — they describe *when* it was logged:
+  - **Action surfaces** (chip section prompt) use "last night" — they describe
+    the logical day the work belongs to: "Did anything else last night?"
+  - **Evidence surfaces** (Today header suffix, once an extra is checked in) use
+    "late last night" — they describe *when* it was checked in:
     "1 extra from late last night."
   After 5 AM both revert to the normal calendar-today meaning.
 
