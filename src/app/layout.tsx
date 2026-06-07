@@ -18,16 +18,17 @@ export default function RootLayout({
       <body>
         {children}
         {/*
-          Vercel observability scripts — production only. Skipping in dev keeps
-          quota usage flat during local iteration; both scripts 404 harmlessly
-          in dev anyway (Vercel only serves them in deployed environments), but
-          the explicit guard avoids the network round-trip entirely.
+          Vercel observability scripts — production deployment only. VERCEL_ENV
+          is "production" only for the main production deployment; preview
+          deployments get "preview" and local dev is undefined. This keeps quota
+          usage flat during iteration: previews and local dev are excluded, only
+          real production traffic is measured.
 
           Loaded via first-party Vercel script paths rather than the npm
           packages (@vercel/speed-insights, @vercel/analytics), which have a
           peer-dep conflict with the Vitest/Vite toolchain.
         */}
-        {process.env.NODE_ENV === "production" && (
+        {process.env.VERCEL_ENV === "production" && (
           <>
             <Script
               src="/_vercel/speed-insights/script.js"
