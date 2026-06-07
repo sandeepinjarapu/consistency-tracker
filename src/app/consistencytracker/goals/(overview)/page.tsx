@@ -7,9 +7,10 @@ import { listGoalsWithUnseenReactions } from "@/lib/actions/reactions";
 import { targetDaysLabel } from "@/lib/target-days-label";
 import { buildAggregateCells } from "@/lib/stats";
 import { buildMonthList } from "@/lib/month-history";
-import { shouldShowAggregateCalendar } from "@/lib/calendar-unlock";
+import { shouldShowAggregateCalendar, engagementUnlocked } from "@/lib/calendar-unlock";
+import { classifyWeek } from "@/lib/extra-check-ins";
 import { UNCATEGORIZED_COLOR } from "@/lib/colors";
-import { todayIn, addDays, dateInTimezone } from "@/lib/dates";
+import { todayIn, addDays, dateInTimezone, isoWeekStart } from "@/lib/dates";
 import GoalRowMenu from "@/components/goal-row-menu";
 import MonthCalGrid from "@/components/month-cal-grid";
 
@@ -103,17 +104,57 @@ export default async function GoalsPage({
       status: "done" | "skipped";
     }>;
 
-    // Unlock condition: 3+ active goals. Once met the flag is written to the DB
-    // so the section persists even if goals drop below the threshold later.
+    // Primary unlock: 3+ active goals.
+    // Engagement unlock: exactly 1 active goal with 8+ scored done check-ins
+    // across 3+ distinct ISO weeks. classifyWeek is used (not isExtraDate alone)
+    // so frequency over-quota extras are excluded from the scored count, not just
+    // off-target extras. Extra check-ins must never be the reason it unlocks.
     const alreadyUnlocked = profileFlags?.calendar_unlocked ?? false;
-    const freshUnlock = activeGoals.length >= 3;
+
+    let freshUnlock = activeGoals.length >= 3;
+    if (!freshUnlock && activeGoals.length === 1) {
+      const goal = goalsForAggregate[0];
+      const doneDates = checkIns
+        .filter((ci) => ci.status === "done")
+        .map((ci) => ci.date);
+
+      // Group done dates by ISO week then run classifyWeek for each so both
+      // off-target AND over-quota extras are stripped from the scored count.
+      const byWeek = new Map<string, string[]>();
+      for (const d of doneDates) {
+        const ws = isoWeekStart(d);
+        const arr = byWeek.get(ws);
+        if (arr) arr.push(d);
+        else byWeek.set(ws, [d]);
+      }
+
+      let totalScoredDone = 0;
+      let scoredWeeks = 0;
+      for (const [ws, dates] of byWeek) {
+        const { scoredDone } = classifyWeek({
+          weekStart: ws,
+          goalStartDate: goal.created_at,
+          targetDays: goal.target_days,
+          weeklyTarget: goal.weekly_target,
+          doneDates: dates,
+        });
+        if (scoredDone > 0) scoredWeeks++;
+        totalScoredDone += scoredDone;
+      }
+
+      freshUnlock = engagementUnlocked(1, totalScoredDone, scoredWeeks);
+    }
+
+    // unlockedNow combines the persisted flag and the current-render unlock so
+    // the calendar is visible on the same render that first qualifies the user.
+    const unlockedNow = alreadyUnlocked || freshUnlock;
 
     // Await the write so the flag is reliably set before the next page load.
     if (freshUnlock && !alreadyUnlocked) {
       await supabase.from("profiles").update({ calendar_unlocked: true }).eq("id", user.id);
     }
 
-    if (shouldShowAggregateCalendar(alreadyUnlocked, activeGoals.length, checkIns.length > 0)) {
+    if (shouldShowAggregateCalendar(unlockedNow, activeGoals.length, checkIns.length > 0)) {
       const earliest = goalsForAggregate.reduce(
         (min, g) => (g.created_at < min ? g.created_at : min),
         today
@@ -180,10 +221,12 @@ export default async function GoalsPage({
       {aggregateMonths && aggregateMonths.length > 0 ? (
         <div className="mb-10">
           <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-1">
-            Recent activity — all goals
+            {(goals as GoalRow[]).length === 1 ? "Recent activity" : "Recent activity, all goals"}
           </h2>
           <p className="text-xs text-[color:var(--muted)] mb-3">
-            Each square is a day. Darker days mean more goals were checked in.
+            {(goals as GoalRow[]).length === 1
+              ? "Each square is a day. Darker means more check-ins."
+              : "Each square is a day. Darker days mean more goals were checked in."}
           </p>
           <div
             className={
