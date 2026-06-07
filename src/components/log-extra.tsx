@@ -15,18 +15,25 @@ export type ExtraGoal = {
 
 /**
  * A quiet "log something extra" affordance for the Today loop: the goals that
- * aren't scheduled today, offered as one-tap extra check-ins (done-only — an
- * extra is evidence, never scored, and there is no extra-skip). Each row
- * toggles: tap to log an extra, tap again to undo (via removeExtra). A rare
- * stray skip can be removed but is never overwritten. Collapsed by default so
- * it never competes with the day's actual schedule.
+ * aren't scheduled on the logical day, offered as one-tap extra check-ins
+ * (done-only — an extra is evidence, never scored, and there is no extra-skip).
+ * Each row toggles: tap to log an extra, tap again to undo (via removeExtra). A
+ * rare stray skip can be removed but is never overwritten. Collapsed by default
+ * so it never competes with the day's actual schedule.
+ *
+ * During the night-owl window (12 AM – 5 AM), `nightOwl` is true and `date` is
+ * yesterday — matching the "Still open from last night" logical day. The copy
+ * makes this explicit so the user isn't surprised by an extra landing on a
+ * different calendar date than they expected.
  */
 export default function LogExtra({
   goals,
   date,
+  nightOwl = false,
 }: {
   goals: ExtraGoal[];
   date: string;
+  nightOwl?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -59,7 +66,7 @@ export default function LogExtra({
         onClick={() => setOpen(true)}
         className="mt-8 inline-flex min-h-[44px] items-center text-xs text-[color:var(--muted)] hover:text-black"
       >
-        + Log something extra
+        {nightOwl ? "+ Log something extra from last night" : "+ Log something extra"}
       </button>
     );
   }
@@ -67,11 +74,12 @@ export default function LogExtra({
   return (
     <div className="mt-8">
       <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
-        Log something extra
+        {nightOwl ? "Log something extra from last night" : "Log something extra"}
       </h2>
       <p className="mb-3 mt-1 text-xs text-[color:var(--muted)]">
-        Did one of these today, even though it wasn&rsquo;t scheduled? It counts
-        as evidence you showed up, never against a streak.
+        {nightOwl
+          ? "Up late? This logs to yesterday — same day as the rest of your night."
+          : "Did one of these today, even though it wasn’t scheduled? It counts as evidence you showed up, never against a streak."}
       </p>
       <ul className="border border-[color:var(--border)] rounded-lg divide-y divide-[color:var(--border)]">
         {goals.map((g) => {
