@@ -162,10 +162,10 @@ scheduled for today. V1 ships **both** entry points:
   unscheduled weekday inside the window offers **Log** (and, once logged,
   **Remove**), distinct from a scheduled cell. This is the precise, in-context
   place to add or correct an extra.
-- **Today affordance.** A quiet section *below* the scheduled cards — "Log
-  something extra" — that opens a picker of your other active goals and marks an
-  extra `done`. No skip, never above scheduled work. This is what makes the
-  feature discoverable in the daily loop.
+- **Today affordance.** A quiet section *below* the scheduled cards — "Did
+  anything else today?" — showing your other active goals as one-tap chips that
+  mark an extra `done`. No skip, never above scheduled work. This is what makes
+  the feature discoverable in the daily loop.
 
   **Night-owl alignment:** between 12 AM and 5 AM the page is in the night-owl
   window (same as "Still open from last night"). In that window the extra list
@@ -173,11 +173,10 @@ scheduled for today. V1 ships **both** entry points:
   (`extraDate = yesterday`, `extraDow = yesterdayDow`), so a goal not scheduled
   yesterday is the one that appears, and the check-in lands on the day the user
   is mentally still in. Copy follows a "action vs. evidence" rule:
-  - **Action surfaces** (collapsed button, section heading) use "last night" —
-    they describe the logical day the work belongs to:
-    "Log something extra from last night."
-  - **Evidence surfaces** (Today header suffix, once an extra is logged) use
-    "late last night" — they describe *when* it was logged:
+  - **Action surfaces** (chip section prompt) use "last night" — they describe
+    the logical day the work belongs to: "Did anything else last night?"
+  - **Evidence surfaces** (Today header suffix, once an extra is checked in) use
+    "late last night" — they describe *when* it was checked in:
     "1 extra from late last night."
   After 5 AM both revert to the normal calendar-today meaning.
 

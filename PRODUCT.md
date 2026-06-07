@@ -10,9 +10,9 @@ The owner and a small circle of **accountability partners** (1–3 people they
 trust). Primary context: a quick daily check-in on a phone, plus a weekly sit
 to reflect. They are not power users optimizing a quantified-self dashboard;
 they are people trying to keep showing up at a few things that matter, and to
-be gently seen doing it. The job on any given screen: "log today fast", "fix a
-day I forgot", "see whether I'm actually showing up", "say a sentence about my
-week", or "notice how my partner is doing".
+be gently seen doing it. The job on any given screen: "check in today fast", "fix a
+day I forgot", "record something extra I did", "see whether I'm actually showing
+up", "say a sentence about my week", or "notice how my partner is doing".
 
 ## Product Purpose
 
@@ -21,7 +21,9 @@ scoring. You define a few goals (and *why* each matters), check in daily, see
 your record fill in, reflect once a week, and optionally share specific goals
 with a partner who can react with a quiet "saw it / proud". Success is the user
 coming back and feeling supported, not graded. A missed day is never a failure
-state; it is something to notice and, if you want, catch up on.
+state; it is something to notice and, if you want, catch up on. Going beyond
+what you promised — an extra day, a higher-than-quota week — is recorded as
+evidence and shown warmly, never inflating a score.
 
 ## Brand Personality
 

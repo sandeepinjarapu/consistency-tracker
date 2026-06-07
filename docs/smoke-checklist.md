@@ -45,7 +45,7 @@ negative check.
       the left); the current week is editable, past weeks are read-only.
 - [ ] **Tap** an open day in the current week → it flips to Done; the headline,
       progress ring, streak, and history update.
-- [ ] **Tap** a logged day → an inline **Remove / Keep** confirm appears;
+- [ ] **Tap** a done day → an inline **Remove / Keep** confirm appears;
       **Remove** clears the check-in.
 - [ ] A day outside the editable window (older than this week + 2-day grace)
       offers no **Mark / Remove** and cannot change history (a read-only cell may
