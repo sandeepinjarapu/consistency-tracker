@@ -179,8 +179,15 @@ and title must avoid overclaiming.
 **Surfaces affected:** `calendar-unlock`, Goals overview calendar copy,
 README/metrics glossary if the rule changes.
 
-**Decision needed:** Should two-goal users unlock through engagement too, or is
-the rule deliberately one-goal-focused plus true aggregate at three goals?
+**Decision made (PR #131):** Engagement unlock is 1-goal only. Two-goal users
+still need 3 goals or a persisted flag. The copy and title adapt per goal count.
+
+**Deferred: 2-goal engagement unlock.** If a 2-goal user has 8+ scored done
+check-ins across 3+ weeks on at least one goal, the current code does not unlock
+the calendar. The change is one line in `calendar-unlock.ts`:
+`activeGoalCount === 1` to `activeGoalCount <= 2`. Copy would stay "Recent
+activity, all goals" since it genuinely covers two goals. Revisit when a real
+2-goal user hits the wall.
 
 **Recommendation:** Worth picking up before dropdown polish. If implemented,
 keep it scored-only and copy-aware. If shown for one goal, avoid aggregate
