@@ -112,7 +112,7 @@ fixed status hues for the calendar history.
   category color. The *only* saturated color on most screens. Used for the
   category dot, the Today card's left rail, a done day in the calendar history,
   this week's filled progress (the "This week" rows, progress ring, and the
-  count-goal weekly strip), and a "This week" row's Log action. Uncategorized
+  count-goal weekly strip), and a "This week" row's Mark done action. Uncategorized
   falls back to a quiet dusty rose `#bd8a9c` (its own muted hue, not a category
   color and distinct from the missed grey, so an uncategorized goal still reads
   as a live row). Centralized in `src/lib/colors.ts` as `UNCATEGORIZED_COLOR`.
@@ -205,9 +205,9 @@ border, full stop.
   own fill encodes state — **done** fills with the category accent, **today**
   is a category-color ring, **missed** is a quiet grey fill, an **open** day is
   a faint outline (count goals show non-target days as a neutral "rest" cell).
-- The current week's cells are tap-to-log controls; past weeks are flat
-  history. Each cell shows a date + status tooltip. Logging is one tap;
-  removing a logged day asks first via an inline confirm.
+- The current week's cells are tap-to-mark controls; past weeks are flat
+  history. Each cell shows a date + status tooltip. Marking is one tap;
+  removing a check-in asks first via an inline confirm.
 
 ### Progress ring (this week's progress, `ProgressRing`)
 - A calm ring that fills `done / total` in the category accent on a near-
