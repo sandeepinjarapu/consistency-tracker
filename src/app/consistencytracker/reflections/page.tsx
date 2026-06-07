@@ -425,27 +425,27 @@ function WeekDetailBody({
       ) : (
         <div className="flex flex-wrap gap-1.5 mb-6">
           {stats.done > 0 && (
-            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-0.5 text-xs text-[color:var(--foreground)]">
+            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-1 text-sm text-[color:var(--foreground)]">
               {stats.done} done
             </span>
           )}
           {stats.skipped > 0 && (
-            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-0.5 text-xs text-[color:var(--muted)]">
+            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-1 text-sm text-[color:var(--muted)]">
               {stats.skipped} skipped{stats.skipReasons && Object.keys(stats.skipReasons).length > 0 ? ` (${formatReasons(stats.skipReasons)})` : ""}
             </span>
           )}
           {stats.missed > 0 && (
-            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-0.5 text-xs text-[color:var(--muted)]">
+            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-1 text-sm text-[color:var(--muted)]">
               {stats.missed} missed
             </span>
           )}
           {stats.extraDone > 0 && (
-            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-0.5 text-xs text-[color:var(--muted)]">
+            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-1 text-sm text-[color:var(--muted)]">
               {stats.extraDone} extra
             </span>
           )}
           {!inProgress && scoreable && (
-            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-0.5 text-xs text-[color:var(--muted)]">
+            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-1 text-sm text-[color:var(--muted)]">
               {completion}%
             </span>
           )}
