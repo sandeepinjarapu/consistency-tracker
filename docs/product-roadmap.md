@@ -31,9 +31,9 @@ or scoring rules.
 what to try next.` Editor labels changed to `Keep`, `Let go`, `Try next`,
 `Notes`. Partner reflection view and smoke checklist updated to match.
 
-### 2. Reflection notes: attribution on second line `Done — PR #132`
+### 2. Reflection notes: attribution on second line `Open — PR #132`
 
-**Shipped:** `ReflectionNotes` now renders the quote on the first line and the
+**In review:** `ReflectionNotes` renders the quote on the first line and the
 goal name / date on a smaller muted second line. The em-dash inline separator
 pattern is gone.
 
@@ -83,12 +83,10 @@ gap between notes toggle and stats line tightened from `mb-6` to `mb-3`.
 2. **Stats as pills, not a run-on sentence.** `9 done · 1 skipped (other x 1)
    · 10 missed · 1 extra` is dense. Render each as a small muted pill/chip.
    Same data, visually chunked and scannable.
-3. **Notes: demote attribution.** Goal name + date currently sit inline with
-   the quote (`"..." / Goal name, Jun 2`). Move them to a smaller second line
-   under the quote. The quote is the content; the attribution is context.
+3. **Notes: attribution on second line.** Handled in PR #132 (see item 2 above).
 4. **Two-line note clamp on mobile.** Long notes wrap to many lines; clamp each
    item to two lines with a per-item expand affordance, not a single "more" for
-   the whole list.
+   the whole list. Deferred until #132 is merged and real usage is observed.
 
 **Surfaces affected:** `src/app/consistencytracker/reflections/page.tsx`
 (`WeekDetailBody` component), `src/components/reflection-notes.tsx`.
