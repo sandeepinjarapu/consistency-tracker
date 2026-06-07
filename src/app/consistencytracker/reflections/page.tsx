@@ -412,25 +412,43 @@ function WeekDetailBody({
         </div>
       ) : null}
 
-      <p className="text-sm text-[color:var(--muted)] mb-6">
-        {total === 0 ? (
-          <>No check-ins recorded.</>
-        ) : (
-          <>
-            {stats.done} done · {stats.skipped} skipped
-            {stats.skipped > 0 ? ` (${formatReasons(stats.skipReasons)})` : ""} ·{" "}
-            {stats.missed} missed
-            {stats.extraDone > 0 ? ` · ${stats.extraDone} extra` : ""}
-            {!inProgress && scoreable ? ` · ${completion}% completion` : ""}
-          </>
-        )}
-      </p>
-
       {stats.perGoal.length > 0 ? (
-        <div className="mb-6">
+        <div className="mb-4">
           <WeekGrid perGoal={stats.perGoal} weekStart={weekStart} />
         </div>
       ) : null}
+
+      {total === 0 ? (
+        <p className="text-sm text-[color:var(--muted)] mb-6">No check-ins recorded.</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5 mb-6">
+          {stats.done > 0 && (
+            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-1 text-sm text-[color:var(--foreground)]">
+              {stats.done} done
+            </span>
+          )}
+          {stats.skipped > 0 && (
+            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-1 text-sm text-[color:var(--muted)]">
+              {stats.skipped} skipped{stats.skipReasons && Object.keys(stats.skipReasons).length > 0 ? ` (${formatReasons(stats.skipReasons)})` : ""}
+            </span>
+          )}
+          {stats.missed > 0 && (
+            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-1 text-sm text-[color:var(--muted)]">
+              {stats.missed} missed
+            </span>
+          )}
+          {stats.extraDone > 0 && (
+            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-1 text-sm text-[color:var(--muted)]">
+              {stats.extraDone} extra
+            </span>
+          )}
+          {!inProgress && scoreable && (
+            <span className="rounded-full border border-[color:var(--border)] px-2.5 py-1 text-sm text-[color:var(--muted)]">
+              {completion}%
+            </span>
+          )}
+        </div>
+      )}
 
       <ReflectionEditor
         weekStartDate={weekStart}

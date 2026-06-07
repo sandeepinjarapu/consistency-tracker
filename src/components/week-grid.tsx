@@ -1,6 +1,7 @@
 "use client";
 
 import type { GoalWeekStats, GoalDayStatus } from "@/lib/reflection-stats";
+import { addDays } from "@/lib/dates";
 import { HoverTip, useHoverTip } from "./tooltip";
 
 /**
@@ -90,9 +91,9 @@ function statusColor(s: GoalDayStatus): string {
 function dayTooltip(dayIndex: number, s: GoalDayStatus, weekStart?: string): string {
   const label = statusLabel(s);
   if (!weekStart) return `${DAY_TITLES[dayIndex]} · ${label}`;
-  const [y, m, d] = weekStart.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d + dayIndex));
-  const dateStr = date.toLocaleDateString("en-US", {
+  const date = addDays(weekStart, dayIndex);
+  const [y, m, d] = date.split("-").map(Number);
+  const dateStr = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
