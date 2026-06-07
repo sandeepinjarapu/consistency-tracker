@@ -10,6 +10,7 @@ Built with Next.js 15 (App Router), Supabase (Postgres + Auth + Row-Level Securi
 
 - **Goals, your way** — track a habit on **specific days** (e.g. weekdays) or as a **weekly count** ("3× a week, any day"). Group goals by category with colors, an optional reflection-doc link, and a "why this matters" note that gives later reflection some context.
 - **Fast daily check-ins** — mark a goal *done* or *skipped* (with a reason: travel / illness / mood / other) and jot a short note. Cards take on a calm done/skipped tint so the day is scannable at a glance.
+- **Extra check-ins, seen not scored** — did something on an unscheduled day, or went beyond your weekly quota? A quiet "Did anything else today?" chip row lets you record it without affecting streaks, completion rates, or any other metric. Extras appear in your history, partner view, and reflection narrative as evidence of showing up, never as a grade.
 - **Calendar history** — goal pages show recent months as calendar grids and older months as a compact strip. The Goals page unlocks an aggregate calendar across all goals after 3+ active goals with some check-in history. The history is read-only; recent days are edited in the "This week" rows on a goal page (the current week plus a short grace period).
 - **Streaks and progress, not grades** — day streaks for specific-day goals, **week streaks** and quota progress for weekly-count goals, plus longest streak, this week's progress, and your typical time of day ("you usually do this in the morning"). Completion percentages are reserved for finished weekly reflections and the summary email.
 - **Weekly reflections** — a Continue / Stop / Improve journal with auto-computed weekly stats, highlights, and a plain-language recap of how the week actually went.
@@ -75,7 +76,7 @@ Open http://localhost:3000.
 - `npm run test` / `npm run test:run` — Vitest (watch / run once)
 
 ## Testing
-The pure logic — timezone date math, streak/completion scoring, weekly-count cadence, link safety, and the catch-up editable-window rules — is unit-tested with Vitest:
+The pure logic — timezone date math, streak/completion scoring, weekly-count cadence, extra check-in classification (scored vs. extra, off-target vs. over-quota), link safety, and the catch-up editable-window rules — is unit-tested with Vitest:
 ```bash
 npm run test:run
 ```
