@@ -12,7 +12,9 @@ import { classifyWeek } from "@/lib/extra-check-ins";
 import { UNCATEGORIZED_COLOR } from "@/lib/colors";
 import { todayIn, addDays, dateInTimezone, isoWeekStart } from "@/lib/dates";
 import GoalRowMenu from "@/components/goal-row-menu";
+import GoalWeekRings from "@/components/goal-week-rings";
 import MonthCalGrid from "@/components/month-cal-grid";
+import { buildWeekRings, type WeekRing } from "@/lib/goal-week-rings";
 
 type GoalRow = {
   id: string;
@@ -68,6 +70,7 @@ export default async function GoalsPage({
   let aggregateMonths: AggregateMonth[] | null = null;
   let aggregateToday: string | undefined;
   let aggregateTrimBefore: string | undefined;
+  const ringsByGoal = new Map<string, WeekRing[]>();
   if (!showArchived && (goals ?? []).length > 0) {
     const activeGoals = goals as GoalRow[];
     const [profile, { data: profileFlags }] = await Promise.all([
@@ -104,6 +107,37 @@ export default async function GoalsPage({
       status: "done" | "skipped";
     }>;
 
+    // Build per-goal done and skip date maps once; used for week rings and
+    // the engagement-unlock calculation below.
+    const doneDatesByGoal = new Map<string, string[]>();
+    const skipDatesByGoal = new Map<string, string[]>();
+    for (const ci of checkIns) {
+      if (ci.status === "done") {
+        const arr = doneDatesByGoal.get(ci.goal_id);
+        if (arr) arr.push(ci.date);
+        else doneDatesByGoal.set(ci.goal_id, [ci.date]);
+      } else if (ci.status === "skipped") {
+        const arr = skipDatesByGoal.get(ci.goal_id);
+        if (arr) arr.push(ci.date);
+        else skipDatesByGoal.set(ci.goal_id, [ci.date]);
+      }
+    }
+
+    // Week rings: 6 completed ISO weeks per active goal row.
+    for (const g of activeGoals) {
+      ringsByGoal.set(
+        g.id,
+        buildWeekRings({
+          goalStartDate: dateInTimezone(g.created_at, timezone),
+          targetDays: g.target_days,
+          weeklyTarget: g.weekly_target,
+          doneDates: doneDatesByGoal.get(g.id) ?? [],
+          skipDates: skipDatesByGoal.get(g.id) ?? [],
+          today,
+        })
+      );
+    }
+
     // Primary unlock: 3+ active goals.
     // Engagement unlock: exactly 1 active goal with 8+ scored done check-ins
     // across 3+ distinct ISO weeks. classifyWeek is used (not isExtraDate alone)
@@ -114,9 +148,7 @@ export default async function GoalsPage({
     let freshUnlock = activeGoals.length >= 3;
     if (!freshUnlock && activeGoals.length === 1) {
       const goal = goalsForAggregate[0];
-      const doneDates = checkIns
-        .filter((ci) => ci.status === "done")
-        .map((ci) => ci.date);
+      const doneDates = doneDatesByGoal.get(goal.id) ?? [];
 
       // Group done dates by ISO week then run classifyWeek for each so both
       // off-target AND over-quota extras are stripped from the scored count.
@@ -266,6 +298,7 @@ export default async function GoalsPage({
                 archived={showArchived}
                 shares={goalShares}
                 newReactionGoals={newReactionGoals}
+                ringsByGoal={ringsByGoal}
               />
             );
           })}
@@ -277,6 +310,7 @@ export default async function GoalsPage({
               archived={showArchived}
               shares={goalShares}
               newReactionGoals={newReactionGoals}
+              ringsByGoal={ringsByGoal}
             />
           )}
         </div>
@@ -347,6 +381,7 @@ function CategoryGroup({
   archived,
   shares,
   newReactionGoals,
+  ringsByGoal,
 }: {
   name: string;
   color: string;
@@ -354,6 +389,7 @@ function CategoryGroup({
   archived: boolean;
   shares: Record<string, string[]>;
   newReactionGoals: Set<string>;
+  ringsByGoal: Map<string, WeekRing[]>;
 }) {
   return (
     <div>
@@ -386,10 +422,21 @@ function CategoryGroup({
               >
                 {g.name}
               </Link>
-              <p className="text-xs text-[color:var(--muted)] mt-0.5">
-                {targetDaysLabel(g.target_days)}
-                {g.description ? ` · ${g.description}` : ""}
-              </p>
+              {/* Line 2: cadence + week rings inline */}
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-[color:var(--muted)] whitespace-nowrap">
+                  {targetDaysLabel(g.target_days)}
+                </span>
+                {ringsByGoal.has(g.id) && (
+                  <GoalWeekRings rings={ringsByGoal.get(g.id)!} color={color} />
+                )}
+              </div>
+              {/* Line 3: description, wraps to 2 lines then clips */}
+              {g.description ? (
+                <p className="text-xs text-[color:var(--muted)] mt-0.5 line-clamp-2">
+                  {g.description}
+                </p>
+              ) : null}
             </div>
             {/* Right-side meta cluster: aligned on every row so it's scannable
                 and doesn't shift with the goal name's length. */}
