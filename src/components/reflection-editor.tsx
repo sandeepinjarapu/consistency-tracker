@@ -138,12 +138,13 @@ export default function ReflectionEditor({
               onClick={() =>
                 setVisibility((v) => (v === "private" ? "partner" : "private"))
               }
-              className="text-xs text-[color:var(--muted)] hover:text-black transition-colors"
-              title={
+              aria-pressed={visibility === "partner"}
+              aria-label={
                 visibility === "private"
-                  ? "Tap to share with partner"
-                  : "Tap to make private"
+                  ? "Reflection visibility: private. Tap to share with partner."
+                  : "Reflection visibility: shared with partner. Tap to make private."
               }
+              className={`${tapTarget} px-2 rounded-md text-xs text-[color:var(--muted)] hover:text-black hover:bg-gray-50 transition-colors`}
             >
               · {visibility === "private" ? "Private" : "Shared with partner"}
             </button>
