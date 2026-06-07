@@ -17,16 +17,22 @@ export default function GoalRowMenu({
   goalId,
   goalName,
   archived,
+  isShared = false,
   trigger = "kebab",
 }: {
   goalId: string;
   goalName: string;
   archived: boolean;
+  /** True when the goal is currently shared with at least one partner.
+   *  When true, archiving shows a brief confirmation noting the partner
+   *  will lose access. Defaults to false (no confirm, direct action). */
+  isShared?: boolean;
   /** "kebab" (⋯, goals list rows) or "gear" (goal-detail header). */
   trigger?: "kebab" | "gear";
 }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const [pending, startTransition] = useTransition();
   // The menu is portaled to <body> so it escapes the goal row's stacking
   // context; otherwise the next card's icon cluster paints over it. We anchor
@@ -77,8 +83,16 @@ export default function GoalRowMenu({
 
   function handleArchive() {
     startTransition(async () => {
-      if (archived) await unarchiveGoal(goalId);
-      else await archiveGoal(goalId);
+      await archiveGoal(goalId);
+      setConfirmArchive(false);
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  function handleUnarchive() {
+    startTransition(async () => {
+      await unarchiveGoal(goalId);
       setOpen(false);
       router.refresh();
     });
@@ -131,7 +145,16 @@ export default function GoalRowMenu({
               <button
                 type="button"
                 role="menuitem"
-                onClick={handleArchive}
+                onClick={() => {
+                  if (archived) {
+                    handleUnarchive();
+                  } else if (isShared) {
+                    setOpen(false);
+                    setConfirmArchive(true);
+                  } else {
+                    handleArchive();
+                  }
+                }}
                 disabled={pending}
                 className={`${tapTargetRow} w-full px-3 text-left text-sm hover:bg-gray-50 disabled:opacity-50`}
               >
@@ -161,6 +184,18 @@ export default function GoalRowMenu({
               pending={pending}
               onConfirm={handleDelete}
               onCancel={() => setConfirmDelete(false)}
+            />,
+            document.body
+          )
+        : null}
+
+      {confirmArchive
+        ? createPortal(
+            <ArchiveConfirm
+              goalName={goalName}
+              pending={pending}
+              onConfirm={handleArchive}
+              onCancel={() => setConfirmArchive(false)}
             />,
             document.body
           )
@@ -216,6 +251,59 @@ function DeleteConfirm({
             className="min-h-[44px] rounded-md bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
           >
             {pending ? "Deleting…" : "Delete goal"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArchiveConfirm({
+  goalName,
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  goalName: string;
+  pending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <button
+        type="button"
+        aria-label="Cancel"
+        onClick={onCancel}
+        className="absolute inset-0 bg-black/20"
+      />
+      <div
+        role="dialog"
+        aria-label="Archive goal"
+        className="relative z-10 w-full max-w-sm rounded-t-xl border border-[color:var(--border)] bg-white p-5 shadow-sm sm:rounded-xl"
+      >
+        <h3 className="text-sm font-semibold">Archive this goal?</h3>
+        <p className="mt-2 text-sm text-[color:var(--muted)]">
+          <span className="font-medium text-[color:var(--foreground)]">
+            {goalName}
+          </span>{" "}
+          will move to your archive. Partners will no longer see this goal.
+        </p>
+        <div className="mt-4 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-[44px] px-3 text-sm text-[color:var(--muted)] hover:text-black"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending}
+            className="min-h-[44px] rounded-md bg-black px-4 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            {pending ? "Archiving…" : "Archive goal"}
           </button>
         </div>
       </div>

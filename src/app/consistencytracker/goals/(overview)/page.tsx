@@ -472,7 +472,7 @@ function CategoryGroup({
                     </span>
                   </span>
                 ) : null}
-                <GoalRowMenu goalId={g.id} goalName={g.name} archived={archived} />
+                <GoalRowMenu goalId={g.id} goalName={g.name} archived={archived} isShared={shareNames.length > 0} />
               </div>
             </div>
           </li>

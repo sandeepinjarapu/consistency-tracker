@@ -83,6 +83,10 @@ export default async function GoalPage({
   const startDate = addDays(today, -364);
   const goalStartDate = dateInTimezone(goal.created_at as string, timezone);
 
+  // Fetch share list here so GoalRowMenu can show the archive-partner warning.
+  // Also passed to ConnectionsColumn to avoid a duplicate query.
+  const sharedWith = await listSharesForGoal(goal.id);
+
   // Reminder lives in the Connections column (specific-day goals only). The
   // CalendarReminder keeps its own "Added ✓ · Add again" honesty.
   const reminder =
@@ -123,7 +127,7 @@ export default async function GoalPage({
           </div>
           <h1 className="text-2xl font-light tracking-tight">{goal.name}</h1>
         </div>
-        <GoalRowMenu goalId={goal.id} goalName={goal.name} archived={!goal.active} trigger="gear" />
+        <GoalRowMenu goalId={goal.id} goalName={goal.name} archived={!goal.active} isShared={sharedWith.length > 0} trigger="gear" />
       </header>
 
       {/* Why (left) · Connections (right). The why is the human content; the
@@ -134,7 +138,7 @@ export default async function GoalPage({
         </div>
         <div className="flex-1 min-w-0 border-l border-[color:var(--border)] pl-5">
           <Suspense fallback={<Skeleton className="h-5 w-32" />}>
-            <ConnectionsColumn goalId={goal.id} docUrl={docUrl} reminder={reminder} />
+            <ConnectionsColumn goalId={goal.id} docUrl={docUrl} reminder={reminder} sharedWith={sharedWith} />
           </Suspense>
         </div>
       </div>
@@ -168,16 +172,19 @@ async function ConnectionsColumn({
   goalId,
   docUrl,
   reminder,
+  sharedWith: sharedWithProp,
 }: {
   goalId: string;
   docUrl: string | null;
   reminder: { gcalUrl: string; label: string; addedAt: string | null } | null;
+  /** Pre-fetched from the page level to avoid a duplicate query. */
+  sharedWith: Awaited<ReturnType<typeof listSharesForGoal>>;
 }) {
-  const [partners, pending, sharedWith] = await Promise.all([
+  const [partners, pending] = await Promise.all([
     listPartners(),
     listPendingInvites(),
-    listSharesForGoal(goalId),
   ]);
+  const sharedWith = sharedWithProp;
 
   return (
     <div className="flex flex-col gap-2.5">
