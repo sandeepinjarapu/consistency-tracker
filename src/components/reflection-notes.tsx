@@ -20,11 +20,13 @@ export default function ReflectionNotes({
 
   return (
     <div>
-      <ul className="space-y-1 text-sm max-w-prose">
+      <ul className="space-y-2 text-sm max-w-prose">
         {shown.map((n, i) => (
-          <li key={i} className="text-[color:var(--muted)]">
-            <span className="italic">&ldquo;{n.note}&rdquo;</span> — {n.goalName},{" "}
-            {n.dateLabel}
+          <li key={i}>
+            <p className="italic text-[color:var(--muted)]">&ldquo;{n.note}&rdquo;</p>
+            <p className="text-[10px] text-[color:var(--muted)] mt-0.5">
+              {n.goalName}, {n.dateLabel}
+            </p>
           </li>
         ))}
       </ul>
