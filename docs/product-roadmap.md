@@ -432,17 +432,13 @@ back to the npm package.
 | Lever | What it does | How to apply |
 |---|---|---|
 | **Vercel project settings** | Speed Insights has a sampling rate control in the Vercel dashboard (Settings, Speed Insights). Check there before touching code. | Dashboard only, no code change. |
-| **Disable in dev via script condition** | Conditionally render the `<Script>` tags only when `process.env.NODE_ENV === 'production'`. Dev reloads are likely the largest source of hits. | One-line conditional in `layout.tsx`. |
+| **Disable outside production deploy** | Conditionally render the `<Script>` tags only when `process.env.VERCEL_ENV === 'production'`. `VERCEL_ENV` is `"production"` for the main deployment only; preview deployments get `"preview"` and local dev is `undefined`. `NODE_ENV` is not sufficient: it is `"production"` in preview deploys too. | One-line conditional in `layout.tsx`. Done in PR #133. |
 | **Switch to npm package + sampleRate** | Resolves peer-dep conflict, then add `sampleRate={0.5}`. | Requires resolving toolchain conflict first; higher effort. |
 
-**Decision needed:**
-
-1. Check the Vercel dashboard first: does Speed Insights already offer a
-   project-level sampling setting? If yes, set it there.
-2. If not, add the `NODE_ENV` production guard in `layout.tsx`. That alone
-   likely keeps the quota flat.
-3. Only consider switching to the npm package if the dashboard setting and
-   NODE_ENV guard are insufficient.
+**Decision (PR #133):** Dashboard has no sampling control for the first-party
+script path. `VERCEL_ENV === "production"` guard added to `layout.tsx`. Local
+dev and preview deployments are now excluded; only production traffic is
+measured. npm package option remains parked unless quota pressure returns.
 
 **Surfaces affected:** `src/app/layout.tsx`. No data model changes.
 
@@ -512,16 +508,14 @@ with 5+ shared goals.
 
 1. **PR #130 (done): Reflections polish** — labels, stats size, gap, tooltip
 2. **PR #132 (done): PR A.1** — note attribution on second line
-3. **PR #131 (open): PR B** — aggregate calendar engagement unlock
+3. **PR #131 (done): PR B** — aggregate calendar engagement unlock
 4. **PR C:** dropdown/menu polish (item 3)
 5. **PR D:** Goals list glanceable status (item 4)
 6. **PR E:** partner reaction compression (item 7, if partner sharing expands)
 7. **Spec only:** planned breaks, longer cadences, earlier-weeks navigation
 
-**Ops hygiene (anytime):** Vercel quota guard. Check dashboard settings first;
-if no sampling control exists there, add the `NODE_ENV` production guard to
-`layout.tsx`. Not urgent at current usage levels but worth doing before the
-next heavy development sprint.
+**Ops hygiene:** Vercel quota guard done in PR #133. Scripts now load only when
+`VERCEL_ENV === "production"`, excluding local dev and preview deployments.
 
 Do not combine model changes with polish PRs. Planned breaks and longer
 cadences should not ride along with UI cleanup.
