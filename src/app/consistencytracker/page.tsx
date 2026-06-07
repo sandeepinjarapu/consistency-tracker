@@ -208,7 +208,14 @@ async function TodaySection() {
   const skippedCount = scheduledToday.filter((c) => c.status === "skipped").length;
   const remaining = goalsToday.length - doneCount - skippedCount;
   const extraToday = offTodayGoals.filter((g) => g.status === "done").length;
-  const extraSuffix = extraToday > 0 ? ` · ${extraToday} extra` : "";
+  // During the night-owl window the extras belong to yesterday, so the header
+  // says "from last night" to match the logical day — not "extra" against today.
+  const extraSuffix =
+    extraToday > 0
+      ? isNightOwl
+        ? ` · ${extraToday} extra from last night`
+        : ` · ${extraToday} extra`
+      : "";
 
   // doneThisWeek (for count-goal pace) only depends on the current week.
   const paceByGoal = new Map<string, number>();
@@ -237,7 +244,9 @@ async function TodaySection() {
                 skippedCount > 0 ? `, ${skippedCount} skipped` : ""
               }${remaining > 0 ? `, ${remaining} left` : ""}${extraSuffix}`
             : extraToday > 0
-              ? `Nothing scheduled today · ${extraToday} extra`
+              ? isNightOwl
+                ? `Nothing scheduled today · ${extraToday} extra from last night`
+                : `Nothing scheduled today · ${extraToday} extra`
               : "Nothing scheduled today."
         }
       />
@@ -268,8 +277,6 @@ async function TodaySection() {
         </div>
       )}
 
-      <LogExtra goals={offTodayGoals} date={extraDate} nightOwl={isNightOwl} />
-
       {lastNightGoals.length > 0 ? (
         <div className="mt-8">
           <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
@@ -294,6 +301,8 @@ async function TodaySection() {
           </div>
         </div>
       ) : null}
+
+      <LogExtra goals={offTodayGoals} date={extraDate} nightOwl={isNightOwl} />
 
       {banner.kind === "reflect" ? (
         <Link
