@@ -410,9 +410,9 @@ function CategoryGroup({
           return (
           <li
             key={g.id}
-            className="relative flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+            className="relative flex items-start justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
           >
-            <div className="min-w-0 pr-4">
+            <div className="min-w-0 pr-4 pt-0.5">
               {/* Stretched link: the ::after overlay makes the whole row open
                   the goal, while the right-side cluster sits on a higher layer
                   and stays independently hoverable/clickable. */}
@@ -428,52 +428,52 @@ function CategoryGroup({
                   {targetDaysLabel(g.target_days)}
                 </span>
               </div>
-              {/* Line 3: week rings, own row so they can breathe at larger size */}
-              {ringsByGoal.has(g.id) && (
-                <div className="mt-1.5">
-                  <GoalWeekRings rings={ringsByGoal.get(g.id)!} color={color} />
-                </div>
-              )}
-              {/* Line 4: description, wraps to 2 lines then clips */}
+              {/* Line 3: description, wraps to 2 lines then clips */}
               {g.description ? (
-                <p className="text-xs text-[color:var(--muted)] mt-1.5 line-clamp-2">
+                <p className="text-xs text-[color:var(--muted)] mt-1 line-clamp-2">
                   {g.description}
                 </p>
               ) : null}
             </div>
-            {/* Right-side meta cluster: aligned on every row so it's scannable
-                and doesn't shift with the goal name's length. */}
-            <div className="relative z-10 flex shrink-0 items-center gap-2">
-              {newReactionGoals.has(g.id) ? (
-                <span
-                  className="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"
-                  title="New reaction from a partner"
-                  aria-label="New reaction from a partner"
-                />
-              ) : null}
-              {share ? (
-                <span
-                  className="group relative inline-flex items-center gap-0.5 text-[color:var(--muted)]"
-                  aria-label={share}
-                >
-                  <ShareIcon />
-                  {shareNames.length > 1 ? (
-                    <span className="text-[10px] leading-none">
-                      {shareNames.length}
-                    </span>
-                  ) : null}
-                  {/* Custom tooltip: native title has a ~500ms browser delay;
-                      this shows in ~100ms on hover. Anchored right (the icon is
-                      near the row's right edge) and wraps so it stays on-screen. */}
+            {/* Right column: week rings top-right (scannable across all cards),
+                actions below. flex-col keeps the ring row anchored to the top
+                of the card regardless of how tall the left column grows. */}
+            <div className="relative z-10 flex shrink-0 flex-col items-end gap-2">
+              {ringsByGoal.has(g.id) && (
+                <GoalWeekRings rings={ringsByGoal.get(g.id)!} color={color} />
+              )}
+              <div className="flex items-center gap-2">
+                {newReactionGoals.has(g.id) ? (
                   <span
-                    role="tooltip"
-                    className="pointer-events-none absolute right-0 top-full z-20 mt-1 w-max max-w-[12rem] rounded bg-[#0a0a0a] px-2 py-1 text-left text-[11px] leading-snug text-white opacity-0 transition-opacity duration-100 group-hover:opacity-100"
+                    className="inline-block w-1.5 h-1.5 rounded-full bg-blue-600"
+                    title="New reaction from a partner"
+                    aria-label="New reaction from a partner"
+                  />
+                ) : null}
+                {share ? (
+                  <span
+                    className="group relative inline-flex items-center gap-0.5 text-[color:var(--muted)]"
+                    aria-label={share}
                   >
-                    {share}
+                    <ShareIcon />
+                    {shareNames.length > 1 ? (
+                      <span className="text-[10px] leading-none">
+                        {shareNames.length}
+                      </span>
+                    ) : null}
+                    {/* Custom tooltip: native title has a ~500ms browser delay;
+                        this shows in ~100ms on hover. Anchored right (the icon is
+                        near the row's right edge) and wraps so it stays on-screen. */}
+                    <span
+                      role="tooltip"
+                      className="pointer-events-none absolute right-0 top-full z-20 mt-1 w-max max-w-[12rem] rounded bg-[#0a0a0a] px-2 py-1 text-left text-[11px] leading-snug text-white opacity-0 transition-opacity duration-100 group-hover:opacity-100"
+                    >
+                      {share}
+                    </span>
                   </span>
-                </span>
-              ) : null}
-              <GoalRowMenu goalId={g.id} goalName={g.name} archived={archived} />
+                ) : null}
+                <GoalRowMenu goalId={g.id} goalName={g.name} archived={archived} />
+              </div>
             </div>
           </li>
           );
