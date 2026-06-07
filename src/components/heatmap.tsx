@@ -314,8 +314,8 @@ function tooltipFor(
         const inRange = cell.date >= ctx.goalStartDate && cell.date <= ctx.today;
         if (inRange && ctx.targetDays.includes(dow)) {
           return cell.date === ctx.today
-            ? `${date} · Today — not logged yet`
-            : `${date} · Not logged`;
+            ? `${date} · Today — not done yet`
+            : `${date} · Not done`;
         }
       }
       return `${date} · Not scheduled`;

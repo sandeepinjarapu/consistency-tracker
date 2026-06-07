@@ -278,7 +278,7 @@ export default async function PartnerPage({
                       ? `${stats.currentStreak} ${stats.streakUnit} streak · `
                       : ""}
                     {evidence.totalDone}{" "}
-                    {evidence.totalDone === 1 ? "check-in" : "check-ins"} logged
+                    {evidence.totalDone === 1 ? "check-in" : "check-ins"}
                     {evidence.extraDone > 0 ? ` · ${evidence.extraDone} extra` : ""}
                   </p>
                 </div>

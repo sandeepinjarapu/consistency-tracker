@@ -125,7 +125,7 @@ and `isBackfillable` are untouched, so their existing tests stay green.
 | **Progress ring** | fills to `scoredDone / targetCount`, caps at full | small `+N` beside the ring; ring never overfills |
 | **Week rows** (`buildWeekRows`) | scheduled cells as today | off-target done → new **`extra`** cell state (editable iff `isExtraLoggable`); over-quota eligible dones stay ordinary `done` cells (no per-cell tag) |
 | **Today** (§8) | scheduled cards unchanged | off-day logging via the §8 affordance; over-quota already works via the existing card (pace caps at `✓ N of N`) |
-| **Partner** (evidence surface) | streak from scored | `totalDone check-ins logged · K extra` when `K > 0` — e.g. 3 scored + 1 extra → `4 check-ins logged · 1 extra`; calendar shows extras as evidence |
+| **Partner** (evidence surface) | streak from scored | `totalDone check-ins · K extra` when `K > 0` — e.g. 3 scored + 1 extra → `4 check-ins · 1 extra`; calendar shows extras as evidence |
 | **Reflection narrative** | strongest/weakest + % use `scoredDone` / `completionRate` | "you showed up `totalDone` times"; notes may quietly label an extra |
 | **Reflection % / highlights** | `scoredDone / targetCount` only — **unchanged** | extras excluded |
 | **Weekly email** | report `scoredDone / targetCount`; never `6 / 5` | `· +N extra` shown **deterministically** when `N > 0`; **fix the asymmetry** (specific-day `done` must be the scored count, not raw) |
@@ -206,7 +206,7 @@ already loggable from the existing Today card.)
 4. The weekly email never shows `6 / 5`; it shows `5 / 5 · +1 extra` whenever
    `extraDone > 0`, and an evidence-only week (no scoreable target) is not sent.
 5. A partner sees extras only on **shared** goals; counts read evidence-accurate
-   `4 check-ins logged · 1 extra` (3 scored + 1 extra).
+   `4 check-ins · 1 extra` (3 scored + 1 extra).
 6. Reflection % and strongest/weakest are unchanged by extras; the narrative may
    say "you showed up N times" using `totalDone`.
 7. The aggregate calendar shows an extra-only day as "showed up"; per-goal month

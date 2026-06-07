@@ -48,7 +48,7 @@ negative check.
 - [ ] **Tap** a logged day → an inline **Remove / Keep** confirm appears;
       **Remove** clears the check-in.
 - [ ] A day outside the editable window (older than this week + 2-day grace)
-      offers no **Log / Remove** and cannot change history (a read-only cell may
+      offers no **Mark / Remove** and cannot change history (a read-only cell may
       still show its date tooltip).
 - [ ] The **calendar history** (recent month grids + older year strip) is
       **read-only** (no click-to-edit).
@@ -73,7 +73,7 @@ negative check.
       updates and the sheet stays on-brand.
 - [ ] **B opens A's partner page**: sees A's name, avatar, the shared goal, its
       history, the goal's **category name + color** (not "Uncategorized"), and
-      "N-day streak · M check-ins logged" (no %).
+      "N-day streak · M check-ins" (no %).
 - [ ] **B reacts** "Saw it" / "Proud" on a recent week → A sees the reaction on
       that goal; the Partners blue "new" dot clears after A visits.
 - [ ] A reflection B marked **Partner** shows in A's partner page "In their
