@@ -380,7 +380,7 @@ export function buildWeeklyNarrative(
   // still showing up, even though it never moves a score.
   const showedUp = stats.done + stats.extraDone;
   if (showedUp === 0) {
-    sentences.push("A quiet week — no completions logged.");
+    sentences.push("A quiet week — nothing checked in.");
   } else {
     sentences.push(
       `You showed up ${showedUp} ${showedUp === 1 ? "time" : "times"} this week.`

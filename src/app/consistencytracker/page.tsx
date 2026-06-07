@@ -283,7 +283,7 @@ async function TodaySection() {
             Still open from last night
           </h2>
           <p className="mb-3 mt-1 text-xs text-[color:var(--muted)]">
-            Up late? You can still log yesterday until 5am.
+            Up late? Yesterday is still open until 5am.
           </p>
           <div className="space-y-2">
             {lastNightGoals.map((g) => (

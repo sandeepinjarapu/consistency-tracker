@@ -19,9 +19,9 @@ const DOW_NAME = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
  * you can undo, today's accent ring, a dashed "open" well you can fill); locked
  * history cells are flat paint. The editable set is whatever the server allows.
  *
- * Logging is one tap; removing a logged day asks first via an inline confirm
+ * Marking is one tap; removing a check-in asks first via an inline confirm
  * below the grid. A date tooltip shows on hover (desktop) and on tapping a
- * read-only cell (mobile) — editable cells keep tap-to-log. The tooltip is
+ * read-only cell (mobile) — editable cells keep tap-to-mark. The tooltip is
  * rendered at the component root, outside the horizontal-scroll wrapper, so it
  * is never clipped.
  */
@@ -302,12 +302,12 @@ function Check({ color = "#fff" }: { color?: string }) {
 const LABEL: Record<GridCellState, string> = {
   done: "done",
   skipped: "skipped",
-  today: "today, not logged",
-  open: "open to log",
+  today: "today, not yet done",
+  open: "open · tap to mark done",
   missed: "missed",
   upcoming: "upcoming",
   extra: "extra day",
-  "extra-open": "off day, open to log an extra",
+  "extra-open": "off day · tap to add an extra",
   rest: "rest day",
 };
 
@@ -316,11 +316,11 @@ const TIP_STATUS: Record<GridCellState, string> = {
   done: "Done",
   skipped: "Skipped",
   today: "Today",
-  open: "Open to log",
+  open: "Mark done",
   missed: "Missed",
   upcoming: "Upcoming",
-  extra: "Extra day",
-  "extra-open": "Log an extra",
+  extra: "Extra check-in",
+  "extra-open": "Add an extra",
   rest: "Not scheduled",
 };
 
