@@ -422,18 +422,21 @@ function CategoryGroup({
               >
                 {g.name}
               </Link>
-              {/* Line 2: cadence + week rings inline */}
-              <div className="flex items-center gap-2 mt-0.5">
+              {/* Line 2: cadence */}
+              <div className="mt-0.5">
                 <span className="text-xs text-[color:var(--muted)] whitespace-nowrap">
                   {targetDaysLabel(g.target_days)}
                 </span>
-                {ringsByGoal.has(g.id) && (
-                  <GoalWeekRings rings={ringsByGoal.get(g.id)!} color={color} />
-                )}
               </div>
-              {/* Line 3: description, wraps to 2 lines then clips */}
+              {/* Line 3: week rings, own row so they can breathe at larger size */}
+              {ringsByGoal.has(g.id) && (
+                <div className="mt-1.5">
+                  <GoalWeekRings rings={ringsByGoal.get(g.id)!} color={color} />
+                </div>
+              )}
+              {/* Line 4: description, wraps to 2 lines then clips */}
               {g.description ? (
-                <p className="text-xs text-[color:var(--muted)] mt-0.5 line-clamp-2">
+                <p className="text-xs text-[color:var(--muted)] mt-1.5 line-clamp-2">
                   {g.description}
                 </p>
               ) : null}
