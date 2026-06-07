@@ -1,4 +1,7 @@
+"use client";
+
 import type { MonthData } from "@/lib/month-history";
+import { HoverTip, useHoverTip } from "./tooltip";
 
 const MONTH_SHORT = [
   "J", "F", "M", "A", "M", "J",
@@ -32,6 +35,8 @@ export default function YearStrip({
   months: MonthData[];
   doneColor: string;
 }) {
+  const { tip, bind } = useHoverTip();
+
   if (months.length === 0) return null;
 
   // Group by year, oldest year first for display
@@ -75,8 +80,8 @@ export default function YearStrip({
                       fontSize: 8,
                       color: textColor,
                     }}
-                    title={md ? md.label : undefined}
                     aria-label={md ? md.label : `${year}-${String(month).padStart(2, "0")}`}
+                    {...(md ? bind(md.label) : {})}
                   >
                     {MONTH_SHORT[i]}
                   </div>
@@ -86,6 +91,7 @@ export default function YearStrip({
           </div>
         );
       })}
+      <HoverTip tip={tip} />
     </div>
   );
 }

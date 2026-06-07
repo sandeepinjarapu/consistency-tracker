@@ -8,7 +8,14 @@ import { HoverTip, useHoverTip } from "./tooltip";
  * Each cell shows the status (done/skipped/missed/etc) as a small colored
  * square — same visual vocabulary as the year heatmap, week-scaled.
  */
-export default function WeekGrid({ perGoal }: { perGoal: GoalWeekStats[] }) {
+export default function WeekGrid({
+  perGoal,
+  weekStart,
+}: {
+  perGoal: GoalWeekStats[];
+  /** ISO week start (Monday, YYYY-MM-DD). When provided, tooltips include the date. */
+  weekStart?: string;
+}) {
   const { tip, bind } = useHoverTip();
   if (perGoal.length === 0) return null;
 
@@ -41,7 +48,7 @@ export default function WeekGrid({ perGoal }: { perGoal: GoalWeekStats[] }) {
               key={i}
               className="h-4 rounded-sm"
               style={{ background: statusColor(s) }}
-              {...bind(`${DAY_TITLES[i]} · ${statusLabel(s)}`)}
+              {...bind(dayTooltip(i, s, weekStart))}
             />
           ))}
         </div>
@@ -78,6 +85,20 @@ function statusColor(s: GoalDayStatus): string {
     default:
       return "#f3f4f6"; // very light grey — same as heatmap no-target
   }
+}
+
+function dayTooltip(dayIndex: number, s: GoalDayStatus, weekStart?: string): string {
+  const label = statusLabel(s);
+  if (!weekStart) return `${DAY_TITLES[dayIndex]} · ${label}`;
+  const [y, m, d] = weekStart.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d + dayIndex));
+  const dateStr = date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  return `${dateStr} · ${label}`;
 }
 
 function statusLabel(s: GoalDayStatus): string {

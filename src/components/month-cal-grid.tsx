@@ -1,4 +1,7 @@
+"use client";
+
 import type { HeatmapCell } from "./heatmap";
+import { HoverTip, useHoverTip } from "./tooltip";
 
 const MONTH_FULL = [
   "January", "February", "March", "April", "May", "June",
@@ -46,6 +49,7 @@ export default function MonthCalGrid({
    *  Use to strip leading weeks before a goal started. */
   trimBefore?: string;
 }) {
+  const { tip, bind } = useHoverTip();
   const cellMap = new Map(cells.map((c) => [c.date, c]));
   const totalDays = daysInMonth(year, month);
   const firstStr = `${year}-${pad(month)}-01`;
@@ -144,6 +148,10 @@ export default function MonthCalGrid({
                   ? "#78716c"
                   : "#bbb";
 
+            const tipText = isNA
+              ? (isPreStart ? cellTooltip(dateStr, "not-started") : null)
+              : (hc?.tooltip ?? cellTooltip(dateStr, status));
+
             return (
               <div
                 key={ci}
@@ -155,12 +163,12 @@ export default function MonthCalGrid({
                   color: textColor,
                   fontVariantNumeric: "tabular-nums",
                 }}
-                title={isNA ? dateStr : (hc?.tooltip ?? dateStr)}
                 aria-label={
                   isNA
                     ? `${dateStr}: ${isFuture ? "future" : "not-started"}`
                     : (hc?.tooltip ?? `${dateStr}: ${status}`)
                 }
+                {...(tipText ? bind(tipText) : {})}
               >
                 {day}
               </div>
@@ -168,6 +176,24 @@ export default function MonthCalGrid({
           })}
         </div>
       ))}
+      <HoverTip tip={tip} />
     </div>
   );
+}
+
+function cellTooltip(dateStr: string, status: string | undefined): string | null {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  switch (status) {
+    case "done":         return `${date} · Done`;
+    case "extra":        return `${date} · Extra check-in`;
+    case "skipped":      return `${date} · Skipped`;
+    case "missed":       return `${date} · Not done`;
+    case "not-started":  return `${date} · Before goal started`;
+    default:             return null; // empty / off-day: no tooltip
+  }
 }

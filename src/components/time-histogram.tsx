@@ -44,7 +44,9 @@ export default function TimeHistogram({
           const count = counts[i];
           const heightPct = max > 0 ? (count / max) * 100 : 0;
           const unit = count === 1 ? "check-in" : "check-ins";
-          const tip = `${count} ${unit} in the ${p.label.toLowerCase()}`;
+          const tip = p.label === "Late night"
+            ? `${count} ${unit} late into the night`
+            : `${count} ${unit} in the ${p.label.toLowerCase()}`;
           return (
             <div
               key={p.label}
