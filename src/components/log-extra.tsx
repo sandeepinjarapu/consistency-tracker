@@ -43,7 +43,7 @@ export default function LogExtra({
 }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<Record<string, "done" | "skipped" | null>>(
     () => Object.fromEntries(goals.map((g) => [g.id, g.status]))
   );
@@ -57,18 +57,18 @@ export default function LogExtra({
   const overflowCount = goals.length - (MAX_VISIBLE - 1);
 
   async function toggle(id: string) {
-    if (pendingId !== null) return;
+    if (pendingIds.has(id)) return;
     const prev = status[id] ?? null;
     const next = prev ? null : "done";
     setStatus((s) => ({ ...s, [id]: next }));
-    setPendingId(id);
+    setPendingIds((s) => new Set(s).add(id));
     try {
       await (next === "done" ? markExtraDone(id, date) : removeExtra(id, date));
       router.refresh();
     } catch {
       setStatus((s) => ({ ...s, [id]: prev }));
     } finally {
-      setPendingId(null);
+      setPendingIds((s) => { const n = new Set(s); n.delete(id); return n; });
     }
   }
 
@@ -88,7 +88,7 @@ export default function LogExtra({
               key={g.id}
               type="button"
               onClick={() => toggle(g.id)}
-              disabled={pendingId === g.id}
+              disabled={pendingIds.has(g.id)}
               aria-pressed={isDone}
               aria-label={
                 isDone
