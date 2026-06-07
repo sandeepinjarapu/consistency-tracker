@@ -118,13 +118,13 @@ export default function GoalRowMenu({
               ref={menuRef}
               role="menu"
               style={{ position: "fixed", top: menuPos.top, right: menuPos.right }}
-              className="z-50 w-44 rounded-md border border-[color:var(--border)] bg-white py-1 shadow-md"
+              className="z-50 w-44 rounded-lg border border-[color:var(--border)] bg-white py-1 shadow-sm"
             >
               <Link
                 role="menuitem"
                 href={`/consistencytracker/goals/${goalId}/edit`}
                 onClick={() => setOpen(false)}
-                className={`${tapTargetRow} px-3 text-xs hover:bg-gray-50`}
+                className={`${tapTargetRow} px-3 text-sm hover:bg-gray-50`}
               >
                 Edit
               </Link>
@@ -133,7 +133,7 @@ export default function GoalRowMenu({
                 role="menuitem"
                 onClick={handleArchive}
                 disabled={pending}
-                className={`${tapTargetRow} w-full px-3 text-left text-xs hover:bg-gray-50 disabled:opacity-50`}
+                className={`${tapTargetRow} w-full px-3 text-left text-sm hover:bg-gray-50 disabled:opacity-50`}
               >
                 {pending ? "…" : archived ? "Unarchive" : "Archive"}
               </button>
@@ -145,7 +145,7 @@ export default function GoalRowMenu({
                   setOpen(false);
                   setConfirmDelete(true);
                 }}
-                className={`${tapTargetRow} w-full px-3 text-left text-xs text-red-600 hover:bg-red-50`}
+                className={`${tapTargetRow} w-full px-3 text-left text-sm text-red-600 hover:bg-red-50`}
               >
                 Delete goal
               </button>
@@ -191,7 +191,7 @@ function DeleteConfirm({
       <div
         role="dialog"
         aria-label="Delete goal"
-        className="relative z-10 w-full max-w-sm rounded-t-2xl border border-[color:var(--border)] bg-white p-5 shadow-md sm:rounded-2xl"
+        className="relative z-10 w-full max-w-sm rounded-t-xl border border-[color:var(--border)] bg-white p-5 shadow-sm sm:rounded-xl"
       >
         <h3 className="text-sm font-semibold">Delete this goal?</h3>
         <p className="mt-2 text-sm text-[color:var(--muted)]">
