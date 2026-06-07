@@ -130,7 +130,7 @@ describe("buildWeekRings", () => {
     const r = rings[5];
     expect(r.state).toBe("partial");
     expect(r.completionRate).toBeCloseTo(3 / 7);
-    expect(r.tooltip).toContain("%");
+    expect(r.tooltip).toContain("3 check-ins");
   });
 
   // Regression: extra-only weeks must not appear as empty.
@@ -144,14 +144,16 @@ describe("buildWeekRings", () => {
     expect(r.tooltip).toContain("extra");
   });
 
-  it("partial (extra-only) tooltip mentions 'extra check-in'", () => {
+  it("partial (extra-only) tooltip mentions 'extra check-in' without 'only'", () => {
     const rings = buildWeekRings({ ...MON_ONLY, doneDates: ["2024-06-04"] });
-    expect(rings[5].tooltip).toMatch(/extra check-in/);
+    expect(rings[5].tooltip).toContain("1 extra check-in");
+    expect(rings[5].tooltip).not.toContain("only");
   });
 
   it("partial (extra-only): extraDone=2 gives correct tooltip", () => {
     const rings = buildWeekRings({ ...MON_ONLY, doneDates: ["2024-06-04", "2024-06-05"] });
     expect(rings[5].tooltip).toContain("2 extra check-ins");
+    expect(rings[5].tooltip).not.toContain("only");
   });
 
   it("frequency goal: partial when scoredDone < weeklyTarget", () => {
