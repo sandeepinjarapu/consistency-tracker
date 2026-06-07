@@ -702,7 +702,7 @@ describe("buildWeeklyNarrative", () => {
 
   it("uses a gentle clause when there were no completions", () => {
     expect(buildWeeklyNarrative(ws(0, 1, 2), null, noHighlights)).toBe(
-      "A quiet week — no completions logged."
+      "A quiet week — nothing checked in."
     );
   });
 

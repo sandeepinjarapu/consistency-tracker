@@ -259,7 +259,7 @@ function CurrentWeekHero({
       </p>
       <p className="text-lg font-light tracking-tight leading-snug mb-6 max-w-prose">
         {narrative ??
-          "Log a few check-ins this week, then this becomes your read on what helped and what got in the way."}
+          "Check in a few times this week, then this becomes your read on what helped and what got in the way."}
       </p>
       <WeekDetailBody
         weekStart={start}
