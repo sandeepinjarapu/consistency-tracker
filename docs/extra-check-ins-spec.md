@@ -168,12 +168,12 @@ scheduled for today. V1 ships **both** entry points:
   feature discoverable in the daily loop.
 
   **Night-owl alignment:** between 12 AM and 5 AM the page is in the night-owl
-  window (same as "Still open from last night"). In that window the extra list
+  window (same as "Still open from late last night"). In that window the extra list
   uses **yesterday** as both the logical day and the database date
   (`extraDate = yesterday`, `extraDow = yesterdayDow`), so a goal not scheduled
   yesterday is the one that appears, and the check-in lands on the day the user
   is mentally still in. Copy shifts accordingly: collapsed button reads "Log
-  something extra from last night"; expanded sub-text reads "Up late? This logs
+  something extra from late last night"; expanded sub-text reads "Up late? This logs
   to yesterday." After 5 AM both revert to the normal calendar-today meaning.
 
 Both write through `markExtraDone` / `removeExtra` (§5), so they share one guard

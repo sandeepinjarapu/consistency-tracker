@@ -213,7 +213,7 @@ async function TodaySection() {
   const extraSuffix =
     extraToday > 0
       ? isNightOwl
-        ? ` · ${extraToday} extra from last night`
+        ? ` · ${extraToday} extra from late last night`
         : ` · ${extraToday} extra`
       : "";
 
@@ -245,7 +245,7 @@ async function TodaySection() {
               }${remaining > 0 ? `, ${remaining} left` : ""}${extraSuffix}`
             : extraToday > 0
               ? isNightOwl
-                ? `Nothing scheduled today · ${extraToday} extra from last night`
+                ? `Nothing scheduled today · ${extraToday} extra from late last night`
                 : `Nothing scheduled today · ${extraToday} extra`
               : "Nothing scheduled today."
         }
