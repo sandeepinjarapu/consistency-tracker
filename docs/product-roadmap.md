@@ -31,9 +31,9 @@ or scoring rules.
 what to try next.` Editor labels changed to `Keep`, `Let go`, `Try next`,
 `Notes`. Partner reflection view and smoke checklist updated to match.
 
-### 2. Reflection notes: attribution on second line `Open — PR #132`
+### 2. Reflection notes: attribution on second line `Done — PR #132`
 
-**In review:** `ReflectionNotes` renders the quote on the first line and the
+**Shipped:** `ReflectionNotes` renders the quote on the first line and the
 goal name / date on a smaller muted second line. The em-dash inline separator
 pattern is gone.
 
