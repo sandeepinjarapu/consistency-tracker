@@ -199,17 +199,17 @@ export default function TodayGoalCard({
                   <button
                     onClick={() => setShowSkipMenu((s) => !s)}
                     disabled={pending}
-                    className={`${tapTarget} text-xs text-[color:var(--muted)] hover:text-black px-3 rounded-md border border-[color:var(--border)] disabled:opacity-50`}
+                    className={`${tapTarget} text-sm text-[color:var(--muted)] hover:text-black px-3 rounded-lg border border-[color:var(--border)] disabled:opacity-50`}
                   >
                     Skip ▾
                   </button>
                   {showSkipMenu ? (
-                    <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-[color:var(--border)] rounded-md shadow-sm py-1 w-40">
+                    <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-[color:var(--border)] rounded-lg shadow-sm py-1 w-40">
                       {(Object.keys(REASON_LABELS) as SkipReason[]).map((r) => (
                         <button
                           key={r}
                           onClick={() => run(() => markSkipped(goalId, date, r), optimisticRow("skipped", r))}
-                          className={`${tapTargetRow} w-full text-left text-xs px-3 hover:bg-gray-50`}
+                          className={`${tapTargetRow} w-full text-left text-sm px-3 hover:bg-gray-50`}
                         >
                           {REASON_LABELS[r]}
                         </button>
