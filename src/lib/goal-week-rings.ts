@@ -111,7 +111,7 @@ export function buildWeekRings({
       state,
       completionRate,
       extraDone,
-      tooltip: buildTooltip(state, weekStart, scoredDone, extraDone, completionRate),
+      tooltip: buildTooltip(state, weekStart, scoredDone, extraDone),
     });
   }
 
@@ -132,8 +132,7 @@ function buildTooltip(
   state: WeekRingState,
   weekStart: string,
   scoredDone: number,
-  extraDone: number,
-  completionRate: number
+  extraDone: number
 ): string {
   const label = formatWeekLabel(weekStart);
   const prefix = `Week of ${label}`;
@@ -151,8 +150,8 @@ function buildTooltip(
     case "partial":
       // Extra-only: scoredDone=0 but extraDone>0
       if (scoredDone === 0 && extraDone > 0) {
-        return `${prefix} · ${extraDone} extra check-in${extraDone > 1 ? "s" : ""} only`;
+        return `${prefix} · ${extraDone} extra check-in${extraDone > 1 ? "s" : ""}`;
       }
-      return `${prefix} · ${Math.round(completionRate * 100)}% done`;
+      return `${prefix} · ${scoredDone} check-in${scoredDone !== 1 ? "s" : ""}${extraDone > 0 ? ` · ${extraDone} extra` : ""}`;
   }
 }
