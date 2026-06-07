@@ -67,6 +67,7 @@ async function TodaySection() {
   const timezone = profile?.timezone ?? "UTC";
   const today = todayIn(timezone);
   const dow = dayOfWeekIn(timezone);
+  const hour = hourIn(timezone);
   const firstName = profile?.display_name?.split(" ")[0];
 
   if (goals.length === 0) {
@@ -134,12 +135,20 @@ async function TodaySection() {
   // shown in that window, so daytime users never see it.
   const yesterday = addDays(today, -1);
   const yesterdayDow = (dow + 6) % 7;
+  // During the night-owl window (12 AM – DAY_START_HOUR), "Log something extra"
+  // should use the same logical day as "Still open from last night" — yesterday —
+  // so an extra at 2 AM lands on the day the user is mentally still in, not the
+  // calendar midnight rollover. extraDow determines which goals are off-schedule
+  // for the extra list; extraDate is the date written to the database.
+  const isNightOwl = hour < DAY_START_HOUR;
+  const extraDate = isNightOwl ? yesterday : today;
+  const extraDow = isNightOwl ? yesterdayDow : dow;
   const loggedYesterday = new Set(
     twoWeekCheckIns.filter((c) => c.date === yesterday).map((c) => c.goal_id)
   );
   const lastNightGoals = selectLastNightGoals({
     goals,
-    hour: hourIn(timezone),
+    hour,
     yesterday,
     yesterdayDow,
     loggedYesterday,
@@ -172,14 +181,19 @@ async function TodaySection() {
   const todayCheckIns = weekCheckIns.filter((c) => c.date === today);
   const checkInByGoal = new Map(todayCheckIns.map((c) => [c.goal_id, c]));
 
-  // Goals not scheduled today, offered as one-tap "log something extra".
+  // Goals not scheduled on the extra logical day (yesterday during 12–5 AM,
+  // today otherwise), offered as one-tap "log something extra". The status
+  // lookup uses the same extraDate so an already-logged extra shows correctly.
+  const extraCheckInByGoal = new Map(
+    twoWeekCheckIns.filter((c) => c.date === extraDate).map((c) => [c.goal_id, c])
+  );
   const offTodayGoals = goals
-    .filter((g) => !g.target_days.includes(dow))
+    .filter((g) => !g.target_days.includes(extraDow))
     .map((g) => ({
       id: g.id,
       name: g.name,
       categoryColor: g.category?.color ?? UNCATEGORIZED_COLOR,
-      status: (checkInByGoal.get(g.id)?.status ?? null) as
+      status: (extraCheckInByGoal.get(g.id)?.status ?? null) as
         | "done"
         | "skipped"
         | null,
@@ -194,7 +208,14 @@ async function TodaySection() {
   const skippedCount = scheduledToday.filter((c) => c.status === "skipped").length;
   const remaining = goalsToday.length - doneCount - skippedCount;
   const extraToday = offTodayGoals.filter((g) => g.status === "done").length;
-  const extraSuffix = extraToday > 0 ? ` · ${extraToday} extra` : "";
+  // During the night-owl window the extras belong to yesterday, so the header
+  // says "from last night" to match the logical day — not "extra" against today.
+  const extraSuffix =
+    extraToday > 0
+      ? isNightOwl
+        ? ` · ${extraToday} extra from late last night`
+        : ` · ${extraToday} extra`
+      : "";
 
   // doneThisWeek (for count-goal pace) only depends on the current week.
   const paceByGoal = new Map<string, number>();
@@ -223,7 +244,9 @@ async function TodaySection() {
                 skippedCount > 0 ? `, ${skippedCount} skipped` : ""
               }${remaining > 0 ? `, ${remaining} left` : ""}${extraSuffix}`
             : extraToday > 0
-              ? `Nothing scheduled today · ${extraToday} extra`
+              ? isNightOwl
+                ? `Nothing scheduled today · ${extraToday} extra from late last night`
+                : `Nothing scheduled today · ${extraToday} extra`
               : "Nothing scheduled today."
         }
       />
@@ -254,8 +277,6 @@ async function TodaySection() {
         </div>
       )}
 
-      <LogExtra goals={offTodayGoals} date={today} />
-
       {lastNightGoals.length > 0 ? (
         <div className="mt-8">
           <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
@@ -280,6 +301,8 @@ async function TodaySection() {
           </div>
         </div>
       ) : null}
+
+      <LogExtra goals={offTodayGoals} date={extraDate} nightOwl={isNightOwl} />
 
       {banner.kind === "reflect" ? (
         <Link
