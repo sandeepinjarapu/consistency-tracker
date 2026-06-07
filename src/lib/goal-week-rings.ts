@@ -25,9 +25,9 @@ export const RING_WEEK_COUNT = 6;
 /**
  * Builds the mini-ring data for one goal row in the Goals list.
  *
- * Returns `weekCount` rings, oldest to newest, each representing one
- * completed ISO week (Monday–Sunday) that ended before the current week.
- * The in-progress current week is always excluded.
+ * Returns `weekCount` rings, oldest to newest. The rightmost ring is the
+ * current in-progress week; the remaining rings are the most recent
+ * completed ISO weeks (Monday–Sunday).
  *
  * States:
  *   not-started  week ended before goalStartDate
@@ -63,7 +63,7 @@ export function buildWeekRings({
   const currentWeekStart = isoWeekStart(today);
   const rings: WeekRing[] = [];
 
-  for (let i = weekCount; i >= 1; i--) {
+  for (let i = weekCount - 1; i >= 0; i--) {
     const weekStart = addDays(currentWeekStart, -7 * i);
     const weekEnd = addDays(weekStart, 6);
 

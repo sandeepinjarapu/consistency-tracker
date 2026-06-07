@@ -123,7 +123,7 @@ export default async function GoalsPage({
       }
     }
 
-    // Week rings: 6 completed ISO weeks per active goal row.
+    // Week rings: 5 completed ISO weeks + current in-progress week per goal row.
     for (const g of activeGoals) {
       ringsByGoal.set(
         g.id,
