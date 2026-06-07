@@ -43,6 +43,8 @@ export default function TimeHistogram({
         {PARTS.map((p, i) => {
           const count = counts[i];
           const heightPct = max > 0 ? (count / max) * 100 : 0;
+          const unit = count === 1 ? "check-in" : "check-ins";
+          const tip = `${count} ${unit} in the ${p.label.toLowerCase()}`;
           return (
             <div
               key={p.label}
@@ -52,7 +54,7 @@ export default function TimeHistogram({
                 background: count > 0 ? color : "var(--border)",
                 opacity: count > 0 ? 0.85 : 0.4,
               }}
-              {...bind(`${p.label} · ${count}`)}
+              {...bind(tip)}
             />
           );
         })}

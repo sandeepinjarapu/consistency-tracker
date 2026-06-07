@@ -30,11 +30,11 @@ export default function PartnerReflection({
 
   const lines: Array<{ label: string | null; text: string }> = [];
   if (reflection.continue_text)
-    lines.push({ label: "Continuing", text: reflection.continue_text });
+    lines.push({ label: "Keep", text: reflection.continue_text });
   if (reflection.stop_text)
-    lines.push({ label: "Stopping", text: reflection.stop_text });
+    lines.push({ label: "Let go", text: reflection.stop_text });
   if (reflection.improve_text)
-    lines.push({ label: "Improving", text: reflection.improve_text });
+    lines.push({ label: "Try next", text: reflection.improve_text });
   if (reflection.notes) lines.push({ label: null, text: reflection.notes });
   if (lines.length === 0) return null;
 
