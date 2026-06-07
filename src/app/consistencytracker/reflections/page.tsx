@@ -398,7 +398,7 @@ function WeekDetailBody({
       ) : null}
 
       {stats.notes.length > 0 ? (
-        <div className="mb-6">
+        <div className="mb-3">
           <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
             In your own words
           </h3>
@@ -412,7 +412,7 @@ function WeekDetailBody({
         </div>
       ) : null}
 
-      <p className="text-xs text-[color:var(--muted)] mb-6">
+      <p className="text-sm text-[color:var(--muted)] mb-6">
         {total === 0 ? (
           <>No check-ins recorded.</>
         ) : (

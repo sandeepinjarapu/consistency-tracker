@@ -57,7 +57,7 @@ negative check.
 
 - [ ] Current week shows the narrative headline + "In your own words" (your
       check-in notes) + the week grid.
-- [ ] Write Continue / Stop / Improve / Notes → **Save reflection** → "Saved ·
+- [ ] Write Keep / Let go / Try next / Notes → **Save reflection** → "Saved ·
       time".
 - [ ] Toggle visibility **Private ↔ Partner** and save.
 - [ ] A past week row expands in place; a finished, scoreable week shows a

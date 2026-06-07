@@ -14,7 +14,7 @@ export default function ReflectionEditor({
   weekStartDate,
   initial,
   partnerState,
-  continueHint = "What worked this week?",
+  continueHint = "What clicked this week?",
   improveHint = "One small change for next week?",
 }: {
   weekStartDate: string;
@@ -67,21 +67,21 @@ export default function ReflectionEditor({
   return (
     <div className="space-y-4">
       <Prompt
-        label="Continue"
+        label="Keep"
         hint={continueHint}
         value={continueText}
         onChange={setContinueText}
         placeholder="Morning writing right after coffee felt focused…"
       />
       <Prompt
-        label="Stop"
+        label="Let go"
         hint="What got in the way this week?"
         value={stopText}
         onChange={setStopText}
-        placeholder="Scrolling Twitter before bed killed sleep…"
+        placeholder="Scrolling before bed killed sleep…"
       />
       <Prompt
-        label="Improve"
+        label="Try next"
         hint={improveHint}
         value={improveText}
         onChange={setImproveText}

@@ -313,7 +313,7 @@ async function TodaySection() {
             Reflect on {banner.period === "this" ? "this" : "last"} week →
           </p>
           <p className="text-xs text-[color:var(--muted)] mt-0.5">
-            Continue · Stop · Improve. A few sentences keeps the loop honest.
+            What helped, what got in the way, what to try next.
           </p>
         </Link>
       ) : banner.kind === "dropoff" ? (
