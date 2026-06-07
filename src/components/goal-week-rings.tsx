@@ -12,7 +12,7 @@ const EXTRA_ONLY_ARC = CIRC * 0.15;
 /**
  * A row of mini ring indicators — one per completed ISO week — for a goal row
  * in the Goals list. Each ring mirrors the week-completion ring on the goal
- * detail page, shrunk to 18×18 px. Arc length is proportional to completion
+ * detail page, shrunk to 28×28 px. Arc length is proportional to completion
  * rate; a small pip at 12 o'clock marks weeks where extras were logged.
  *
  * not-started rings are filtered out so new goals don't show a wall of dashed
@@ -32,7 +32,7 @@ export default function GoalWeekRings({
   if (visibleRings.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-[6px]" aria-hidden>
+    <div className="flex items-center gap-[8px]" aria-hidden>
       {visibleRings.map((ring) => (
         <span
           key={ring.weekStart}
@@ -56,7 +56,7 @@ function RingSvg({ ring, color }: { ring: WeekRing; color: string }) {
   // Not-started: dashed outline only (filtered out above, but kept for completeness)
   if (ring.state === "not-started") {
     return (
-      <svg width="18" height="18" viewBox="0 0 14 14" aria-hidden>
+      <svg width="28" height="28" viewBox="0 0 14 14" aria-hidden>
         <circle cx="7" cy="7" r="5" fill="none" stroke="#e5e5e5" strokeWidth="1.5" strokeDasharray="3 3" />
       </svg>
     );
@@ -65,7 +65,7 @@ function RingSvg({ ring, color }: { ring: WeekRing; color: string }) {
   // Empty: solid gray outline, no arc
   if (ring.state === "empty") {
     return (
-      <svg width="18" height="18" viewBox="0 0 14 14" aria-hidden>
+      <svg width="28" height="28" viewBox="0 0 14 14" aria-hidden>
         <circle cx="7" cy="7" r="5" fill="none" stroke="#e5e5e5" strokeWidth="2" />
       </svg>
     );
@@ -74,7 +74,7 @@ function RingSvg({ ring, color }: { ring: WeekRing; color: string }) {
   // Skipped: gray outline with a small horizontal bar — "was here, didn't go"
   if (ring.state === "skipped") {
     return (
-      <svg width="18" height="18" viewBox="0 0 14 14" aria-hidden>
+      <svg width="28" height="28" viewBox="0 0 14 14" aria-hidden>
         <circle cx="7" cy="7" r="5" fill="none" stroke="#e5e5e5" strokeWidth="2" />
         <line x1="4.5" y1="7" x2="9.5" y2="7" stroke="#c4c4c4" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
@@ -90,7 +90,7 @@ function RingSvg({ ring, color }: { ring: WeekRing; color: string }) {
       : Math.min(ring.completionRate, 1) * CIRC;
 
   return (
-    <svg width="18" height="18" viewBox="0 0 14 14" aria-hidden>
+    <svg width="28" height="28" viewBox="0 0 14 14" aria-hidden>
       {/* Track: light tint of the category color */}
       <circle cx="7" cy="7" r="5" fill="none" stroke={color} strokeWidth="2" opacity="0.15" />
       {/* Arc: completion progress */}
@@ -103,9 +103,10 @@ function RingSvg({ ring, color }: { ring: WeekRing; color: string }) {
         strokeLinecap="round"
         transform="rotate(-90 7 7)"
       />
-      {/* Pip at 12 o'clock when extras were logged */}
-      {ring.state === "extra" && (
-        <circle cx="7" cy="1" r="1.5" fill={color} />
+      {/* Phi (Φ) vertical bar whenever extras were logged — covers both "met+extra"
+          and "extra-only partial" weeks (extraDone>0 in both cases) */}
+      {ring.extraDone > 0 && (
+        <line x1="7" y1="1.5" x2="7" y2="12.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
       )}
     </svg>
   );
