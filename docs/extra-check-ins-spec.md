@@ -168,13 +168,18 @@ scheduled for today. V1 ships **both** entry points:
   feature discoverable in the daily loop.
 
   **Night-owl alignment:** between 12 AM and 5 AM the page is in the night-owl
-  window (same as "Still open from late last night"). In that window the extra list
+  window (same as "Still open from last night"). In that window the extra list
   uses **yesterday** as both the logical day and the database date
   (`extraDate = yesterday`, `extraDow = yesterdayDow`), so a goal not scheduled
   yesterday is the one that appears, and the check-in lands on the day the user
-  is mentally still in. Copy shifts accordingly: collapsed button reads "Log
-  something extra from late last night"; expanded sub-text reads "Up late? This logs
-  to yesterday." After 5 AM both revert to the normal calendar-today meaning.
+  is mentally still in. Copy follows a "action vs. evidence" rule:
+  - **Action surfaces** (collapsed button, section heading) use "last night" —
+    they describe the logical day the work belongs to:
+    "Log something extra from last night."
+  - **Evidence surfaces** (Today header suffix, once an extra is logged) use
+    "late last night" — they describe *when* it was logged:
+    "1 extra from late last night."
+  After 5 AM both revert to the normal calendar-today meaning.
 
 Both write through `markExtraDone` / `removeExtra` (§5), so they share one guard
 and one definition. (Over-quota frequency extras need neither surface — they're

@@ -22,7 +22,7 @@ export type ExtraGoal = {
  * so it never competes with the day's actual schedule.
  *
  * During the night-owl window (12 AM – 5 AM), `nightOwl` is true and `date` is
- * yesterday — matching the "Still open from late last night" logical day. The copy
+ * yesterday — matching the "Still open from last night" logical day. The copy
  * makes this explicit so the user isn't surprised by an extra landing on a
  * different calendar date than they expected.
  */
@@ -66,7 +66,7 @@ export default function LogExtra({
         onClick={() => setOpen(true)}
         className="mt-8 inline-flex min-h-[44px] items-center text-xs text-[color:var(--muted)] hover:text-black"
       >
-        {nightOwl ? "+ Log something extra from late last night" : "+ Log something extra"}
+        {nightOwl ? "+ Log something extra from last night" : "+ Log something extra"}
       </button>
     );
   }
@@ -74,7 +74,7 @@ export default function LogExtra({
   return (
     <div className="mt-8">
       <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
-        {nightOwl ? "Log something extra from late last night" : "Log something extra"}
+        {nightOwl ? "Log something extra from last night" : "Log something extra"}
       </h2>
       <p className="mb-3 mt-1 text-xs text-[color:var(--muted)]">
         {nightOwl
