@@ -97,37 +97,10 @@ export default function ReflectionEditor({
       />
 
       <div className="flex items-center justify-between pt-2 gap-4 flex-wrap">
-        {partnerState === "accepted" ? (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-[color:var(--muted)]">Visibility:</span>
-            <button
-              type="button"
-              onClick={() => setVisibility("private")}
-              className={`${tapTarget} px-4 rounded-full border transition ${
-                visibility === "private"
-                  ? "border-black bg-black text-white"
-                  : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black"
-              }`}
-            >
-              Private
-            </button>
-            <button
-              type="button"
-              onClick={() => setVisibility("partner")}
-              className={`${tapTarget} px-4 rounded-full border transition ${
-                visibility === "partner"
-                  ? "border-black bg-black text-white"
-                  : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-black"
-              }`}
-            >
-              Partner
-            </button>
-          </div>
-        ) : (
-          // No accepted partner: don't dangle a "Partner" choice the user can't
-          // use. State plainly that it's private, and say when sharing unlocks.
+        {/* No accepted partner: state plainly that it's private, say when sharing unlocks. */}
+        {partnerState !== "accepted" && (
           <p className="text-xs text-[color:var(--muted)] max-w-prose">
-            <span className="text-black">Visibility: Private.</span>{" "}
+            <span className="text-black">Private.</span>{" "}
             {partnerState === "pending" ? (
               "Reflections can be shared after a partner accepts your invite."
             ) : (
@@ -158,6 +131,24 @@ export default function ReflectionEditor({
           >
             {pending ? "Saving…" : "Save reflection"}
           </button>
+          {/* Accepted partner: quiet tappable suffix that flips visibility inline. */}
+          {partnerState === "accepted" && (
+            <button
+              type="button"
+              onClick={() =>
+                setVisibility((v) => (v === "private" ? "partner" : "private"))
+              }
+              aria-pressed={visibility === "partner"}
+              aria-label={
+                visibility === "private"
+                  ? "Reflection visibility: private. Tap to share with partner."
+                  : "Reflection visibility: shared with partner. Tap to make private."
+              }
+              className={`${tapTarget} px-2 rounded-md text-xs text-[color:var(--muted)] hover:text-black hover:bg-gray-50 transition-colors`}
+            >
+              · {visibility === "private" ? "Private" : "Shared with partner"}
+            </button>
+          )}
         </div>
       </div>
     </div>
