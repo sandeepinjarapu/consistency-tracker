@@ -290,6 +290,30 @@ measured.
 
 ---
 
+## Infrastructure observations
+
+### Weekly email CC: owner CTA lands on wrong page `Deferred`
+
+**Observation:** The partner-summary email is sent TO the viewer and CC'd to
+the owner so both can reply on the same thread. The "See their tracker" CTA
+links to `/partners/ownerId` — correct for the viewer, but wrong for the
+owner: clicking it as the CC'd recipient shows "Not your partner" since you
+cannot view your own goals via the partner route.
+
+**Intent to preserve:** The CC is deliberate — a shared email thread lets
+partners have a quick conversation without leaving their email client.
+
+**Possible directions (not yet evaluated):**
+- Two CTAs in the email body: one for the viewer (`/partners/ownerId`), one
+  for the owner (`/consistencytracker`). Both in the same email; both correct.
+- Remove CC and accept that the shared-thread intent is lost.
+- Send a separate copy to the owner with a different CTA (not a CC).
+
+**Trigger to revisit:** A real partner conversation starts on the email thread,
+or the dead CTA generates confusion or support noise.
+
+---
+
 ## Sequencing
 
 ### Shipped and deployed
