@@ -103,10 +103,9 @@ function RingSvg({ ring, color }: { ring: WeekRing; color: string }) {
         strokeLinecap="round"
         transform="rotate(-90 7 7)"
       />
-      {/* Phi (Φ) vertical bar whenever extras were logged — covers both "met+extra"
-          and "extra-only partial" weeks (extraDone>0 in both cases) */}
+      {/* Dot inside ring whenever extras were logged */}
       {ring.extraDone > 0 && (
-        <line x1="7" y1="1.5" x2="7" y2="12.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="7" cy="7" r="1.5" fill={color} />
       )}
     </svg>
   );
