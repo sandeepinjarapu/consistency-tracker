@@ -92,13 +92,15 @@ weekly model.
   instead of a derived percentage. `only` removed from extra-only copy.
 - PR #142: current in-progress week included as the rightmost ring (6 rings
   total: 5 completed past weeks + 1 current week).
+- Extra check-in marker changed from Phi vertical bar to center dot.
+- Mobile ring cap: 4 rings on mobile, 6 on desktop (CSS only).
 
 **Semantics:** `met` = full arc, `partial` = partial arc, `extra` = full arc +
-Phi marker, `skipped` = gray ring + horizontal bar, `empty` = gray outline,
+center dot, `skipped` = gray ring + horizontal bar, `empty` = gray outline,
 `not-started` = hidden.
 
-**Still open (observe in production):** Row density on mobile for long goal
-names. If crowded, consider reducing to four rings on mobile.
+**Mobile ring cap shipped:** 4 rings on mobile (index ≥ 4 hidden below `sm:`),
+6 on desktop. Pure CSS, no JS resize logic.
 
 ### 5. Aggregate calendar unlock for engaged single-goal users `Done — PR #131 · Deployed`
 

@@ -33,10 +33,10 @@ export default function GoalWeekRings({
 
   return (
     <div className="flex items-center gap-[8px]" aria-hidden>
-      {visibleRings.map((ring) => (
+      {visibleRings.map((ring, i) => (
         <span
           key={ring.weekStart}
-          className="relative inline-flex shrink-0 group"
+          className={`relative inline-flex shrink-0 group${i >= 4 ? " hidden sm:inline-flex" : ""}`}
         >
           <RingSvg ring={ring} color={color} />
           {/* Custom tooltip — sits above the ring, centered, hidden until hover */}
