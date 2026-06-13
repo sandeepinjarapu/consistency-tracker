@@ -410,7 +410,7 @@ function CategoryGroup({
           return (
           <li
             key={g.id}
-            className="group relative flex items-start justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+            className="group/row relative flex items-start justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
           >
             <div className="min-w-0 pr-4 pt-0.5">
               {/* Stretched link: the ::after overlay makes the whole row open
@@ -418,7 +418,7 @@ function CategoryGroup({
                   and stays independently hoverable/clickable. */}
               <Link
                 href={`/consistencytracker/goals/${g.id}`}
-                className="line-clamp-2 group-hover:line-clamp-none text-sm font-medium hover:underline after:absolute after:inset-0 after:content-['']"
+                className="line-clamp-2 group-hover/row:line-clamp-none text-sm font-medium hover:underline after:absolute after:inset-0 after:content-['']"
               >
                 {g.name}
               </Link>
