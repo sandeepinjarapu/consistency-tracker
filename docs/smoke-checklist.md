@@ -59,9 +59,12 @@ negative check.
       check-in notes) + the week grid.
 - [ ] Write Keep / Let go / Try next / Notes → **Save reflection** → "Saved ·
       time".
-- [ ] Tap **· Private** suffix next to Save → flips to **· Shared with partner**
-      (and vice versa); save confirms the change. Only appears when a partner is
-      accepted; a muted explanation sentence shows otherwise.
+- [ ] Tap **· Private** suffix next to Save → flips to **· [partner name]** (1
+      partner) or **· [A] & [B]** (2) or **· N partners** (3+); a 2-second
+      inline confirmation appears (`[Name] will see this reflection · save to
+      apply`). Tap again → flips back to **· Private** (muted, no confirmation).
+      Only appears when a partner is accepted; a muted explanation sentence shows
+      otherwise.
 - [ ] A past week row expands in place; a finished, scoreable week shows a
       completion %.
 

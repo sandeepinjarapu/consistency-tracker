@@ -110,6 +110,9 @@ export default async function ReflectionsPage({
       : pendingInvites.length > 0
         ? "pending"
         : "none";
+  const partnerNames = partners
+    .map((p) => p.display_name)
+    .filter((n): n is string => n !== null);
 
   // Build week list — compute one extra week (oldest) just for trend comparison
   type Week = {
@@ -187,6 +190,7 @@ export default async function ReflectionsPage({
           reflection={reflectionByWeek.get(currentWeek.start) ?? null}
           motivationByGoal={motivationByGoal}
           partnerState={partnerState}
+          partnerNames={partnerNames}
         />
       ) : null}
 
@@ -209,6 +213,7 @@ export default async function ReflectionsPage({
                   reflection={reflectionByWeek.get(w.start) ?? null}
                   motivationByGoal={motivationByGoal}
                   partnerState={partnerState}
+                  partnerNames={partnerNames}
                 />
               );
             })}
@@ -242,6 +247,7 @@ function CurrentWeekHero({
   reflection,
   motivationByGoal,
   partnerState,
+  partnerNames,
 }: {
   start: string;
   end: string;
@@ -250,6 +256,7 @@ function CurrentWeekHero({
   reflection: ReflectionRow | null;
   motivationByGoal: Map<string, string | null>;
   partnerState: PartnerState;
+  partnerNames: string[];
 }) {
   const narrative = buildWeeklyNarrative(stats, null, highlights);
   return (
@@ -268,6 +275,7 @@ function CurrentWeekHero({
         reflection={reflection}
         motivationByGoal={motivationByGoal}
         partnerState={partnerState}
+        partnerNames={partnerNames}
         inProgress
       />
     </section>
@@ -285,6 +293,7 @@ function PastWeek({
   reflection,
   motivationByGoal,
   partnerState,
+  partnerNames,
 }: {
   start: string;
   end: string;
@@ -294,6 +303,7 @@ function PastWeek({
   reflection: ReflectionRow | null;
   motivationByGoal: Map<string, string | null>;
   partnerState: PartnerState;
+  partnerNames: string[];
 }) {
   // Evidence total includes extras, so an extra-only week never reads as "No
   // check-ins recorded" while the narrative says you showed up.
@@ -343,6 +353,7 @@ function PastWeek({
           reflection={reflection}
           motivationByGoal={motivationByGoal}
           partnerState={partnerState}
+          partnerNames={partnerNames}
           inProgress={false}
         />
       </div>
@@ -360,6 +371,7 @@ function WeekDetailBody({
   reflection,
   motivationByGoal,
   partnerState,
+  partnerNames,
   inProgress,
 }: {
   weekStart: string;
@@ -368,6 +380,7 @@ function WeekDetailBody({
   reflection: ReflectionRow | null;
   motivationByGoal: Map<string, string | null>;
   partnerState: PartnerState;
+  partnerNames: string[];
   // The current week is still open: show evidence of showing up, not a
   // mid-week completion grade (a count goal at 2-of-5 on Wednesday isn't 40%
   // "complete" — the week isn't over).
@@ -454,6 +467,7 @@ function WeekDetailBody({
         weekStartDate={weekStart}
         initial={reflection}
         partnerState={partnerState}
+        partnerNames={partnerNames}
         continueHint={
           strongest
             ? `${strongest.goalName} is working. What's making it click?`

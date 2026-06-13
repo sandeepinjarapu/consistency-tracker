@@ -156,8 +156,11 @@ on the Save row: `· Private` or `· Shared with partner`. Flips state on tap.
 Conditional "no partner yet" explanation text retained as a muted sentence.
 `aria-pressed` and `aria-label` added for accessibility.
 
-**Still open (observe in production):** Visibility suffix reads as very subtle
-in practice. May need a stronger affordance — see roadmap notes for directions.
+**Follow-up shipped:** Visibility suffix now names the audience — `· Arjun` /
+`· Arjun & Richa` / `· 3 partners` — and uses full foreground weight (not
+muted) when shared. Toggling Private → Shared shows a 2s inline confirmation:
+`Arjun will see this reflection · save to apply`. Toggling to Private stays
+quiet (muted, no confirmation needed).
 
 ### 16. Archive: archived goal row UI `Not started`
 
@@ -326,8 +329,8 @@ or the dead CTA generates confusion or support noise.
 11. PR #144 — Reflection visibility: inline `· Private / · Shared with partner` suffix (item 13 / PR G.1)
 
 ### Not started — ordered by effort and dependency
-11. **PR G.1 follow-up (item 13 visibility):** Visibility suffix too subtle in
-    production — revisit affordance strength.
+11. **PR G.1 follow-up (item 13 visibility):** Shipped — named audience label +
+    2s inline confirmation on share action.
 12. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
     before coding.
 13. **PR E (item 7):** Partner reaction compression — defer until a goal is
