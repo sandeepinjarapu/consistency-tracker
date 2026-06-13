@@ -1,8 +1,7 @@
 # Extra check-ins — spec
 
-Status: **engineering contract, ready for implementation.** All product levers
-are settled (the off-day logging surfaces in §8 are confirmed: both goal-detail
-cells and a Today affordance).
+Status: **implemented and deployed.** All three PR phases shipped. This
+document is the design record; the code is the source of truth going forward.
 
 ## 1. Why
 

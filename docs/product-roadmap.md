@@ -149,21 +149,15 @@ history below the first viewport.
 **Trigger to revisit:** Any goal shared with more than 3 partners, or reactions
 pushing This Week/history below the first viewport.
 
-### 13. Reflection visibility: replace pill toggle with inline glyph `Next`
+### 13. Reflection visibility: replace pill toggle with inline glyph `Done — PR #144 · Deployed`
 
-**Problem:** The reflection editor shows a `Private | Partner` pill toggle.
-It works but is visually heavier than its job.
+**Shipped:** Pill toggle replaced with a single tappable inline status suffix
+on the Save row: `· Private` or `· Shared with partner`. Flips state on tap.
+Conditional "no partner yet" explanation text retained as a muted sentence.
+`aria-pressed` and `aria-label` added for accessibility.
 
-**Proposed direction:**
-
-- Replace the pill row with a single tappable inline status: `· Private` or
-  `· Shared with partner`. Quiet suffix on the Save row.
-- On tap, flip the state directly (no sheet needed — binary, not a selection).
-- The conditional "no partner yet" explanation text stays as a muted sentence.
-
-**Surfaces affected:** `src/components/reflection-editor.tsx` only.
-
-**Recommendation:** Natural companion to the reflections structure PR (item 11).
+**Still open (observe in production):** Visibility suffix reads as very subtle
+in practice. May need a stronger affordance — see roadmap notes for directions.
 
 ### 16. Archive: archived goal row UI `Not started`
 
@@ -329,10 +323,11 @@ or the dead CTA generates confusion or support noise.
 8. PR #141 — Archive partner notification copy (item 17 / PR F)
 9. PR #142 — Current week included in goal rings (item 4 extension)
 10. PR #143 — Reflections structure: WeekGrid above stats, stats as pills (item 11 / PR G)
+11. PR #144 — Reflection visibility: inline `· Private / · Shared with partner` suffix (item 13 / PR G.1)
 
 ### Not started — ordered by effort and dependency
-11. **PR G.1 (item 13 visibility):** Reflection visibility inline glyph —
-    natural companion to PR G, `src/components/reflection-editor.tsx` only.
+11. **PR G.1 follow-up (item 13 visibility):** Visibility suffix too subtle in
+    production — revisit affordance strength.
 12. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
     before coding.
 13. **PR E (item 7):** Partner reaction compression — defer until a goal is
