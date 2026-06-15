@@ -145,7 +145,7 @@ function weeklySubject(
   return `${who} week — ${totalDone} of ${totalTarget} done`;
 }
 
-function weeklyHtml({
+export function weeklyHtml({
   ownerName,
   ownerId,
   weekLabel,
@@ -213,7 +213,7 @@ function weeklyHtml({
 </html>`;
 }
 
-function weeklyText({
+export function weeklyText({
   ownerName,
   ownerId,
   weekLabel,

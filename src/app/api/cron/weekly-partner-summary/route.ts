@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendWeeklySummary } from "@/lib/email";
+import { sendWithRetry } from "@/lib/send-with-retry";
 import { addDays, isoWeekStart, todayIn } from "@/lib/dates";
 import { partnerSummaryPairs } from "@/lib/partner-pairs";
 import {
@@ -216,30 +217,6 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Retry a send fn up to maxAttempts times, backing off on 429s.
- * Non-rate-limit errors are not retried — they indicate a content or
- * config problem that won't resolve on its own.
- */
-async function sendWithRetry(
-  fn: () => Promise<{ ok: boolean; error?: string }>,
-  maxAttempts = 3
-): Promise<{ ok: boolean; error?: string; attempts: number }> {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const result = await fn();
-    if (result.ok) return { ok: true, attempts: attempt };
-    const isRateLimit =
-      result.error?.includes("rate_limit_exceeded") ||
-      result.error?.includes("429") ||
-      result.error?.toLowerCase().includes("too many requests");
-    if (!isRateLimit || attempt === maxAttempts) {
-      return { ok: false, error: result.error, attempts: attempt };
-    }
-    // Exponential backoff: 2s on first retry, 4s on second.
-    await sleep(2000 * attempt);
-  }
-  return { ok: false, error: "max retries exceeded", attempts: maxAttempts };
-}
 
 function formatRange(start: string, end: string): string {
   const s = parseDate(start);
