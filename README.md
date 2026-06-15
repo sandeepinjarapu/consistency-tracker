@@ -13,8 +13,8 @@ Built with Next.js 15 (App Router), Supabase (Postgres + Auth + Row-Level Securi
 - **Extra check-ins, seen not scored** — did something on an unscheduled day? A quiet "Did anything else today?" chip row lets you add it as extra evidence. If you go beyond a weekly quota on eligible days, the surplus is also shown as extra. Extras appear in your history, partner view, and reflection narrative as evidence of showing up, but never inflate streaks, completion rates, or weekly-met scoring.
 - **Calendar history** — goal pages show recent months as calendar grids and older months as a compact strip. The Goals page unlocks an aggregate calendar across all goals after 3+ active goals with some check-in history. The history is read-only; recent days are edited in the "This week" rows on a goal page (the current week plus a short grace period).
 - **Streaks and progress, not grades** — day streaks for specific-day goals, **week streaks** and quota progress for weekly-count goals, plus longest streak, this week's progress, and your typical time of day ("you usually do this in the morning"). Completion percentages are reserved for finished weekly reflections and the summary email.
-- **Weekly reflections** — a Keep / Let go / Try next journal with auto-computed weekly stats, highlights, and a plain-language recap of how the week actually went.
-- **Weekly summary email** — every Monday you get a recap of the past week across all your goals, for personal accountability — no partner required.
+- **Weekly reflections** — a Keep / Let go / Try next journal with auto-computed weekly stats, highlights, and a plain-language recap of how the week actually went. Reflections can be marked private (default) or shared with partners; the visibility toggle names the exact audience before you save.
+- **Weekly summary email** — every Monday you get a recap of the past week across all your goals, your own reflection included. Partners get a summary of just the shared goals; if you marked your reflection shared that week, it appears in their email under "In their own words."
 - **Partner accountability** — invite a friend by email and share individual goals read-only. A quiet "shared with…" badge keeps it clear what's exposed (everything is private by default), the partners list shows when each partner last showed up, and they get a weekly summary of just the shared goals, CC'd to you so you share the same view.
 - **Gentle reactions** — on a shared goal a partner can leave a lightweight, per-week 👀 *Saw it* / 👏 *Proud* — a quiet "I noticed," never a nudge. You see a warm history of how often and how recently ("Wendy has been proud of this for 3 weeks").
 - **Timezone-aware** — "today", streaks, and weekly boundaries are all computed in each user's own timezone.
@@ -76,7 +76,7 @@ Open http://localhost:3000.
 - `npm run test` / `npm run test:run` — Vitest (watch / run once)
 
 ## Testing
-The pure logic — timezone date math, streak/completion scoring, weekly-count cadence, extra check-in classification (scored vs. extra, off-target vs. over-quota), link safety, and the catch-up editable-window rules — is unit-tested with Vitest:
+The pure logic — timezone date math, streak/completion scoring, weekly-count cadence, extra check-in classification (scored vs. extra, off-target vs. over-quota), link safety, catch-up editable-window rules, email content and reflection rendering, and Resend error handling and retry backoff — is unit-tested with Vitest (349 tests):
 ```bash
 npm run test:run
 ```
