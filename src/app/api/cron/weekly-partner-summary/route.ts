@@ -217,7 +217,6 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-
 function formatRange(start: string, end: string): string {
   const s = parseDate(start);
   const e = parseDate(end);
