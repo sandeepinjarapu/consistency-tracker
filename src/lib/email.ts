@@ -76,6 +76,13 @@ function inviteText({
   return `${inviterName} invited you to Consistency Tracker.\n\nAccept here: ${inviteUrl}\n\n(This invite expires in 14 days.)`;
 }
 
+export type ReflectionSummary = {
+  continueText?: string | null;
+  stopText?: string | null;
+  improveText?: string | null;
+  notes?: string | null;
+};
+
 export type WeeklyGoalStat = {
   name: string;
   done: number; // scored toward target (capped); never exceeds target
@@ -95,6 +102,7 @@ export async function sendWeeklySummary({
   ownerId,
   weekLabel,
   goals,
+  reflection,
   self = false,
 }: {
   to: string;
@@ -103,6 +111,8 @@ export async function sendWeeklySummary({
   ownerId: string;
   weekLabel: string;
   goals: WeeklyGoalStat[];
+  /** Partner-visible reflection for this week, if one exists. */
+  reflection?: ReflectionSummary;
   /** True when the recipient is the goal owner (self-summary). */
   self?: boolean;
 }): Promise<{ ok: boolean; error?: string }> {
@@ -114,8 +124,8 @@ export async function sendWeeklySummary({
       to,
       ...(cc ? { cc } : {}),
       subject: weeklySubject(ownerName, goals, self),
-      html: weeklyHtml({ ownerName, ownerId, weekLabel, goals, self }),
-      text: weeklyText({ ownerName, ownerId, weekLabel, goals, self }),
+      html: weeklyHtml({ ownerName, ownerId, weekLabel, goals, reflection, self }),
+      text: weeklyText({ ownerName, ownerId, weekLabel, goals, reflection, self }),
     });
     if (error) return { ok: false, error: `${error.name}: ${error.message}` };
     return { ok: true };
@@ -140,12 +150,14 @@ function weeklyHtml({
   ownerId,
   weekLabel,
   goals,
+  reflection,
   self,
 }: {
   ownerName: string;
   ownerId: string;
   weekLabel: string;
   goals: WeeklyGoalStat[];
+  reflection?: ReflectionSummary;
   self: boolean;
 }): string {
   const ctaUrl = self
@@ -164,12 +176,33 @@ function weeklyHtml({
       </tr>`;
     })
     .join("");
+
+  const reflectionFields: Array<{ label: string; text: string }> = [];
+  if (reflection) {
+    if (reflection.continueText?.trim()) reflectionFields.push({ label: "Keep", text: reflection.continueText.trim() });
+    if (reflection.stopText?.trim()) reflectionFields.push({ label: "Let go", text: reflection.stopText.trim() });
+    if (reflection.improveText?.trim()) reflectionFields.push({ label: "Try next", text: reflection.improveText.trim() });
+    if (reflection.notes?.trim()) reflectionFields.push({ label: "Notes", text: reflection.notes.trim() });
+  }
+  const reflectionHtml = reflectionFields.length > 0
+    ? `<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+    <p style="font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 16px;">In their own words</p>
+    ${reflectionFields
+      .map(
+        (f) =>
+          `<p style="font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 4px;">${escapeHtml(f.label)}</p>
+    <p style="font-size: 14px; color: #374151; line-height: 1.6; margin: 0 0 16px;">${escapeHtml(f.text)}</p>`
+      )
+      .join("")}`
+    : "";
+
   return `<!doctype html>
 <html>
   <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0a0a0a; padding: 24px; max-width: 520px; margin: 0 auto;">
     <h1 style="font-weight: 300; font-size: 20px; margin: 0 0 4px;">${heading}</h1>
     <p style="font-size: 12px; color: #9ca3af; margin: 0 0 20px;">${escapeHtml(weekLabel)}</p>
     <table style="width: 100%; border-collapse: collapse;">${rows}</table>
+    ${reflectionHtml}
     <p style="margin: 28px 0 8px;">
       <a href="${ctaUrl}" style="display: inline-block; background: #0a0a0a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-size: 14px;">${ctaLabel}</a>
     </p>
@@ -185,12 +218,14 @@ function weeklyText({
   ownerId,
   weekLabel,
   goals,
+  reflection,
   self,
 }: {
   ownerName: string;
   ownerId: string;
   weekLabel: string;
   goals: WeeklyGoalStat[];
+  reflection?: ReflectionSummary;
   self: boolean;
 }): string {
   const ctaUrl = self
@@ -202,11 +237,30 @@ function weeklyText({
     const skipped = g.skipped > 0 ? ` (${g.skipped} skipped)` : "";
     return `  • ${g.name}: ${g.done}/${g.target} this week · ${pct}%${extra}${skipped}`;
   });
+
+  const reflectionLines: string[] = [];
+  if (reflection) {
+    const fields: Array<{ label: string; text: string | null | undefined }> = [
+      { label: "Keep", text: reflection.continueText },
+      { label: "Let go", text: reflection.stopText },
+      { label: "Try next", text: reflection.improveText },
+      { label: "Notes", text: reflection.notes },
+    ];
+    const filled = fields.filter((f) => f.text?.trim());
+    if (filled.length > 0) {
+      reflectionLines.push("---", "", "In their own words:", "");
+      for (const f of filled) {
+        reflectionLines.push(f.label, f.text!.trim(), "");
+      }
+    }
+  }
+
   return [
     `${self ? "Your" : `${ownerName}'s`} week (${weekLabel}):`,
     "",
     ...lines,
     "",
+    ...reflectionLines,
     `${self ? "Open your tracker" : "See their tracker"}: ${ctaUrl}`,
   ].join("\n");
 }

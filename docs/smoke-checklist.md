@@ -98,6 +98,9 @@ negative check.
       A receives a summary of the prior Mon–Sun week for shared goals, with
       per-goal "done / target this week · %", and the CTA links to the partner
       page.
+- [ ] If B marked their reflection **Shared with partner** that week, the email
+      to A includes an "In their own words" section with the filled fields
+      (Keep / Let go / Try next / Notes). A **Private** reflection never appears.
 - [ ] Copy reads "Sent once a week (Mondays)".
 
 ## 9. Cross-cutting
