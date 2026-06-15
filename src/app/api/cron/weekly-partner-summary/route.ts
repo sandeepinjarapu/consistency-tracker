@@ -66,31 +66,41 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, sent: 0, pairs: pairs.length });
   }
 
-  // Shares and partner-visible reflections only matter for owners who have a partner.
+  // Shares only matter for owners who have a partner.
   const partnerOwnerIds = [...new Set(pairs.map((p) => p.ownerId))];
-  const [sharesRes, reflectionsRes] = partnerOwnerIds.length > 0
-    ? await Promise.all([
-        supabase
+  const [sharesRes, reflectionsRes] = await Promise.all([
+    partnerOwnerIds.length > 0
+      ? supabase
           .from("shares")
           .select("owner_id, viewer_id, goal_id")
-          .in("owner_id", partnerOwnerIds),
-        supabase
-          .from("weekly_reflections")
-          .select("user_id, continue_text, stop_text, improve_text, notes")
-          .eq("week_start_date", summaryWeekStart)
-          .eq("visibility", "partner")
-          .in("user_id", partnerOwnerIds),
-      ])
-    : [
-        { data: [] as { owner_id: string; viewer_id: string; goal_id: string }[] },
-        { data: [] as { user_id: string; continue_text: string | null; stop_text: string | null; improve_text: string | null; notes: string | null }[] },
-      ];
+          .in("owner_id", partnerOwnerIds)
+      : Promise.resolve({ data: [] as { owner_id: string; viewer_id: string; goal_id: string }[] }),
+    // Fetch all reflections for the summary week across every goal owner.
+    // Self-summary uses any reflection; partner-summary is filtered to
+    // visibility='partner' in code so the DB query stays simple.
+    supabase
+      .from("weekly_reflections")
+      .select("user_id, continue_text, stop_text, improve_text, notes, visibility")
+      .eq("week_start_date", summaryWeekStart)
+      .in("user_id", goalOwnerIds),
+  ]);
   const shares = sharesRes.data ?? [];
-  const reflectionByOwner = new Map(
-    (reflectionsRes.data ?? []).map((r) => [
+  const allReflections = reflectionsRes.data ?? [];
+  // Self-summary: owner sees their own reflection regardless of visibility.
+  const selfReflectionByOwner = new Map(
+    allReflections.map((r) => [
       r.user_id,
       { continueText: r.continue_text, stopText: r.stop_text, improveText: r.improve_text, notes: r.notes },
     ])
+  );
+  // Partner-summary: only reflections explicitly shared with partners.
+  const partnerReflectionByOwner = new Map(
+    allReflections
+      .filter((r) => r.visibility === "partner")
+      .map((r) => [
+        r.user_id,
+        { continueText: r.continue_text, stopText: r.stop_text, improveText: r.improve_text, notes: r.notes },
+      ])
   );
 
   // Resolve emails + names for everyone we might email or name.
@@ -142,6 +152,7 @@ export async function GET(request: Request) {
         ownerId,
         weekLabel,
         goals: stats,
+        reflection: selfReflectionByOwner.get(ownerId),
         self: true,
       })
     );
@@ -183,7 +194,7 @@ export async function GET(request: Request) {
         ownerId: pair.ownerId,
         weekLabel,
         goals: stats,
-        reflection: reflectionByOwner.get(pair.ownerId),
+        reflection: partnerReflectionByOwner.get(pair.ownerId),
       })
     );
     results.push({ key: `partner:${pair.viewerId}<-${pair.ownerId}`, ...r });

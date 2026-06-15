@@ -186,7 +186,7 @@ function weeklyHtml({
   }
   const reflectionHtml = reflectionFields.length > 0
     ? `<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-    <p style="font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 16px;">In their own words</p>
+    <p style="font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 16px;">${self ? "Your reflection" : "In their own words"}</p>
     ${reflectionFields
       .map(
         (f) =>
@@ -248,7 +248,7 @@ function weeklyText({
     ];
     const filled = fields.filter((f) => f.text?.trim());
     if (filled.length > 0) {
-      reflectionLines.push("---", "", "In their own words:", "");
+      reflectionLines.push("---", "", self ? "Your reflection:" : "In their own words:", "");
       for (const f of filled) {
         reflectionLines.push(f.label, f.text!.trim(), "");
       }
