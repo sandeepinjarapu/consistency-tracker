@@ -143,21 +143,15 @@ async function TodaySection() {
   const isNightOwl = hour < DAY_START_HOUR;
   const extraDate = isNightOwl ? yesterday : today;
   const extraDow = isNightOwl ? yesterdayDow : dow;
-  // Build a map of yesterday's check-ins so last-night cards can show their
-  // logged state (done/skipped + note affordance) after router.refresh().
-  const checkInByYesterday = new Map(
-    twoWeekCheckIns.filter((c) => c.date === yesterday).map((c) => [c.goal_id, c])
+  const loggedYesterday = new Set(
+    twoWeekCheckIns.filter((c) => c.date === yesterday).map((c) => c.goal_id)
   );
-  // Pass an empty loggedYesterday so already-logged goals stay in the section
-  // after the user marks them done — the card must not unmount while they're
-  // still typing a note. The section mirrors today's goal list: goals persist
-  // with their check-in state rather than disappearing on log.
   const lastNightGoals = selectLastNightGoals({
     goals,
     hour,
     yesterday,
     yesterdayDow,
-    loggedYesterday: new Set(),
+    loggedYesterday,
     timezone,
   });
 
@@ -301,7 +295,8 @@ async function TodaySection() {
                 categoryColor={g.category?.color ?? UNCATEGORIZED_COLOR}
                 date={yesterday}
                 timezone={timezone}
-                checkIn={checkInByYesterday.get(g.id) ?? null}
+                checkIn={null}
+                lateCheckIn
               />
             ))}
           </div>

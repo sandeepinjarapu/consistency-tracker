@@ -29,6 +29,7 @@ export default function TodayGoalCard({
   timezone,
   checkIn,
   paceLabel,
+  lateCheckIn = false,
 }: {
   goalId: string;
   name: string;
@@ -38,6 +39,7 @@ export default function TodayGoalCard({
   timezone: string;
   checkIn: CheckIn | null;
   paceLabel?: string;
+  lateCheckIn?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -94,7 +96,9 @@ export default function TodayGoalCard({
       setOptimistic(next);
       try {
         await fn();
-        router.refresh();
+        // Late check-in cards skip the refresh so the card stays mounted and
+        // the user can still add a note. saveNote() will refresh once done.
+        if (!lateCheckIn) router.refresh();
       } catch {
         // swallow — RLS errors shouldn't occur for own goals. On failure we
         // skip the refresh, so the optimistic value reverts to the prop.
