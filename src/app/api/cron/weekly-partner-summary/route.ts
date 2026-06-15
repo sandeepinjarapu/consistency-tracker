@@ -128,6 +128,7 @@ export async function GET(request: Request) {
     });
     if (result.ok) sent++;
     else errors.push(`self ${ownerId}: ${result.error}`);
+    await sleep(500);
   }
 
   // 2. Partner summary: each partner gets the owner's shared subset, with the
@@ -165,6 +166,7 @@ export async function GET(request: Request) {
     });
     if (result.ok) sent++;
     else errors.push(`${pair.viewerId}<-${pair.ownerId}: ${result.error}`);
+    await sleep(500);
   }
 
   return NextResponse.json({
@@ -174,6 +176,10 @@ export async function GET(request: Request) {
     week: `${summaryWeekStart} → ${summaryWeekEnd}`,
     errors: errors.length > 0 ? errors : undefined,
   });
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function formatRange(start: string, end: string): string {
