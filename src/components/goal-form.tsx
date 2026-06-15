@@ -220,7 +220,7 @@ export default function GoalForm({
             />
           </Field>
 
-          <Field label="Reflection doc URL (optional)" htmlFor="doc_url">
+          <Field label="Goal document URL (optional)" htmlFor="doc_url">
             <input
               id="doc_url"
               type="url"

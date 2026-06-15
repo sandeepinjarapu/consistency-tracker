@@ -270,7 +270,7 @@ export default async function PartnerPage({
                       rel="noopener noreferrer"
                       className="mt-2 inline-block text-xs underline text-[color:var(--muted)] hover:text-black"
                     >
-                      Reflection doc ↗
+                      Goal document ↗
                     </a>
                   ) : null}
                   <p className="mt-2 text-xs text-[color:var(--muted)]">

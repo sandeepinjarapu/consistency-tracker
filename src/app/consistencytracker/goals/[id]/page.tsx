@@ -206,7 +206,7 @@ async function ConnectionsColumn({
           className="inline-flex items-center gap-1.5 text-xs text-[#374151] hover:text-black"
         >
           <DocIcon />
-          Reflection doc <span className="text-[color:var(--muted)]">↗</span>
+          Goal document <span className="text-[color:var(--muted)]">↗</span>
         </a>
       ) : null}
       {reminder ? (
