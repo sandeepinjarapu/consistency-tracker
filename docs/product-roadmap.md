@@ -162,6 +162,23 @@ muted) when shared. Toggling Private → Shared shows a 2s inline confirmation:
 `Arjun will see this reflection · save to apply`. Toggling to Private stays
 quiet (muted, no confirmation needed).
 
+### 18. Reflection content in weekly email `Done · Deployed`
+
+**Shipped:**
+- **Partner email:** if the goal owner marked their reflection `shared` that
+  week, the partner's weekly email includes an "In their own words" section
+  with any filled fields (Keep / Let go / Try next / Notes). A private
+  reflection never appears in the partner's email.
+- **Self-summary email:** the owner's own reflection always appears in their
+  weekly self-summary (no sharing restriction — it's their own words). Section
+  heading: "Your reflection".
+- XSS: all reflection text is HTML-escaped before rendering in the email body.
+- Tests: `email.test.ts` covers both headings, all four fields, null/blank
+  omission, empty reflection, and XSS escaping (16 tests).
+
+**Surfaces affected:** `src/lib/email.ts` (`weeklyHtml`, `weeklyText`,
+`sendWeeklySummary`), `src/app/api/cron/weekly-partner-summary/route.ts`.
+
 ### 16. Archive: archived goal row UI `Not started`
 
 **Problem:** Archived goals (`active = false`) are invisible. There is no way
@@ -291,6 +308,26 @@ measured.
 
 ## Infrastructure observations
 
+### Weekly email: Resend rate-limit handling `Done · Deployed`
+
+**Problem:** The Monday cron sends one email per owner/partner pair in a tight
+sequential loop. Resend's free tier enforces a rate limit; back-to-back sends
+triggered 429 responses. The SDK (v4) returns `{ data, error }` rather than
+throwing, so the original `try/catch` pattern silently returned `ok: true` on
+failed sends — 429s were swallowed without retry.
+
+**Shipped:**
+- `src/lib/send-with-retry.ts`: `sendWithRetry` wraps any send function with
+  up to 3 attempts, exponential backoff (2s / 4s), and retry only on
+  rate-limit errors (`rate_limit_exceeded` / `429` / `too many requests`).
+  Non-rate-limit errors (403, invalid_api_key) fail immediately.
+- Both `sendInviteEmail` and `sendWeeklySummary` in `email.ts` now check
+  `result.error` instead of relying on a try/catch that Resend v4 bypasses.
+- Cron route: 1s sleep between sends to pace the burst; structured per-send
+  result logging (`{ key, ok, attempts, error? }` per email).
+- Tests: `send-with-retry.test.ts` covers all retry/no-retry branches and
+  exponential backoff timing (8 tests).
+
 ### Weekly email CC: owner CTA lands on wrong page `Deferred`
 
 **Observation:** The partner-summary email is sent TO the viewer and CC'd to
@@ -327,16 +364,17 @@ or the dead CTA generates confusion or support noise.
 9. PR #142 — Current week included in goal rings (item 4 extension)
 10. PR #143 — Reflections structure: WeekGrid above stats, stats as pills (item 11 / PR G)
 11. PR #144 — Reflection visibility: inline `· Private / · Shared with partner` suffix (item 13 / PR G.1)
+12. G.1 follow-up — Named audience label (`· Arjun` / `· Arjun & Richa` / `· N partners`) + 2s confirmation on share toggle
+13. Infrastructure — Resend rate-limit fix: v4 error handling, `sendWithRetry`, 1s pacing, structured logging
+14. Item 18 — Reflection content in weekly email (partner "In their own words", self "Your reflection")
 
 ### Not started — ordered by effort and dependency
-11. **PR G.1 follow-up (item 13 visibility):** Shipped — named audience label +
-    2s inline confirmation on share action.
-12. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
+15. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
     before coding.
-13. **PR E (item 7):** Partner reaction compression — defer until a goal is
+16. **PR E (item 7):** Partner reaction compression — defer until a goal is
     shared with 3+ partners.
-14. **Item 6:** Calendar month alignment — revisit with real screenshots first.
-15. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
+17. **Item 6:** Calendar month alignment — revisit with real screenshots first.
+18. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
 
 ### Spec only / Later
 - Item 8: Planned break / vacation mode

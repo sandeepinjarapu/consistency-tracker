@@ -64,7 +64,13 @@ wrong.
 5. **Partners are the trust boundary.** Sharing is per-goal, partner-only, and
    reversible. Privacy is the default; nothing is shared until you choose it. A
    shared goal also exposes its category name and color, so a partner sees how
-   you've grouped it.
+   you've grouped it. Weekly reflections have their own visibility toggle
+   (Private by default): a reflection is all-or-nothing — if shared, every
+   accepted partner who has at least one shared goal sees it; there is no
+   per-partner or per-goal granularity. A shared reflection appears in the
+   partner's weekly summary email under "In their own words"; a private
+   reflection never does. The owner's own reflection always appears in their
+   self-summary email regardless of sharing state.
 
 ## Accessibility & Inclusion
 
