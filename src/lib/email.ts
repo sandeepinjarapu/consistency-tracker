@@ -23,13 +23,15 @@ export async function sendInviteEmail({
   inviteUrl: string;
 }): Promise<{ ok: boolean; error?: string }> {
   try {
-    await getResend().emails.send({
+    // Resend SDK v4+ returns { data, error } instead of throwing on API errors.
+    const { error } = await getResend().emails.send({
       from: FROM,
       to,
       subject: `${inviterName} invited you to Consistency Tracker`,
       html: inviteHtml({ inviterName, inviteUrl }),
       text: inviteText({ inviterName, inviteUrl }),
     });
+    if (error) return { ok: false, error: `${error.name}: ${error.message}` };
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Send failed" };
@@ -106,7 +108,8 @@ export async function sendWeeklySummary({
 }): Promise<{ ok: boolean; error?: string }> {
   if (goals.length === 0) return { ok: true };
   try {
-    await getResend().emails.send({
+    // Resend SDK v4+ returns { data, error } instead of throwing on API errors.
+    const { error } = await getResend().emails.send({
       from: FROM,
       to,
       ...(cc ? { cc } : {}),
@@ -114,6 +117,7 @@ export async function sendWeeklySummary({
       html: weeklyHtml({ ownerName, ownerId, weekLabel, goals, self }),
       text: weeklyText({ ownerName, ownerId, weekLabel, goals, self }),
     });
+    if (error) return { ok: false, error: `${error.name}: ${error.message}` };
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Send failed" };

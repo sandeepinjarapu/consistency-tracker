@@ -104,7 +104,8 @@ export async function GET(request: Request) {
 
   const weekLabel = formatRange(summaryWeekStart, summaryWeekEnd);
   let sent = 0;
-  const errors: string[] = [];
+  let failed = 0;
+  const results: Array<{ key: string; ok: boolean; attempts: number; error?: string }> = [];
 
   // 1. Self-summary: every owner gets a summary of all their active goals,
   //    whether or not they've shared anything.
@@ -118,17 +119,19 @@ export async function GET(request: Request) {
       summaryWeekEnd
     );
     if (totalTarget(stats) === 0) continue;
-    const result = await sendWeeklySummary({
-      to,
-      ownerName: nameById.get(ownerId) ?? "Someone",
-      ownerId,
-      weekLabel,
-      goals: stats,
-      self: true,
-    });
-    if (result.ok) sent++;
-    else errors.push(`self ${ownerId}: ${result.error}`);
-    await sleep(500);
+    const r = await sendWithRetry(() =>
+      sendWeeklySummary({
+        to,
+        ownerName: nameById.get(ownerId) ?? "Someone",
+        ownerId,
+        weekLabel,
+        goals: stats,
+        self: true,
+      })
+    );
+    results.push({ key: `self:${ownerId}`, ...r });
+    if (r.ok) sent++; else failed++;
+    await sleep(1000);
   }
 
   // 2. Partner summary: each partner gets the owner's shared subset, with the
@@ -156,30 +159,58 @@ export async function GET(request: Request) {
     if (totalTarget(stats) === 0) continue;
 
     const ownerEmail = emailById.get(pair.ownerId);
-    const result = await sendWeeklySummary({
-      to,
-      cc: ownerEmail && ownerEmail !== to ? ownerEmail : undefined,
-      ownerName: nameById.get(pair.ownerId) ?? "Someone",
-      ownerId: pair.ownerId,
-      weekLabel,
-      goals: stats,
-    });
-    if (result.ok) sent++;
-    else errors.push(`${pair.viewerId}<-${pair.ownerId}: ${result.error}`);
-    await sleep(500);
+    const r = await sendWithRetry(() =>
+      sendWeeklySummary({
+        to,
+        cc: ownerEmail && ownerEmail !== to ? ownerEmail : undefined,
+        ownerName: nameById.get(pair.ownerId) ?? "Someone",
+        ownerId: pair.ownerId,
+        weekLabel,
+        goals: stats,
+      })
+    );
+    results.push({ key: `partner:${pair.viewerId}<-${pair.ownerId}`, ...r });
+    if (r.ok) sent++; else failed++;
+    await sleep(1000);
   }
 
   return NextResponse.json({
-    ok: true,
+    ok: failed === 0,
     sent,
+    failed,
     pairs: pairs.length,
     week: `${summaryWeekStart} → ${summaryWeekEnd}`,
-    errors: errors.length > 0 ? errors : undefined,
+    results,
   });
 }
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Retry a send fn up to maxAttempts times, backing off on 429s.
+ * Non-rate-limit errors are not retried — they indicate a content or
+ * config problem that won't resolve on its own.
+ */
+async function sendWithRetry(
+  fn: () => Promise<{ ok: boolean; error?: string }>,
+  maxAttempts = 3
+): Promise<{ ok: boolean; error?: string; attempts: number }> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const result = await fn();
+    if (result.ok) return { ok: true, attempts: attempt };
+    const isRateLimit =
+      result.error?.includes("rate_limit_exceeded") ||
+      result.error?.includes("429") ||
+      result.error?.toLowerCase().includes("too many requests");
+    if (!isRateLimit || attempt === maxAttempts) {
+      return { ok: false, error: result.error, attempts: attempt };
+    }
+    // Exponential backoff: 2s on first retry, 4s on second.
+    await sleep(2000 * attempt);
+  }
+  return { ok: false, error: "max retries exceeded", attempts: maxAttempts };
 }
 
 function formatRange(start: string, end: string): string {
