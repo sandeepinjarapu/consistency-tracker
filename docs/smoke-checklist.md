@@ -76,9 +76,11 @@ negative check.
 - [ ] **A shares a goal**: goal detail → tap the **Private / Shared with…**
       status → toggle B in the share sheet → close the sheet. The status line
       updates and the sheet stays on-brand.
-- [ ] **B opens A's partner page**: sees A's name, avatar, the shared goal, its
-      history, the goal's **category name + color** (not "Uncategorized"), and
-      "N-day streak · M check-ins" (no %).
+- [ ] **B opens A's partner page**: sees A's name, avatar, the shared goal
+      (name, description, goal document link if set), its history, the
+      goal's **category name + color** (not "Uncategorized"), and "N-day
+      streak · M check-ins" (no %). The goal's motivation and check-in notes
+      never appear.
 - [ ] **B reacts** "Saw it" / "Proud" on a recent week → A sees the reaction on
       that goal; the Partners blue "new" dot clears after A visits.
 - [ ] A reflection B marked **Partner** shows in A's partner page "In their
