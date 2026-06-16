@@ -46,7 +46,11 @@ async function assertOwnsGoal(
   }
 }
 
-export async function markDone(goalId: string, date: string): Promise<void> {
+export async function markDone(
+  goalId: string,
+  date: string,
+  skipRevalidate = false
+): Promise<void> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -68,13 +72,14 @@ export async function markDone(goalId: string, date: string): Promise<void> {
     );
   if (error) throw error;
 
-  revalidatePath("/consistencytracker", "layout");
+  if (!skipRevalidate) revalidatePath("/consistencytracker", "layout");
 }
 
 export async function markSkipped(
   goalId: string,
   date: string,
-  reason: SkipReason
+  reason: SkipReason,
+  skipRevalidate = false
 ): Promise<void> {
   if (!VALID_REASONS.includes(reason)) {
     throw new Error("Invalid skip reason");
@@ -100,10 +105,14 @@ export async function markSkipped(
     );
   if (error) throw error;
 
-  revalidatePath("/consistencytracker", "layout");
+  if (!skipRevalidate) revalidatePath("/consistencytracker", "layout");
 }
 
-export async function unmark(goalId: string, date: string): Promise<void> {
+export async function unmark(
+  goalId: string,
+  date: string,
+  skipRevalidate = false
+): Promise<void> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -117,7 +126,7 @@ export async function unmark(goalId: string, date: string): Promise<void> {
     .eq("goal_id", goalId)
     .eq("date", date);
   if (error) throw error;
-  revalidatePath("/consistencytracker", "layout");
+  if (!skipRevalidate) revalidatePath("/consistencytracker", "layout");
 }
 
 /**

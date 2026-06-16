@@ -164,7 +164,7 @@ export default function TodayGoalCard({
                   </span>
                 </span>
                 <button
-                  onClick={() => run(() => unmark(goalId, date), null)}
+                  onClick={() => run(() => unmark(goalId, date, lateCheckIn), null)}
                   disabled={pending}
                   className={`${tapTarget} px-2 text-xs text-[color:var(--muted)] hover:text-black disabled:opacity-50`}
                 >
@@ -183,7 +183,7 @@ export default function TodayGoalCard({
                   </span>
                 </span>
                 <button
-                  onClick={() => run(() => unmark(goalId, date), null)}
+                  onClick={() => run(() => unmark(goalId, date, lateCheckIn), null)}
                   disabled={pending}
                   className={`${tapTarget} px-2 text-xs text-[color:var(--muted)] hover:text-black disabled:opacity-50`}
                 >
@@ -193,7 +193,7 @@ export default function TodayGoalCard({
             ) : (
               <>
                 <button
-                  onClick={() => run(() => markDone(goalId, date), optimisticRow("done", null))}
+                  onClick={() => run(() => markDone(goalId, date, lateCheckIn), optimisticRow("done", null))}
                   disabled={pending}
                   className={`${tapTarget} text-xs font-medium bg-black text-white rounded-md px-4 hover:bg-gray-800 disabled:opacity-50`}
                 >
@@ -212,7 +212,7 @@ export default function TodayGoalCard({
                       {(Object.keys(REASON_LABELS) as SkipReason[]).map((r) => (
                         <button
                           key={r}
-                          onClick={() => run(() => markSkipped(goalId, date, r), optimisticRow("skipped", r))}
+                          onClick={() => run(() => markSkipped(goalId, date, r, lateCheckIn), optimisticRow("skipped", r))}
                           className={`${tapTargetRow} w-full text-left text-sm px-3 hover:bg-gray-50`}
                         >
                           {REASON_LABELS[r]}
