@@ -53,17 +53,28 @@ export default function TodayGoalCard({
   // when the background router.refresh() lands (and reverts on failure).
   const [optimistic, setOptimistic] = useOptimistic(checkIn);
 
+  // Late check-in cards deliberately never refresh or revalidate in-session
+  // (the card must survive while a note is being written), so useOptimistic is
+  // the wrong tool for them: it reverts to the `checkIn` prop the instant the
+  // transition ends, and that prop never catches up without a refresh. Late
+  // cards therefore own durable local state instead. Only a reload or
+  // navigation reconciles them with the server (which filters logged goals out
+  // of the "Still open from last night" list). `current` is the single source
+  // the render reads, picked per mode.
+  const [localCheckIn, setLocalCheckIn] = useState<CheckIn | null>(checkIn);
+  const current = lateCheckIn ? localCheckIn : optimistic;
+
   function optimisticRow(
     status: "done" | "skipped",
     reason: SkipReason | null
   ): CheckIn {
     return {
-      id: checkIn?.id ?? "optimistic",
+      id: current?.id ?? "optimistic",
       goal_id: goalId,
       date,
       status,
       skip_reason: reason,
-      note: checkIn?.note ?? null,
+      note: current?.note ?? null,
       created_at: new Date().toISOString(),
     };
   }
@@ -92,13 +103,26 @@ export default function TodayGoalCard({
 
   function run(fn: () => Promise<void>, next: CheckIn | null) {
     setShowSkipMenu(false);
+    if (lateCheckIn) {
+      // Durable local state, no refresh and no server revalidation (the action
+      // is called with skipRevalidate=true). The card stays put so a note can
+      // be written; it only leaves the list on reload/navigation.
+      const prev = localCheckIn;
+      setLocalCheckIn(next);
+      startTransition(async () => {
+        try {
+          await fn();
+        } catch {
+          setLocalCheckIn(prev);
+        }
+      });
+      return;
+    }
     startTransition(async () => {
       setOptimistic(next);
       try {
         await fn();
-        // Late check-in cards skip the refresh so the card stays mounted and
-        // the user can still add a note. saveNote() will refresh once done.
-        if (!lateCheckIn) router.refresh();
+        router.refresh();
       } catch {
         // swallow — RLS errors shouldn't occur for own goals. On failure we
         // skip the refresh, so the optimistic value reverts to the prop.
@@ -108,26 +132,34 @@ export default function TodayGoalCard({
 
   function saveNote() {
     startNoteTransition(async () => {
-      await updateCheckInNote(goalId, date, noteDraft);
+      await updateCheckInNote(goalId, date, noteDraft, lateCheckIn);
       setEditingNote(false);
-      router.refresh();
+      if (lateCheckIn) {
+        // Commit the note to local state and stay mounted — mirrors the
+        // skipped revalidation above. trimNote on the server matches this.
+        const trimmed = noteDraft.trim().slice(0, 100);
+        const note = trimmed.length > 0 ? trimmed : null;
+        setLocalCheckIn((c) => (c ? { ...c, note } : c));
+      } else {
+        router.refresh();
+      }
     });
   }
 
   function cancelNote() {
-    setNoteDraft(checkIn?.note ?? "");
+    setNoteDraft(current?.note ?? "");
     setEditingNote(false);
   }
 
-  const isChecked = optimistic !== null;
+  const isChecked = current !== null;
 
   // Calm per-state tint so cards are scannable at a glance, not just by
   // reading the status text. Pending stays neutral; done/skipped get a soft
   // wash. No "missed" state here — today can't be missed yet.
   const stateTint =
-    optimistic?.status === "done"
+    current?.status === "done"
       ? "border-green-200 bg-green-50/60"
-      : optimistic?.status === "skipped"
+      : current?.status === "skipped"
         ? "border-amber-200 bg-amber-50/60"
         : "border-[color:var(--border)]";
 
@@ -155,12 +187,12 @@ export default function TodayGoalCard({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 relative">
-            {optimistic?.status === "done" ? (
+            {current?.status === "done" ? (
               <>
                 <span className="text-xs">
                   <span className="text-green-700 font-medium">✓ Done</span>
                   <span className="text-[color:var(--muted)] ml-1">
-                    · {formatCheckInTime(optimistic.created_at, timezone)}
+                    · {formatCheckInTime(current.created_at, timezone)}
                   </span>
                 </span>
                 <button
@@ -171,15 +203,15 @@ export default function TodayGoalCard({
                   Undo
                 </button>
               </>
-            ) : optimistic?.status === "skipped" ? (
+            ) : current?.status === "skipped" ? (
               <>
                 <span className="text-xs">
                   <span className="text-amber-700 font-medium">
                     ⏭ Skipped
-                    {optimistic.skip_reason ? ` · ${REASON_LABELS[optimistic.skip_reason]}` : ""}
+                    {current.skip_reason ? ` · ${REASON_LABELS[current.skip_reason]}` : ""}
                   </span>
                   <span className="text-[color:var(--muted)] ml-1">
-                    · {formatCheckInTime(optimistic.created_at, timezone)}
+                    · {formatCheckInTime(current.created_at, timezone)}
                   </span>
                 </span>
                 <button
@@ -260,12 +292,12 @@ export default function TodayGoalCard({
                   Cancel
                 </button>
               </div>
-            ) : checkIn?.note ? (
+            ) : current?.note ? (
               <button
                 onClick={() => setEditingNote(true)}
                 className="min-h-[44px] inline-flex items-center text-xs text-[color:var(--muted)] italic hover:text-black text-left"
               >
-                “{checkIn.note}” <span className="not-italic">· edit</span>
+                “{current.note}” <span className="not-italic">· edit</span>
               </button>
             ) : (
               <button
