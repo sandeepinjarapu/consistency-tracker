@@ -309,8 +309,7 @@ export async function removeExtra(goalId: string, date: string): Promise<void> {
 export async function updateCheckInNote(
   goalId: string,
   date: string,
-  note: string,
-  skipRevalidate = false
+  note: string
 ): Promise<void> {
   const supabase = await createClient();
   const {
@@ -325,5 +324,5 @@ export async function updateCheckInNote(
     .eq("goal_id", goalId)
     .eq("date", date);
   if (error) throw error;
-  if (!skipRevalidate) revalidatePath("/consistencytracker", "layout");
+  revalidatePath("/consistencytracker", "layout");
 }

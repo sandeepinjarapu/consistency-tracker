@@ -132,17 +132,12 @@ export default function TodayGoalCard({
 
   function saveNote() {
     startNoteTransition(async () => {
-      await updateCheckInNote(goalId, date, noteDraft, lateCheckIn);
+      await updateCheckInNote(goalId, date, noteDraft);
       setEditingNote(false);
-      if (lateCheckIn) {
-        // Commit the note to local state and stay mounted — mirrors the
-        // skipped revalidation above. trimNote on the server matches this.
-        const trimmed = noteDraft.trim().slice(0, 100);
-        const note = trimmed.length > 0 ? trimmed : null;
-        setLocalCheckIn((c) => (c ? { ...c, note } : c));
-      } else {
-        router.refresh();
-      }
+      // Saving the note completes the late check-in's job, so let the server
+      // reconcile: the now-logged goal drops out of the night-owl list and the
+      // card leaves. Same path for regular cards (the prop catches up).
+      router.refresh();
     });
   }
 
