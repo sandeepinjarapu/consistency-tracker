@@ -268,20 +268,26 @@ shared with partners or in email in V1.
 
 1. Is the gap real, or is the existing note affordance just under-used
    because it's visually buried?
-2. Capture point: per check-in (after Mark done) vs. once a week per goal
-   in Reflections — not yet decided.
-3. Field name: avoid `quality`/`intensity` (judgmental or too workout-
-   specific); something like `session_feel` reads broader across goal
-   types (writing, reading, admin, workouts).
-4. Historical check-ins: field is simply `null` — not backfilled, not
-   inferred from notes, never shown as a gap.
+2. Capture grain — **not yet decided, and the schema differs by choice**:
+   - **Weekly, per goal:** one `Strong · Okay · Rough` prompt per goal per
+     week inside Reflections. Field would live on the reflection/week row
+     (something like `weekly_goal_feel`), not on `check_ins`.
+   - **Daily, per check-in:** one optional prompt after Mark done. Field
+     would live on `check_ins` (something like `session_feel`).
+   - These are different data models, not two UI skins on one field. Do not
+     pick a field name until the grain is chosen.
+3. Historical rows: whichever grain is chosen, the field is simply `null`
+   — not backfilled, not inferred from notes, never shown as a gap.
+4. Privacy leak guard: if prototyped inside Reflections, this field must be
+   excluded from the shared-reflection payload regardless of the reflection's
+   own Private/Shared toggle — that toggle governs Keep/Let go/Try
+   next/Notes today, and this field must not silently ride along with it.
 
 **Recommended sequencing:** Do not build yet. If revisited, prototype the
-weekly-reflection version first (one `Strong · Okay · Rough` prompt per
-goal per week) — it adds meaning without daily friction and stays inside a
-surface that's already allowed to summarize. Only promote to a per-check-in
-field if the weekly version proves useful and raising the note affordance's
-visibility still isn't enough.
+weekly-reflection grain first — it adds meaning without daily friction and
+stays inside a surface that's already allowed to summarize. Only promote to
+the per-check-in grain if the weekly version proves useful and raising the
+note affordance's visibility still isn't enough.
 
 **Trigger to revisit:** Repeated personal use shows notes aren't capturing
 this, or check-in notes are observed to be rare because the affordance is
