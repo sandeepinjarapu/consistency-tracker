@@ -344,9 +344,17 @@ past schema/doc mismatches.
 
 **2. Missing route-level error boundaries — real, small, worth doing.**
 Confirmed: `loading.tsx` exists for six routes under `/consistencytracker`,
-but no `error.tsx` exists anywhere in `src/app`. A Supabase or Server Action
-failure on a data-loading route currently falls through to Next's default
-error UI instead of a calm, on-brand recovery screen.
+but no `error.tsx` exists anywhere in `src/app`. A Server Component
+render/data-loading failure on a route currently falls through to Next's
+default error UI instead of a calm, on-brand recovery screen.
+
+`error.tsx` only catches that — render-time and data-loading throws within
+its route segment. It does **not** catch a failed Server Action invoked from
+a client component (e.g. `markDone`, `updateCheckInNote` in
+`today-goal-card.tsx`): those reject back to the caller's own
+`try`/`catch`, same as today. Adding `error.tsx` is a route-loading safety
+net, not a substitute for each interactive component's own mutation-failure
+handling — don't assume it covers both when implementing this.
 - Add `error.tsx` to `/consistencytracker`, `/goals`, `/goals/[id]`,
   `/reflections`, `/partners`, `/partners/[id]`.
 - Copy stays in voice: "Couldn't load this. Try again." — no stack traces,
