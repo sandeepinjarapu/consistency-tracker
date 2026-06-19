@@ -249,6 +249,44 @@ current product strength is its weekly rhythm and evidence loop.
 **Trigger to revisit:** Multiple real users create awkward weekly workarounds
 for non-weekly commitments.
 
+### 19. Check-in feel / session quality (discovery only) `Spec only`
+
+**Idea:** Distinguish "showed up but it was rough" from "showed up and it
+was strong" — a signal richer than done/skipped/extra. Notes already cover
+this, but they're free-text, optional, and the `+ Add note` affordance is
+easy to miss.
+
+**Philosophy fit:** In tension with Design Principle 1 (evidence, not
+grades) if built as a numeric scale or anything evaluative like "Good /
+Alright / Can do better" — that reads as a performance review, not a
+personal record. Only acceptable as reflection texture: optional, three
+qualitative non-ranked states (e.g. `strong` / `okay` / `rough`), never
+averaged into a number, never affecting completion/streak scoring, never
+shared with partners or in email in V1.
+
+**Open questions before any code:**
+
+1. Is the gap real, or is the existing note affordance just under-used
+   because it's visually buried?
+2. Capture point: per check-in (after Mark done) vs. once a week per goal
+   in Reflections — not yet decided.
+3. Field name: avoid `quality`/`intensity` (judgmental or too workout-
+   specific); something like `session_feel` reads broader across goal
+   types (writing, reading, admin, workouts).
+4. Historical check-ins: field is simply `null` — not backfilled, not
+   inferred from notes, never shown as a gap.
+
+**Recommended sequencing:** Do not build yet. If revisited, prototype the
+weekly-reflection version first (one `Strong · Okay · Rough` prompt per
+goal per week) — it adds meaning without daily friction and stays inside a
+surface that's already allowed to summarize. Only promote to a per-check-in
+field if the weekly version proves useful and raising the note affordance's
+visibility still isn't enough.
+
+**Trigger to revisit:** Repeated personal use shows notes aren't capturing
+this, or check-in notes are observed to be rare because the affordance is
+missed.
+
 ### 14. Earlier weeks navigation: month grouping and status badges `Spec only`
 
 **Problem:** The "Earlier weeks" flat list becomes hard to navigate beyond
@@ -380,6 +418,7 @@ or the dead CTA generates confusion or support noise.
 - Item 8: Planned break / vacation mode
 - Item 9: Longer cadences
 - Item 14: Earlier weeks navigation (month grouping + status badges)
+- Item 19: Check-in feel / session quality — discovery only, do not build yet
 
 **Rule:** Do not combine model changes with polish PRs. Planned breaks and
 longer cadences must not ride along with UI cleanup.
