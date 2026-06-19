@@ -315,6 +315,88 @@ navigation problem.
 
 ## Infrastructure
 
+### 20. Frontend architecture hygiene `Spec only`
+
+**Source:** prompted by an X architecture-checklist thread (typed client/server
+boundary, state machines, design-system drift, Suspense/error boundaries,
+TanStack Query, type-safe query params, offline/WebSocket sync, SPA-vs-Next
+choice). Most of that checklist doesn't apply — this app is server-rendered
+App Router with Server Actions, not a client-fetching SPA, so TanStack Query,
+XState, offline sync, and query-param libraries are explicitly **not**
+warranted by anything in the current codebase. Two items hold up under
+inspection and are worth doing; one is a discipline habit, not a library.
+
+**1. Untyped Supabase boundary — real, worth doing.**
+Confirmed: `createClient()` in `src/lib/supabase/server.ts` and `client.ts` is
+untyped (`@supabase/supabase-js` v2, no `Database` generic), there's no
+generated types file in the repo, and there are ~108 `.from(...)` call sites
+across `src/app`, `src/lib`, `src/components` relying on hand-written row
+types (`Goal`, `CheckIn`, reflection rows, etc.) staying in sync with
+`supabase/schema.sql` by hand. This is exactly the kind of drift that caused
+past schema/doc mismatches.
+- Generate types via the Supabase CLI from `supabase/schema.sql` /
+  migrations, type `createClient<Database>()` in both `server.ts` and
+  `client.ts`.
+- Don't replace product-concept types like `WeeklyGoalStats` — only the raw
+  DB row shapes that already duplicate the schema.
+- Gradual migration, not a single sweeping PR — one table/feature area at a
+  time so it rides along with otherwise-unrelated touches to that area.
+
+**2. Missing route-level error boundaries — real, small, worth doing.**
+Confirmed: `loading.tsx` exists for six routes under `/consistencytracker`,
+but no `error.tsx` exists anywhere in `src/app`. A Supabase or Server Action
+failure on a data-loading route currently falls through to Next's default
+error UI instead of a calm, on-brand recovery screen.
+- Add `error.tsx` to `/consistencytracker`, `/goals`, `/goals/[id]`,
+  `/reflections`, `/partners`, `/partners/[id]`.
+- Copy stays in voice: "Couldn't load this. Try again." — no stack traces,
+  no alarm-red, consistent with the anti-shame/calm tone elsewhere.
+
+**3. Inline Tailwind / primitive drift — real, lower priority.**
+Confirmed: `src/lib/ui.ts` is 19 lines (three tap-target constants), not a
+primitives layer. `skeleton.tsx` and `tooltip.tsx` exist as one-off
+components, but most buttons/menus/dialogs still carry their own inline
+Tailwind strings per call site — consistent with the repeated polish PRs
+already in this roadmap (dropdown/menu polish, tooltip latency, ring sizing).
+- Don't build a general design system.
+- If touching this, extract only what's been independently polished more
+  than once: button variants, menu panel/item, dialog shell, form field,
+  section heading — app-specific, not generic.
+- Lower priority than items 1–2; revisit opportunistically when the next
+  polish PR touches one of these controls again, not as a standalone effort.
+
+**4. Complex client component state — review habit, not a library.**
+The late check-in card bug (`TodayGoalCard`, fixed across PRs leading to
+commit `b3bf2a8`/`d773796`) is the concrete example: the bug came from an
+unmodeled chain (server prop → optimistic state → durable local state →
+server revalidation → client refresh → reconciliation), patched piecemeal
+across three attempts before the full chain was traced. The fix was not a
+new library — it was modeling the states explicitly.
+- Going forward: any component juggling 3+ overlapping state sources
+  (optimistic, durable-local, server-prop, in-flight) gets its state
+  transitions written out before patching, not after a bug report.
+- `useReducer` is the right escalation for a component if it grows past
+  that; XState is not warranted anywhere in this app today and shouldn't be
+  added speculatively.
+
+**Explicitly not doing, and why:**
+- TanStack Query — app fetches via Server Components/Server Actions, not
+  client REST/GraphQL; nothing here needs request caching or pagination yet.
+- XState — no multi-step workflow (offline sync, complex onboarding,
+  realtime collab) exists in this app.
+- Type-safe query params (`nuqs` etc.) — current params (`next`, `weeks`,
+  `archived`, Google Calendar params) are few and low-stakes.
+- Offline mode / WebSockets / SSE — no realtime or offline requirement
+  exists; partner reactions and weekly email don't need it.
+
+**Recommended sequencing:** items 1 and 2 first (typed Supabase client,
+error boundaries) — both are bounded, mechanical, and reduce real risk
+without touching product scope. Item 3 (UI primitives) only opportunistically
+alongside other polish work. Item 4 is a standing review habit, not a ticket.
+
+**Trigger to revisit item 3:** the same control gets a fourth ad-hoc polish
+PR, or a new control visibly drifts from an already-polished sibling.
+
 ### 10. Vercel Speed Insights and Web Analytics quota `Done — PR #133 · Deployed`
 
 **Shipped:** `VERCEL_ENV === "production"` guard added to `layout.tsx`. Local
@@ -425,6 +507,9 @@ or the dead CTA generates confusion or support noise.
 - Item 9: Longer cadences
 - Item 14: Earlier weeks navigation (month grouping + status badges)
 - Item 19: Check-in feel / session quality — discovery only, do not build yet
+- Item 20: Frontend architecture hygiene — typed Supabase client + error
+  boundaries are real and bounded; UI primitives only opportunistically;
+  no TanStack Query / XState / offline sync / query-param libs warranted yet
 
 **Rule:** Do not combine model changes with polish PRs. Planned breaks and
 longer cadences must not ride along with UI cleanup.
