@@ -249,7 +249,7 @@ current product strength is its weekly rhythm and evidence loop.
 **Trigger to revisit:** Multiple real users create awkward weekly workarounds
 for non-weekly commitments.
 
-### 21. Today over-quota classification: quota-met weekly goals `Implemented locally · awaiting merge/deploy`
+### 21. Today over-quota classification: quota-met weekly goals `Done — PR #145 · Deployed`
 
 **Bug (original-design gap from the e42abcf "N times per week" commit):** A
 weekly-count goal ("N×/week, any day") stores all seven weekdays in
@@ -273,6 +273,13 @@ raw eligible set. Over-quota chips log through `markDone`/`unmark` (eligible
 weekday), NOT `markExtraDone` — whose `isExtraLoggable` guard rejects eligible
 days. Over-quota chips are scoped to the daytime list (night-owl extras belong
 to yesterday, so the two reference days aren't mixed). 6 classifier tests.
+
+**Header copy resolved:** the summary string was extracted to a pure,
+unit-tested `todaySummary` (`src/lib/today-summary.ts`). When nothing is
+required because today's goals are all met for the week, it reads
+`You're all caught up for the week` (warm, names the win) rather than the flat
+`Nothing scheduled today.`, which is now reserved for a genuinely empty day.
+8 summary tests cover both. Daytime-only, so night-owl copy is unchanged.
 
 **Deliberate scope — revisit with item 9:** this fix reasons only about
 **weekly** quotas. When longer cadences (every-N-weeks / monthly / quarterly,
@@ -533,14 +540,15 @@ or the dead CTA generates confusion or support noise.
 12. G.1 follow-up — Named audience label (`· Arjun` / `· Arjun & Richa` / `· N partners`) + 2s confirmation on share toggle
 13. Infrastructure — Resend rate-limit fix: v4 error handling, `sendWithRetry`, 1s pacing, structured logging
 14. Item 18 — Reflection content in weekly email (partner "In their own words", self "Your reflection")
+15. PR #145 (item 21) — Today over-quota classification: quota-met weekly goals drop from the required list into optional over-quota chips; warmer "all caught up" header copy
 
 ### Not started — ordered by effort and dependency
-15. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
+16. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
     before coding.
-16. **PR E (item 7):** Partner reaction compression — defer until a goal is
+17. **PR E (item 7):** Partner reaction compression — defer until a goal is
     shared with 3+ partners.
-17. **Item 6:** Calendar month alignment — revisit with real screenshots first.
-18. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
+18. **Item 6:** Calendar month alignment — revisit with real screenshots first.
+19. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
 
 ### Spec only / Later
 - Item 8: Planned break / vacation mode
