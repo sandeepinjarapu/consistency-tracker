@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { markExtraDone, removeExtra } from "@/lib/actions/check-ins";
+import { markDone, markExtraDone, removeExtra, unmark } from "@/lib/actions/check-ins";
 
 export type ExtraGoal = {
   id: string;
@@ -11,6 +11,14 @@ export type ExtraGoal = {
   /** Today's check-in for this off-schedule goal: a logged extra, a stray skip
    *  (left by a cadence edit), or none. */
   status: "done" | "skipped" | null;
+  /**
+   * Which write path a tap uses. Off-target days (the weekday isn't in the
+   * goal's target_days) log through `markExtraDone`. A weekly-count goal that
+   * has already met its quota is offered here too, but its day IS an eligible
+   * weekday — so it must log through the normal `markDone` path (the
+   * `markExtraDone` guard rejects eligible days). Defaults to off-target.
+   */
+  kind?: "off_target" | "over_quota";
 };
 
 /**
@@ -56,14 +64,21 @@ export default function LogExtra({
   const visible = hasOverflow ? goals.slice(0, MAX_VISIBLE - 1) : goals;
   const overflowCount = goals.length - (MAX_VISIBLE - 1);
 
+  const kindById = new Map(goals.map((g) => [g.id, g.kind ?? "off_target"]));
+
   async function toggle(id: string) {
     if (pendingIds.has(id)) return;
     const prev = status[id] ?? null;
     const next = prev ? null : "done";
+    const overQuota = kindById.get(id) === "over_quota";
     setStatus((s) => ({ ...s, [id]: next }));
     setPendingIds((s) => new Set(s).add(id));
     try {
-      await (next === "done" ? markExtraDone(id, date) : removeExtra(id, date));
+      if (next === "done") {
+        await (overQuota ? markDone(id, date) : markExtraDone(id, date));
+      } else {
+        await (overQuota ? unmark(id, date) : removeExtra(id, date));
+      }
       router.refresh();
     } catch {
       setStatus((s) => ({ ...s, [id]: prev }));

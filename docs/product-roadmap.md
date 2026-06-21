@@ -249,6 +249,38 @@ current product strength is its weekly rhythm and evidence loop.
 **Trigger to revisit:** Multiple real users create awkward weekly workarounds
 for non-weekly commitments.
 
+### 21. Today over-quota classification: quota-met weekly goals `Implemented locally · awaiting merge/deploy`
+
+**Bug (original-design gap from the e42abcf "N times per week" commit):** A
+weekly-count goal ("N×/week, any day") stores all seven weekdays in
+`target_days`, so the Today list demanded a check-in every day even after the
+weekly promise was met. A goal could simultaneously read `✓ 5 of 5 this week`
+and be counted as `1 left` — a direct trust break, not polish.
+
+**Shipped:** `classifyTodayGoal` (`src/lib/today-required.ts`, unit-tested)
+splits today's eligible goals into three buckets keyed on the quota, not the
+weekday:
+- **required** — specific-day goals on a target day; weekly goals still under
+  quota (`scoredDoneBeforeToday < weeklyTarget`) OR already checked in today
+  (so a card that *completed* the quota today stays visible as done, not
+  vanishing on tap).
+- **over_quota** — weekly goal met *before* today, today still open: offered as
+  an optional chip in "Did anything else today?", never counted as "left".
+- **not_today** — off the target weekday (unchanged).
+
+Header denominator and the required-card list now use `requiredGoals`, not the
+raw eligible set. Over-quota chips log through `markDone`/`unmark` (eligible
+weekday), NOT `markExtraDone` — whose `isExtraLoggable` guard rejects eligible
+days. Over-quota chips are scoped to the daytime list (night-owl extras belong
+to yesterday, so the two reference days aren't mixed). 6 classifier tests.
+
+**Deliberate scope — revisit with item 9:** this fix reasons only about
+**weekly** quotas. When longer cadences (every-N-weeks / monthly / quarterly,
+item 9) land, the "quota met for the period" logic and the
+`scoredDoneBeforeToday` window will need to generalize beyond the ISO week.
+Re-examine `classifyTodayGoal` and `scoredDoneBeforeToday` then rather than
+extending them speculatively now.
+
 ### 19. Check-in feel / session quality (discovery only) `Spec only`
 
 **Idea:** Distinguish "showed up but it was rough" from "showed up and it
