@@ -285,6 +285,8 @@ async function TodaySection() {
           skippedCount,
           remaining,
           extraToday,
+          // Over-quota chips are daytime-only, so the "caught up" line is too.
+          overQuotaCount: isNightOwl ? 0 : overQuotaGoals.length,
           isNightOwl,
         })}
       />
