@@ -140,7 +140,7 @@ UX-level concepts, **not** the metric rows already in the glossary.
 | Missed (date) | not framed | gray ring + bar | calendar / status | private diagnostic | — | not failure-framed |
 | Shortfall (week) | not framed | partial ring | week status | private diagnostic | — | `done / target` |
 | Daily note | entered with check-in | — | owner-only (view/history) | owner-only | not shared | not emailed |
-| Effort texture | chips on done check-in | — | — | private summary (planned, item 19) | not shared | not emailed |
+| Effort texture | chips on done check-in | — | — | private within-week glance (per goal, owner-only) | not shared | not emailed |
 | Weekly reflection | — | — | — | owner-only edit | shared only | shared only |
 | Reaction | — | new-reaction dot | summary line | — | partner leaves it | — |
 | Archived goal | — | hidden (today) | — | — | — | — |

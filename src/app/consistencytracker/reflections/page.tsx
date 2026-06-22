@@ -20,6 +20,7 @@ import ReflectionEditor, {
 } from "@/components/reflection-editor";
 import WeekGrid from "@/components/week-grid";
 import ReflectionNotes from "@/components/reflection-notes";
+import { buildEffortSummary, type GoalEffortSummary } from "@/lib/effort-summary";
 
 // Weeks shown by default and per "Show earlier weeks" step. The visible
 // window grows via the ?weeks= search param so each request stays bounded.
@@ -78,11 +79,12 @@ export default async function ReflectionsPage({
   // The goal's "why this matters", looked up when a goal is the week's hardest —
   // so reflection can meet you with your own reason, not just a number.
   const motivationByGoal = new Map(goals.map((g) => [g.id, g.motivation]));
+  const goalNames = new Map(goals.map((g) => [g.id, g.name]));
 
   // Check-ins across the window (extra week included for trend comparison)
   const { data: ciRaw } = await supabase
     .from("check_ins")
-    .select("goal_id, date, status, skip_reason, note")
+    .select("goal_id, date, status, skip_reason, note, effort_texture")
     .eq("user_id", user.id)
     .gte("date", earliestWeekStart)
     .lte("date", latestWindow);
@@ -92,6 +94,7 @@ export default async function ReflectionsPage({
     status: "done" | "skipped";
     skip_reason: string | null;
     note: string | null;
+    effort_texture: "flow" | "light" | null;
   }>;
 
   const reflections = await listReflections();
@@ -189,6 +192,7 @@ export default async function ReflectionsPage({
           highlights={buildHighlights(currentWeek.stats)}
           reflection={reflectionByWeek.get(currentWeek.start) ?? null}
           motivationByGoal={motivationByGoal}
+          effortSummary={buildEffortSummary(checkIns, goalNames, currentWeek.start, currentWeek.end)}
           partnerState={partnerState}
           partnerNames={partnerNames}
         />
@@ -212,6 +216,7 @@ export default async function ReflectionsPage({
                   highlights={buildHighlights(w.stats)}
                   reflection={reflectionByWeek.get(w.start) ?? null}
                   motivationByGoal={motivationByGoal}
+                  effortSummary={buildEffortSummary(checkIns, goalNames, w.start, w.end)}
                   partnerState={partnerState}
                   partnerNames={partnerNames}
                 />
@@ -246,6 +251,7 @@ function CurrentWeekHero({
   highlights,
   reflection,
   motivationByGoal,
+  effortSummary,
   partnerState,
   partnerNames,
 }: {
@@ -255,6 +261,7 @@ function CurrentWeekHero({
   highlights: Highlights;
   reflection: ReflectionRow | null;
   motivationByGoal: Map<string, string | null>;
+  effortSummary: GoalEffortSummary[];
   partnerState: PartnerState;
   partnerNames: string[];
 }) {
@@ -274,6 +281,7 @@ function CurrentWeekHero({
         highlights={highlights}
         reflection={reflection}
         motivationByGoal={motivationByGoal}
+        effortSummary={effortSummary}
         partnerState={partnerState}
         partnerNames={partnerNames}
         inProgress
@@ -292,6 +300,7 @@ function PastWeek({
   highlights,
   reflection,
   motivationByGoal,
+  effortSummary,
   partnerState,
   partnerNames,
 }: {
@@ -302,6 +311,7 @@ function PastWeek({
   highlights: Highlights;
   reflection: ReflectionRow | null;
   motivationByGoal: Map<string, string | null>;
+  effortSummary: GoalEffortSummary[];
   partnerState: PartnerState;
   partnerNames: string[];
 }) {
@@ -352,6 +362,7 @@ function PastWeek({
           highlights={highlights}
           reflection={reflection}
           motivationByGoal={motivationByGoal}
+          effortSummary={effortSummary}
           partnerState={partnerState}
           partnerNames={partnerNames}
           inProgress={false}
@@ -370,6 +381,7 @@ function WeekDetailBody({
   highlights,
   reflection,
   motivationByGoal,
+  effortSummary,
   partnerState,
   partnerNames,
   inProgress,
@@ -379,6 +391,7 @@ function WeekDetailBody({
   highlights: Highlights;
   reflection: ReflectionRow | null;
   motivationByGoal: Map<string, string | null>;
+  effortSummary: GoalEffortSummary[];
   partnerState: PartnerState;
   partnerNames: string[];
   // The current week is still open: show evidence of showing up, not a
@@ -422,6 +435,28 @@ function WeekDetailBody({
               dateLabel: shortDate(n.date),
             }))}
           />
+        </div>
+      ) : null}
+
+      {effortSummary.length > 0 ? (
+        <div className="mb-4">
+          <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
+            How you showed up
+          </h3>
+          <ul className="space-y-1">
+            {effortSummary.map((g) => (
+              <li key={g.goalId} className="text-sm text-[color:var(--muted)]">
+                <span className="text-[color:var(--foreground)]">{g.goalName}</span>
+                {" — "}
+                {[
+                  g.flow > 0 ? `${g.flow} in flow` : null,
+                  g.light > 0 ? `${g.light} light effort` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 
