@@ -64,12 +64,12 @@ export function selectLastNightGoals<
   for (const g of opts.goals) {
     if (!g.target_days.includes(opts.yesterdayDow)) continue;
     if (dateInTimezone(g.created_at, opts.timezone) > opts.yesterday) continue;
-    // hasCheckInOnDay is false here so the classifier never reclassifies a
-    // logged goal as "required"; logged-state is applied per bucket below.
+    // Requiredness is the entry-state quota only; logged-state is applied per
+    // bucket below (over-quota chips surface even when logged; required cards
+    // exclude logged goals).
     const cls = classifyGoalForLogicalDay({
       weeklyTarget: g.weekly_target,
       inTargetDay: true,
-      hasCheckInOnDay: false,
       scoredDoneBeforeDay: scoredDoneBefore(
         opts.weekCheckIns,
         g.id,

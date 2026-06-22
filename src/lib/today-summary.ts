@@ -11,8 +11,9 @@
  * flat "Nothing scheduled" as a genuinely empty day. If nothing targeted today
  * at all, it stays "Nothing scheduled today."
  *
- * `extraToday` is the count of off-target extras already logged; in the
- * night-owl window those belong to yesterday, so the copy says "last night".
+ * `extraToday` is the count of done extras already logged (off-target and
+ * over-quota); in the night-owl window those belong to yesterday, so the copy
+ * says "last night".
  */
 export function todaySummary(args: {
   requiredCount: number;

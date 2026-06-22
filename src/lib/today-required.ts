@@ -12,13 +12,20 @@ import { dayOfWeekForDateString } from "@/lib/dates";
  *
  * Specific-day goals (`weeklyTarget == null`) are required whenever the logical
  * day is a target day. Weekly-count goals ("N×/week, any day") store every
- * weekday in `target_days`, so requiredness keys on the quota, not the weekday:
+ * weekday in `target_days`, so requiredness keys on the quota, not the weekday —
+ * and specifically on the quota *entering* the logical day, never on whether a
+ * check-in exists on it:
  *
- * - required — quota still has room (`scoredDoneBeforeDay < weeklyTarget`), OR a
- *   check-in already landed on the logical day (`hasCheckInOnDay`) so a card
- *   that *completed* the quota that day stays visible rather than vanishing.
- * - over_quota — quota was already met *before* the logical day and the day is
- *   still open: optional, never an obligation.
+ * - required — quota still had room entering the day (`scoredDoneBeforeDay <
+ *   weeklyTarget`). A card that *completes* the quota that day stays required
+ *   (and renders as done) because `scoredDoneBeforeDay` excludes the day's own
+ *   check-in, so a 4/5 → mark-done → 5/5 is still classified from its 4/5 entry.
+ * - over_quota — quota was already met *before* the logical day: optional
+ *   evidence, never an obligation. This holds EVEN IF a check-in exists on the
+ *   day. A surplus log (5/5 → tap the over-quota chip → 6th) must stay an
+ *   optional chip on refresh, not flip into a required "1 of 1 done" card and
+ *   inflate the header denominator. Requiredness is the day's *entry* state; the
+ *   day's check-in is display/status, owned by the caller.
  * - not_applicable — the logical day isn't a target weekday for this goal.
  *
  * `scoredDoneBeforeDay` must count only done check-ins on eligible weekdays,
@@ -31,14 +38,13 @@ export type LogicalDayClass = "required" | "over_quota" | "not_applicable";
 export function classifyGoalForLogicalDay(args: {
   weeklyTarget: number | null;
   inTargetDay: boolean;
-  hasCheckInOnDay: boolean;
   scoredDoneBeforeDay: number;
 }): LogicalDayClass {
-  const { weeklyTarget, inTargetDay, hasCheckInOnDay, scoredDoneBeforeDay } = args;
+  const { weeklyTarget, inTargetDay, scoredDoneBeforeDay } = args;
 
   if (!inTargetDay) return "not_applicable";
   if (weeklyTarget == null) return "required";
-  if (hasCheckInOnDay || scoredDoneBeforeDay < weeklyTarget) return "required";
+  if (scoredDoneBeforeDay < weeklyTarget) return "required";
   return "over_quota";
 }
 
