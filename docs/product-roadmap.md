@@ -299,7 +299,7 @@ window will need to generalize beyond the ISO week. Re-examine
 `classifyGoalForLogicalDay` and `scoredDoneBefore` then rather than extending
 them speculatively now.
 
-### 22. `buildTodayModel`: one Today-page state model `Spec only`
+### 22. `buildTodayModel`: one Today-page state model `Implemented — PR #147 pending`
 
 **Context:** Item 21 fixed the daytime over-quota bug; a follow-up
 (`fix/night-owl-quota-classification`) extended the SAME requiredness decision
@@ -311,19 +311,21 @@ its product state across several local branches: `requiredGoals` /
 `overQuotaGoals`, `lastNightGoals`, `offTodayGoals` / `overQuotaExtras`, and
 `todaySummary` inputs.
 
-**Idea:** a single pure `buildTodayModel({ goals, checkIns, today, hour,
-timezone })` returning `{ requiredGoals, lastNightGoals, extraGoals,
-summaryInput }`, so the page fetches data and renders, and the whole logical-day
-state becomes unit-testable as one unit (rather than a classifier in isolation
-plus page wiring). Deliberately deferred out of the night-owl fix to keep that
-PR a focused correctness change, not a page rewrite.
+**Implemented shape:** a single pure `buildTodayModel({ goals, checkIns, today,
+dow, hour, timezone })` returns required goals, last-night required goals,
+logical extra chips, check-in maps, and the header summary input/string. The
+Today server component now fetches rows and renders; the logical-day state is
+unit-tested as one unit rather than relying only on classifier-level tests plus
+page inspection.
 
 **Scope guard:** state assembly only. Must NOT touch scoring (`computeStats`,
 `classifyWeek`, `computeTimePattern`), Goal detail / `WeekRows`, history,
 reflections, partner pages, weekly email, or server-action write semantics.
 
-**Trigger to revisit:** the next change that has to touch Today-page state in
-more than one of those branches at once, or another drift bug from the split.
+**Verification:** model-level tests cover under-quota required goals, daytime
+over-quota optional chips, check-in-completes-quota stability, off-target extras,
+night-owl over-quota chips keyed on yesterday, Monday-2am ISO-week behavior, and
+hidden skipped over-quota rows.
 
 ### 19. Check-in feel / session quality (discovery only) `Spec only`
 
