@@ -33,7 +33,7 @@ function run(hour: number, logged: string[] = [], timezone = "UTC") {
     loggedYesterday: new Set(logged),
     weekCheckIns: [],
     timezone,
-  }).map((g) => g.id);
+  }).required.map((g) => g.id);
 }
 
 describe("selectLastNightGoals", () => {
@@ -81,7 +81,7 @@ describe("selectLastNightGoals", () => {
         loggedYesterday: new Set<string>(),
         weekCheckIns: [],
         timezone,
-      }).map((g) => g.id);
+      }).required.map((g) => g.id);
 
     expect(select("Asia/Kolkata")).toEqual([]); // born today, locally
     expect(select("UTC")).toEqual(["ist"]); // still Jan 15 in UTC
@@ -111,19 +111,26 @@ describe("selectLastNightGoals — weekly-count quota (the night-owl half of the
     yesterdayDow: number;
     yesterdayWeekStart: string;
     weekCheckIns: { goal_id: string; date: string; status: string }[];
+    loggedYesterday?: string[];
   }) {
-    return selectLastNightGoals({
+    const { loggedYesterday, ...rest } = opts;
+    const { required, overQuota } = selectLastNightGoals({
       goals: [weekly],
       hour: 2,
-      loggedYesterday: new Set<string>(),
       timezone: "UTC",
-      ...opts,
-    }).map((g) => g.id);
+      ...rest,
+      loggedYesterday: new Set(loggedYesterday ?? []),
+    });
+    return {
+      required: required.map((g) => g.id),
+      overQuota: overQuota.map((g) => g.id),
+    };
   }
 
-  it("mid-week: quota met earlier in the same week → excluded from last-night", () => {
+  it("mid-week: quota met before yesterday → over-quota chip, not a required card", () => {
     // Yesterday Thu 2024-01-18 (dow 4), week start Mon 2024-01-15. Three dones
-    // Mon/Tue/Wed meet the 3× quota before Thursday.
+    // Mon/Tue/Wed meet the 3× quota before Thursday: optional evidence, not an
+    // obligation.
     expect(
       runWeekly({
         yesterday: "2024-01-18",
@@ -135,10 +142,10 @@ describe("selectLastNightGoals — weekly-count quota (the night-owl half of the
           { goal_id: "weekly", date: "2024-01-17", status: "done" },
         ],
       })
-    ).toEqual([]);
+    ).toEqual({ required: [], overQuota: ["weekly"] });
   });
 
-  it("mid-week: quota still under target before yesterday → included", () => {
+  it("mid-week: quota still under target before yesterday → required, no chip", () => {
     // Only two dones before Thursday, target 3 → still required.
     expect(
       runWeekly({
@@ -150,14 +157,14 @@ describe("selectLastNightGoals — weekly-count quota (the night-owl half of the
           { goal_id: "weekly", date: "2024-01-16", status: "done" },
         ],
       })
-    ).toEqual(["weekly"]);
+    ).toEqual({ required: ["weekly"], overQuota: [] });
   });
 
-  it("Monday 2am: yesterday is Sunday, quota counts against Sunday's ISO week — not the new week", () => {
+  it("Monday 2am: over-quota chip counts against Sunday's ISO week — not the new week", () => {
     // "Today" is Mon 2024-01-22; yesterday is Sun 2024-01-21, in the ISO week
     // starting Mon 2024-01-15. Three dones that week (before Sun) meet the
-    // quota → excluded. A today-keyed count would look at the empty new week
-    // and wrongly include it.
+    // quota → over-quota chip. A today-keyed count would look at the empty new
+    // week and wrongly demand it as required.
     expect(
       runWeekly({
         yesterday: "2024-01-21",
@@ -169,7 +176,7 @@ describe("selectLastNightGoals — weekly-count quota (the night-owl half of the
           { goal_id: "weekly", date: "2024-01-19", status: "done" },
         ],
       })
-    ).toEqual([]);
+    ).toEqual({ required: [], overQuota: ["weekly"] });
   });
 
   it("Monday 2am: same Sunday, but dones live in the NEW week only → still required", () => {
@@ -186,21 +193,37 @@ describe("selectLastNightGoals — weekly-count quota (the night-owl half of the
           { goal_id: "weekly", date: "2024-01-24", status: "done" },
         ],
       })
-    ).toEqual(["weekly"]);
+    ).toEqual({ required: ["weekly"], overQuota: [] });
   });
 
-  it("a skip yesterday still excludes the goal (already handled by loggedYesterday)", () => {
+  it("a skip yesterday excludes an under-target goal from required (handled by loggedYesterday)", () => {
     expect(
-      selectLastNightGoals({
-        goals: [weekly],
-        hour: 2,
+      runWeekly({
         yesterday: "2024-01-18",
         yesterdayDow: 4,
         yesterdayWeekStart: "2024-01-15",
-        loggedYesterday: new Set(["weekly"]),
         weekCheckIns: [],
-        timezone: "UTC",
-      }).map((g) => g.id)
-    ).toEqual([]);
+        loggedYesterday: ["weekly"],
+      })
+    ).toEqual({ required: [], overQuota: [] });
+  });
+
+  it("over-quota goal logged done yesterday still appears as a removable chip", () => {
+    // Met before Thursday (Mon/Tue/Wed), then also logged done Thursday. The
+    // logged state must NOT drop it from the over-quota bucket — the chip should
+    // render as done/removable. (loggedYesterday gates only required.)
+    expect(
+      runWeekly({
+        yesterday: "2024-01-18",
+        yesterdayDow: 4,
+        yesterdayWeekStart: "2024-01-15",
+        weekCheckIns: [
+          { goal_id: "weekly", date: "2024-01-15", status: "done" },
+          { goal_id: "weekly", date: "2024-01-16", status: "done" },
+          { goal_id: "weekly", date: "2024-01-17", status: "done" },
+        ],
+        loggedYesterday: ["weekly"],
+      })
+    ).toEqual({ required: [], overQuota: ["weekly"] });
   });
 });

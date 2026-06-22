@@ -7,17 +7,24 @@ import { classifyGoalForLogicalDay, scoredDoneBefore } from "@/lib/today-require
  * a late log then is a normal check-in for yesterday, not a backfill, so
  * daytime users never see it.
  *
- * A goal qualifies when yesterday was one of its target days, it already
- * existed yesterday (so we never offer a check-in for before the goal was
- * created), it wasn't already logged or skipped, AND — for weekly-count goals —
- * its weekly quota was not already met before yesterday. That last condition
- * routes through the SAME `classifyGoalForLogicalDay` the daytime list uses, so
- * a quota-met "any day" goal is no more a late-night obligation than it is a
- * daytime one. Over-quota goals simply drop from this list (no night-owl
- * over-quota chips, by current product decision); off-target extras for
- * yesterday still flow through the separate "Did anything else last night?"
- * affordance. Pure, so the eligibility rule is unit-tested independent of the
- * page.
+ * Returns two buckets, both keyed on yesterday and both routed through the SAME
+ * `classifyGoalForLogicalDay` the daytime list uses (no duplicated quota logic):
+ *
+ *   required  — yesterday was a target day, the goal existed yesterday, it
+ *               wasn't already logged or skipped, and (for weekly-count goals)
+ *               its quota was NOT met before yesterday. These are real
+ *               obligations: the "Still open from last night" cards.
+ *   overQuota — yesterday was a target day, the goal existed, and its weekly
+ *               quota was already met before yesterday. Optional extra evidence,
+ *               surfaced as chips under "Did anything else last night?" so that
+ *               "extra effort is seen, not scored" holds at night exactly as it
+ *               does by day. These are NOT excluded when already logged: a goal
+ *               logged done yesterday should still render as a done/removable
+ *               chip.
+ *
+ * Off-target extras for yesterday (goals not scheduled yesterday) are handled by
+ * the page, not here. Pure, so the eligibility rule is unit-tested independent
+ * of the page.
  */
 export function selectLastNightGoals<
   G extends {
@@ -50,13 +57,15 @@ export function selectLastNightGoals<
   weekCheckIns: { goal_id: string; date: string; status: string }[];
   /** The user's IANA timezone, for resolving each goal's local start date. */
   timezone: string;
-}): G[] {
-  if (opts.hour >= DAY_START_HOUR) return [];
-  return opts.goals.filter((g) => {
-    if (!g.target_days.includes(opts.yesterdayDow)) return false;
-    if (dateInTimezone(g.created_at, opts.timezone) > opts.yesterday) return false;
-    if (opts.loggedYesterday.has(g.id)) return false;
-    // Not logged yesterday (excluded above), so hasCheckInOnDay is false here.
+}): { required: G[]; overQuota: G[] } {
+  if (opts.hour >= DAY_START_HOUR) return { required: [], overQuota: [] };
+  const required: G[] = [];
+  const overQuota: G[] = [];
+  for (const g of opts.goals) {
+    if (!g.target_days.includes(opts.yesterdayDow)) continue;
+    if (dateInTimezone(g.created_at, opts.timezone) > opts.yesterday) continue;
+    // hasCheckInOnDay is false here so the classifier never reclassifies a
+    // logged goal as "required"; logged-state is applied per bucket below.
     const cls = classifyGoalForLogicalDay({
       weeklyTarget: g.weekly_target,
       inTargetDay: true,
@@ -69,6 +78,14 @@ export function selectLastNightGoals<
         g.target_days
       ),
     });
-    return cls === "required";
-  });
+    if (cls === "over_quota") {
+      // Optional evidence — surface even if already logged yesterday so the chip
+      // can render as done/removable. The page reads the actual status.
+      overQuota.push(g);
+    } else if (!opts.loggedYesterday.has(g.id)) {
+      // Real obligation, not yet logged or skipped for yesterday.
+      required.push(g);
+    }
+  }
+  return { required, overQuota };
 }

@@ -148,7 +148,8 @@ async function TodaySection() {
   const loggedYesterday = new Set(
     twoWeekCheckIns.filter((c) => c.date === yesterday).map((c) => c.goal_id)
   );
-  const lastNightGoals = selectLastNightGoals({
+  const { required: lastNightRequiredGoals, overQuota: lastNightOverQuotaGoals } =
+    selectLastNightGoals({
     goals,
     hour,
     yesterday,
@@ -232,23 +233,24 @@ async function TodaySection() {
       kind: "off_target" as const,
     }));
 
-  // Weekly-count goals already met before today, offered as optional over-quota
-  // extras in the same "Did anything else today?" row. Eligible weekday, so a
-  // tap writes through markDone (not markExtraDone). Scoped to the daytime list:
-  // the night-owl extras belong to yesterday, and over-quota is computed against
-  // today, so we don't mix the two reference days.
-  const overQuotaExtras = isNightOwl
-    ? []
-    : overQuotaGoals.map((g) => ({
-        id: g.id,
-        name: g.name,
-        categoryColor: g.category?.color ?? UNCATEGORIZED_COLOR,
-        status: (checkInByGoal.get(g.id)?.status ?? null) as
-          | "done"
-          | "skipped"
-          | null,
-        kind: "over_quota" as const,
-      }));
+  // Weekly-count goals already met for the logical day, offered as optional
+  // over-quota extras in the same "Did anything else…" row. Eligible weekday, so
+  // a tap writes through markDone (not markExtraDone). Daytime over-quota is
+  // computed against today (from overQuotaGoals); the night-owl set belongs to
+  // yesterday (from selectLastNightGoals' overQuota bucket, quota counted
+  // against yesterday's ISO week). Both read status from extraCheckInByGoal,
+  // which is keyed on extraDate — yesterday at night, today by day.
+  const overQuotaSource = isNightOwl ? lastNightOverQuotaGoals : overQuotaGoals;
+  const overQuotaExtras = overQuotaSource.map((g) => ({
+    id: g.id,
+    name: g.name,
+    categoryColor: g.category?.color ?? UNCATEGORIZED_COLOR,
+    status: (extraCheckInByGoal.get(g.id)?.status ?? null) as
+      | "done"
+      | "skipped"
+      | null,
+    kind: "over_quota" as const,
+  }));
   const extraGoals = [...offTodayGoals, ...overQuotaExtras];
 
   // Header progress counts SCHEDULED goals only — extras are evidence, never
@@ -320,7 +322,7 @@ async function TodaySection() {
         </div>
       )}
 
-      {lastNightGoals.length > 0 ? (
+      {lastNightRequiredGoals.length > 0 ? (
         <div className="mt-8">
           <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
             Still open from last night
@@ -329,7 +331,7 @@ async function TodaySection() {
             Up late? Yesterday is still open until 5am.
           </p>
           <div className="space-y-2">
-            {lastNightGoals.map((g) => (
+            {lastNightRequiredGoals.map((g) => (
               <TodayGoalCard
                 key={g.id}
                 goalId={g.id}
