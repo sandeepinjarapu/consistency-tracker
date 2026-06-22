@@ -89,7 +89,7 @@ export default function TodayGoalCard({
   function setEffort(tapped: EffortTexture) {
     if (!current || current.status !== "done") return;
     const value = nextEffort(current.effort_texture, tapped);
-    run(() => updateCheckInEffort(goalId, date, value), {
+    run(() => updateCheckInEffort(goalId, date, value, lateCheckIn), {
       ...current,
       effort_texture: value,
     });

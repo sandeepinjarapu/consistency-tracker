@@ -14,7 +14,10 @@
 alter table public.check_ins
   add column if not exists effort_texture text;
 
--- Constraint: only the two allowed values, or null.
+-- Constraint: only the two allowed values, or null, AND only on a done row.
+-- The status guard is the durable regression guard — even if some future
+-- write path forgets to clear texture when converting a done row to skipped,
+-- the database rejects it (markSkipped also clears it at the app layer).
 do $$
 begin
   if not exists (
@@ -22,6 +25,9 @@ begin
   ) then
     alter table public.check_ins
       add constraint check_ins_effort_texture_values
-      check (effort_texture is null or effort_texture in ('flow', 'light'));
+      check (
+        effort_texture is null
+        or (effort_texture in ('flow', 'light') and status = 'done')
+      );
   end if;
 end $$;

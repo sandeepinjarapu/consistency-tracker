@@ -109,6 +109,10 @@ export async function markSkipped(
         date,
         status: "skipped",
         skip_reason: reason,
+        // A skip carries its reason, not effort. Clear any texture left over
+        // from a prior done on this row (also required: the DB constraint
+        // forbids effort_texture on a non-done row).
+        effort_texture: null,
       },
       { onConflict: "goal_id,date" }
     );
@@ -346,7 +350,8 @@ export async function updateCheckInNote(
 export async function updateCheckInEffort(
   goalId: string,
   date: string,
-  texture: EffortTexture | null
+  texture: EffortTexture | null,
+  skipRevalidate = false
 ): Promise<void> {
   if (texture !== null && !VALID_TEXTURES.includes(texture)) {
     throw new Error("Invalid effort texture");
@@ -365,5 +370,8 @@ export async function updateCheckInEffort(
     .eq("date", date)
     .eq("status", "done");
   if (error) throw error;
-  revalidatePath("/consistencytracker", "layout");
+  // Like markDone/unmark: a night-owl "still open from last night" card must
+  // not be revalidated mid-session, or the server rerender filters the logged
+  // goal out before its note is written.
+  if (!skipRevalidate) revalidatePath("/consistencytracker", "layout");
 }
