@@ -131,7 +131,7 @@ UX-level concepts, **not** the metric rows already in the glossary.
 | Shortfall (week) | not framed | partial ring | week status | private diagnostic | — | `done / target` |
 | Daily note | entered with check-in | — | owner-only (view/history) | owner-only | not shared | not emailed |
 | Weekly reflection | — | — | — | owner-only edit | shared only | shared only |
-| Reaction | — | — | summary line | — | partner leaves it | drives the prompt |
+| Reaction | — | new-reaction dot | summary line | — | partner leaves it | — |
 | Archived goal | — | hidden (today) | — | — | — | — |
 
 Goals-list ring vocabulary (full / partial / dot / bar / gray) is defined in
