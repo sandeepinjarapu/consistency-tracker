@@ -249,7 +249,7 @@ current product strength is its weekly rhythm and evidence loop.
 **Trigger to revisit:** Multiple real users create awkward weekly workarounds
 for non-weekly commitments.
 
-### 21. Today over-quota classification: quota-met weekly goals `Done — PR #145 · Deployed`
+### 21. Today over-quota classification: quota-met weekly goals `Done — PR #145, #146 · Deployed`
 
 **Bug (original-design gap from the e42abcf "N times per week" commit):** A
 weekly-count goal ("N×/week, any day") stores all seven weekdays in
@@ -257,36 +257,47 @@ weekly-count goal ("N×/week, any day") stores all seven weekdays in
 weekly promise was met. A goal could simultaneously read `✓ 5 of 5 this week`
 and be counted as `1 left` — a direct trust break, not polish.
 
-**Shipped:** `classifyTodayGoal` (`src/lib/today-required.ts`, unit-tested)
-splits today's eligible goals into three buckets keyed on the quota, not the
-weekday:
+**Shipped:** `classifyGoalForLogicalDay` (`src/lib/today-required.ts`,
+unit-tested) classifies an eligible goal for a given logical day, keyed on the
+quota, not the weekday:
 - **required** — specific-day goals on a target day; weekly goals still under
-  quota (`scoredDoneBeforeToday < weeklyTarget`) OR already checked in today
-  (so a card that *completed* the quota today stays visible as done, not
-  vanishing on tap).
-- **over_quota** — weekly goal met *before* today, today still open: offered as
-  an optional chip in "Did anything else today?", never counted as "left".
-- **not_today** — off the target weekday (unchanged).
+  quota (`scoredDoneBefore < weeklyTarget`) OR already checked in that day (so a
+  card that *completed* the quota stays visible as done, not vanishing on tap).
+- **over_quota** — weekly goal met *before* that day, still open: offered as an
+  optional chip in "Did anything else…?", never counted as "left".
+- **not_applicable** — off the target weekday (unchanged).
 
-Header denominator and the required-card list now use `requiredGoals`, not the
-raw eligible set. Over-quota chips log through `markDone`/`unmark` (eligible
+Header denominator and the required-card list use `requiredGoals`, not the raw
+eligible set. Over-quota chips log through `markDone`/`unmark` (eligible
 weekday), NOT `markExtraDone` — whose `isExtraLoggable` guard rejects eligible
-days. Over-quota chips are scoped to the daytime list (night-owl extras belong
-to yesterday, so the two reference days aren't mixed). 6 classifier tests.
+days. 6 classifier tests.
+
+**Follow-up #146 — night-owl symmetry:** the same requiredness decision now
+flows through the one classifier on BOTH the daytime split and the night-owl
+"Still open from last night" list (`selectLastNightGoals` returns
+`{ required, overQuota }`), so the two paths can't drift again. Night-owl
+over-quota goals surface as optional chips under "Did anything else last
+night?" keyed on yesterday (quota counted against `isoWeekStart(yesterday)`, so
+Monday-2am evaluates Sunday's ISO week). The header "· N extra" suffix counts
+over-quota done chips too; over-quota chips suppress stale `skipped` rows
+(done-only evidence surface). Original-bug recurrence in the night-owl list is
+now covered by tests.
 
 **Header copy resolved:** the summary string was extracted to a pure,
 unit-tested `todaySummary` (`src/lib/today-summary.ts`). When nothing is
 required because today's goals are all met for the week, it reads
 `You're all caught up for the week` (warm, names the win) rather than the flat
 `Nothing scheduled today.`, which is now reserved for a genuinely empty day.
-8 summary tests cover both. Daytime-only, so night-owl copy is unchanged.
+The "all caught up" line is about *today's* goals being quota-met, so it stays
+daytime-only; night-owl over-quota effort reads through the "· N extra from
+late last night" suffix instead. 10 summary tests cover both.
 
 **Deliberate scope — revisit with item 9:** this fix reasons only about
 **weekly** quotas. When longer cadences (every-N-weeks / monthly / quarterly,
-item 9) land, the "quota met for the period" logic and the
-`scoredDoneBeforeToday` window will need to generalize beyond the ISO week.
-Re-examine `classifyTodayGoal` and `scoredDoneBeforeToday` then rather than
-extending them speculatively now.
+item 9) land, the "quota met for the period" logic and the `scoredDoneBefore`
+window will need to generalize beyond the ISO week. Re-examine
+`classifyGoalForLogicalDay` and `scoredDoneBefore` then rather than extending
+them speculatively now.
 
 ### 22. `buildTodayModel`: one Today-page state model `Spec only`
 
@@ -567,14 +578,15 @@ or the dead CTA generates confusion or support noise.
 13. Infrastructure — Resend rate-limit fix: v4 error handling, `sendWithRetry`, 1s pacing, structured logging
 14. Item 18 — Reflection content in weekly email (partner "In their own words", self "Your reflection")
 15. PR #145 (item 21) — Today over-quota classification: quota-met weekly goals drop from the required list into optional over-quota chips; warmer "all caught up" header copy
+16. PR #146 (item 21 follow-up) — Night-owl symmetry: shared `classifyGoalForLogicalDay` across daytime + "Still open from last night"; night-owl over-quota chips keyed on yesterday (`isoWeekStart(yesterday)`); header counts over-quota extras; skipped over-quota chips hidden
 
 ### Not started — ordered by effort and dependency
-16. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
+17. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
     before coding.
-17. **PR E (item 7):** Partner reaction compression — defer until a goal is
+18. **PR E (item 7):** Partner reaction compression — defer until a goal is
     shared with 3+ partners.
-18. **Item 6:** Calendar month alignment — revisit with real screenshots first.
-19. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
+19. **Item 6:** Calendar month alignment — revisit with real screenshots first.
+20. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
 
 ### Spec only / Later
 - Item 8: Planned break / vacation mode
