@@ -74,17 +74,21 @@ function shortWeek(dateStr: string): string {
 
 /**
  * A warm, human sentence for a reaction summary, e.g.
- * "Richa has been proud of this for 3 weeks, latest this week."
+ * "Richa was proud of this in 3 separate weeks, most recently this week."
+ * `weeks` is the count of distinct weeks reacted, so it is phrased as a count
+ * ("in N separate weeks") rather than a span ("for N weeks"), which would read
+ * like a continuous streak.
  */
 export function reactionSentence(
   s: GoalReactionSummary,
   currentWeekStart: string
 ): string {
-  const what = s.kind === "proud" ? "been proud of this" : "noticed this";
-  const span = s.weeks === 1 ? "for 1 week" : `for ${s.weeks} weeks`;
-  const when =
+  const latest =
     s.latestWeek >= currentWeekStart
-      ? "latest this week"
-      : `latest week of ${shortWeek(s.latestWeek)}`;
-  return `${s.reactorName} has ${what} ${span}, ${when}.`;
+      ? "this week"
+      : `the week of ${shortWeek(s.latestWeek)}`;
+  const verb = s.kind === "saw" ? "saw this" : "was proud of this";
+  return s.weeks === 1
+    ? `${s.reactorName} ${verb} ${latest}.`
+    : `${s.reactorName} ${verb} in ${s.weeks} separate weeks, most recently ${latest}.`;
 }
