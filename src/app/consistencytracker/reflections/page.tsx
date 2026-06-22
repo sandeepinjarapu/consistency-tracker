@@ -440,14 +440,14 @@ function WeekDetailBody({
 
       {effortSummary.length > 0 ? (
         <div className="mb-4">
-          <h3 className="text-xs uppercase tracking-wider text-[color:var(--muted)] mb-2">
+          <h3 className="text-xs text-[color:var(--muted)] mb-2">
             How you showed up
           </h3>
           <ul className="space-y-1">
             {effortSummary.map((g) => (
               <li key={g.goalId} className="text-sm text-[color:var(--muted)]">
                 <span className="text-[color:var(--foreground)]">{g.goalName}</span>
-                {" — "}
+                {": "}
                 {[
                   g.flow > 0 ? `${g.flow} in flow` : null,
                   g.light > 0 ? `${g.light} light effort` : null,
