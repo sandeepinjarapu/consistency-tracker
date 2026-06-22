@@ -351,7 +351,7 @@ rows.
 
 ### 19. Effort texture (how fully you showed up) `Spec only`
 
-> Discovery resolved 2026-06-22 against a 32-row check-in note audit. The
+> Discovery resolved 2026-06-22 against a 33-row check-in note audit. The
 > shape below is decided; build is gated only on UI copy/labels and explicit
 > sign-off. Was formerly "Check-in feel / session quality."
 
@@ -403,8 +403,9 @@ notes; revisit a richer vocabulary only when a real need appears.
   Showing up counts; that is the philosophy. The thing that must never count
   ("marked done but did nothing") is still a `skip`. A future build must not
   "helpfully" weight a light-effort day for less — that rebuilds the grade.
-- **Daily grain** — field on `check_ins` (e.g. `session_feel`), captured at
-  check-in. This corrects the earlier "weekly-first" prior: the dissonance
+- **Daily grain** — field on `check_ins` (e.g. `effort_texture`, **not**
+  `session_feel` — keep the "feel" framing out of the schema too), captured
+  at check-in. This corrects the earlier "weekly-first" prior: the dissonance
   happens *at check-in time*, so weekly-only capture can't fix it.
 - Historical rows simply `null` — not backfilled, never inferred from notes,
   never shown as a gap.
