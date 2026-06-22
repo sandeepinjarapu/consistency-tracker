@@ -349,11 +349,12 @@ check-in-completes-quota stability, off-target extras, night-owl over-quota chip
 keyed on yesterday, Monday-2am ISO-week behavior, and hidden skipped over-quota
 rows.
 
-### 19. Effort texture (how fully you showed up) `Spec only`
+### 19. Effort texture (how fully you showed up) `Shipped`
 
-> Discovery resolved 2026-06-22 against a 33-row check-in note audit. The
-> shape below is decided; build is gated only on UI copy/labels and explicit
-> sign-off. Was formerly "Check-in feel / session quality."
+> Discovery resolved 2026-06-22 against a 33-row check-in note audit; built and
+> deployed 2026-06-22 (PRs #150–#154, see Shipped list). The shape below was
+> decided at spec time and shipped as written. Was formerly "Check-in feel /
+> session quality."
 
 **Validated need — offload the binary's dissonance.** `done` / `skipped`
 forces two different truths into one bit, so the owner negotiates with the
@@ -438,10 +439,15 @@ tried but missed the output (e.g. wrote 40 of 200 words) have no `done`
 (output unmet) and no chip on `skip`, so they fall to `skip` + reason + note.
 Near-nonexistent in the audit; the note carries it; acceptable for V1.
 
-**Build gate:** `Spec only` until UI copy/labels are settled and the change
-gets explicit sign-off. When built, it is a domain-state change (new private
-field, new Reflections surface) — follow [change-protocol.md](change-protocol.md)
-and update [app-model.md](app-model.md) §6/§7.
+**Shipped (2026-06-22, PRs #150–#154):** capture chips on `done` check-ins
+(#150), chip framing "How did you show up?" (#151), deselect/hover fix (#152),
+the private within-week effort glance in Reflections (#153), and copy/layout
+polish (#154). Migration `0017_effort_texture.sql` adds the owner-private
+`effort_texture` column. app-model.md §3/§6/§7 updated to record the new private
+field and Reflections surface; effort stays off the scoring path by
+construction. Next step is not more building: use it for a week and judge
+against the success test (does the glance lower mental load), then decide the
+deferred structural questions (grid co-location, ledger-vs-sentence).
 
 ### 14. Earlier weeks navigation: month grouping and status badges `Spec only`
 
@@ -654,20 +660,20 @@ or the dead CTA generates confusion or support noise.
 15. PR #145 (item 21) — Today over-quota classification: quota-met weekly goals drop from the required list into optional over-quota chips; warmer "all caught up" header copy
 16. PR #146 (item 21 follow-up) — Night-owl symmetry: shared `classifyGoalForLogicalDay` across daytime + "Still open from last night"; night-owl over-quota chips keyed on yesterday (`isoWeekStart(yesterday)`); header counts over-quota extras; skipped over-quota chips hidden
 17. PR #147 (item 22) — `buildTodayModel` extraction; entry-state quota requiredness fix (surplus over-quota check-in stays a done chip, not a required card); model-level state-table tests
+18. PRs #150–#154 (item 19) — Effort texture: owner-private `In flow` / `Light effort` chip on `done` check-ins, never scored; private within-week effort glance in Reflections; migration `0017_effort_texture.sql`
 
 ### Not started — ordered by effort and dependency
-18. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
+19. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
     before coding.
-19. **PR E (item 7):** Partner reaction compression — defer until a goal is
+20. **PR E (item 7):** Partner reaction compression — defer until a goal is
     shared with 3+ partners.
-20. **Item 6:** Calendar month alignment — revisit with real screenshots first.
-21. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
+21. **Item 6:** Calendar month alignment — revisit with real screenshots first.
+22. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
 
 ### Spec only / Later
 - Item 8: Planned break / vacation mode
 - Item 9: Longer cadences
 - Item 14: Earlier weeks navigation (month grouping + status badges)
-- Item 19: Check-in feel / session quality — discovery only, do not build yet
 - Item 20: Frontend architecture hygiene — typed Supabase client + error
   boundaries are real and bounded; UI primitives only opportunistically;
   no TanStack Query / XState / offline sync / query-param libs warranted yet
