@@ -387,6 +387,15 @@ notes; revisit a richer vocabulary only when a real need appears.
   (labels still open). `skipped` keeps its existing constraint reasons and
   gets **no** chip: "effort" on a non-show-up is muddy, and relaxing `done`
   to "I showed up" already absorbs the weak-but-real day.
+- **Placement:** the chips live in the post-check-in secondary row of the
+  Today card — the same calm zone that today holds `+ Add note`
+  ([today-goal-card.tsx:256](../src/components/today-goal-card.tsx)), which
+  only appears *after* the check-in. Chips sit **before** the note (the
+  quick abstraction, then the optional free-text deepening). The scored
+  decision row (`Mark done` / `Skip ▾`) is left untouched, so the texture
+  never sits in the path of the binary. The chips are **toggles** (tap to
+  set, tap again to clear), **mutually exclusive** with each other (a day is
+  `In flow`, `Light effort`, or neither), and both default unset.
 - **Blank is normal** — the majority of `done` days carry no chip. Chips mark
   only the deviations (the flow day, the I-tried-but-it-was-light day). Never
   a required pick, never a nag.
