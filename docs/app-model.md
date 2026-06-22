@@ -90,8 +90,8 @@ or write an ADR/test.**
 
 ## 6. Privacy and trust boundaries
 
-> ⚠️ **Owner sign-off required.** Seeded from current code; confirm each line is
-> what you *want* to be true, not just what happens to be true today.
+> **Owner-reviewed 2026-06-22.** Seeded from current code and confirmed as
+> intended. Re-confirm on any change to what a partner can see.
 
 A partner of a goal **can see** (RLS-enforced, current code):
 
@@ -112,9 +112,10 @@ reflection's filled fields ("In their own words"); a private reflection never
 appears in a partner's email. The owner's own self-summary email always
 includes their own reflection.
 
-> **Note for sign-off:** motivation (`description`) and the goal document are
-> currently partner-visible. Earlier drafts of this doc assumed they were
-> owner-private. Decide which is intended.
+> **Accepted (owner sign-off, 2026-06-22):** a shared goal's motivation
+> (`description`) and goal document URL are intentionally partner-visible —
+> they are context for the witness, not private diary. Daily check-in notes
+> stay owner-private.
 
 ## 7. Surface matrix
 
@@ -128,10 +129,15 @@ UX-level concepts, **not** the metric rows already in the glossary.
 | Off-target extra | optional chip | ring marker | history | evidence, not score | evidence if shared | `+N extra` |
 | Missed (date) | not framed | gray ring + bar | calendar / status | private diagnostic | — | not failure-framed |
 | Shortfall (week) | not framed | partial ring | week status | private diagnostic | — | `done / target` |
-| Daily note | — | — | owner-only | owner-only | not shared | not emailed |
+| Daily note | entered with check-in | — | owner-only (view/history) | owner-only | not shared | not emailed |
 | Weekly reflection | — | — | — | owner-only edit | shared only | shared only |
 | Reaction | — | — | summary line | — | partner leaves it | drives the prompt |
 | Archived goal | — | hidden (today) | — | — | — | — |
+
+Goals-list ring vocabulary (full / partial / dot / bar / gray) is defined in
+[product-roadmap.md](product-roadmap.md) item 4 — this matrix only says *which*
+ring a concept maps to, not what each ring looks like. The matrix is a partial
+map of the most trap-prone concepts, not an exhaustive surface spec.
 
 ## 8. Known seams / high-risk zones
 
@@ -143,8 +149,10 @@ Each comes from a real bug, decision, or confusion — not invented.
   entry-state requiredness ([ADR 0001](decisions/0001-weekly-quota-requiredness.md)
   superseded shortcut).
 - **Night-owl logical-day boundary** — write target ≠ render surface.
-- **Reflection stats vs weekly email** — two scoring models with different
-  denominators; they reconcile only while no count goal misses quota
+- **Reflection stats vs weekly email** — Reflections is a private diagnostic
+  surface with `missed`, shortfall, notes, and narrative; weekly email is a
+  partner-safe scored summary. Count-goal shortfall is week-level, not a set of
+  missed dates, so do not force the two surfaces to expose the same categories
   (glossary: "don't compare or unify these").
 - **Daily notes vs shared weekly reflection** — different objects, different
   visibility; easy to leak one as the other.
