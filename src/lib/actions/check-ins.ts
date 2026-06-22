@@ -7,6 +7,13 @@ import { isBackfillable, isExtraLoggable } from "@/lib/heatmap-backfill";
 
 export type SkipReason = "travel" | "illness" | "mood" | "other";
 
+/**
+ * Optional, owner-private effort texture on a *done* check-in (roadmap item
+ * 19): 'flow' (it clicked) or 'light' (showed up, but below my own bar).
+ * Never scored, never shown to partners or in email. Blank is normal.
+ */
+export type EffortTexture = "flow" | "light";
+
 export type CheckIn = {
   id: string;
   goal_id: string;
@@ -14,10 +21,12 @@ export type CheckIn = {
   status: "done" | "skipped";
   skip_reason: SkipReason | null;
   note: string | null;
+  effort_texture: EffortTexture | null;
   created_at: string; // UTC timestamptz — when this check-in was logged
 };
 
 const VALID_REASONS: SkipReason[] = ["travel", "illness", "mood", "other"];
+const VALID_TEXTURES: EffortTexture[] = ["flow", "light"];
 
 function trimNote(note: string | null | undefined): string | null {
   if (!note) return null;
@@ -323,6 +332,38 @@ export async function updateCheckInNote(
     .update({ note: trimNote(note) })
     .eq("goal_id", goalId)
     .eq("date", date);
+  if (error) throw error;
+  revalidatePath("/consistencytracker", "layout");
+}
+
+/**
+ * Set or clear the effort texture on an existing *done* check-in. Pass null
+ * to clear (the toggle-off case). Like updateCheckInNote, it edits metadata on
+ * a row that must already exist — it never creates one and never touches
+ * status or scoring. Restricted to done check-ins: a skip carries its reason,
+ * not effort.
+ */
+export async function updateCheckInEffort(
+  goalId: string,
+  date: string,
+  texture: EffortTexture | null
+): Promise<void> {
+  if (texture !== null && !VALID_TEXTURES.includes(texture)) {
+    throw new Error("Invalid effort texture");
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+  await assertOwnsGoal(supabase, user.id, goalId);
+
+  const { error } = await supabase
+    .from("check_ins")
+    .update({ effort_texture: texture })
+    .eq("goal_id", goalId)
+    .eq("date", date)
+    .eq("status", "done");
   if (error) throw error;
   revalidatePath("/consistencytracker", "layout");
 }

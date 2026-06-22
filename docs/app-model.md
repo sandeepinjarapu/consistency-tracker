@@ -50,7 +50,9 @@ One sentence each, meaning only — no formulas, schema, or file references
 - **Goal** — a thing the owner intends to show up for, on a cadence, optionally
   with a "why" and a shared document.
 - **Check-in** — one day's record for a goal: `done` or `skipped`, optionally
-  with a private note.
+  with a private note, and on a `done` day an optional private **effort
+  texture** (`in flow` / `light effort`) — recognition of how fully the owner
+  showed up, never scored.
 - **Weekly reflection** — the owner's sentences about a week (Keep / Let go /
   Try next / Notes), private unless explicitly shared.
 - **Partner share** — a per-goal grant letting a trusted partner witness that
@@ -104,8 +106,16 @@ A partner of a goal **can see** (RLS-enforced, current code):
 A partner **cannot see**:
 
 - the owner's **daily check-in notes** (never queried on the partner page)
+- the owner's **effort texture** on a check-in (`in flow` / `light effort`) —
+  owner-private like notes, never queried on the partner page or in email
 - any reflection the owner did not share
 - goals not shared with that partner
+
+The boundary is enforced by **explicit column selects**, not by omission: the
+partner page, the weekly-summary cron, and `partners.ts` select only
+`goal_id, date, status`, so a new owner-private column on `check_ins` cannot
+ride along by accident. Adding such a column to one of those selects is the
+regression to guard against.
 
 The weekly **email** includes scored progress and, for partners, the shared
 reflection's filled fields ("In their own words"); a private reflection never
@@ -130,6 +140,7 @@ UX-level concepts, **not** the metric rows already in the glossary.
 | Missed (date) | not framed | gray ring + bar | calendar / status | private diagnostic | — | not failure-framed |
 | Shortfall (week) | not framed | partial ring | week status | private diagnostic | — | `done / target` |
 | Daily note | entered with check-in | — | owner-only (view/history) | owner-only | not shared | not emailed |
+| Effort texture | chips on done check-in | — | — | private summary (planned, item 19) | not shared | not emailed |
 | Weekly reflection | — | — | — | owner-only edit | shared only | shared only |
 | Reaction | — | new-reaction dot | summary line | — | partner leaves it | — |
 | Archived goal | — | hidden (today) | — | — | — | — |

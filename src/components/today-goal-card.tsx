@@ -7,10 +7,13 @@ import {
   markSkipped,
   unmark,
   updateCheckInNote,
+  updateCheckInEffort,
   type CheckIn,
   type SkipReason,
+  type EffortTexture,
 } from "@/lib/actions/check-ins";
 import { formatCheckInTime } from "@/lib/dates";
+import { nextEffort } from "@/lib/effort-texture";
 import { tapTarget, tapTargetRow } from "@/lib/ui";
 
 const REASON_LABELS: Record<SkipReason, string> = {
@@ -75,8 +78,21 @@ export default function TodayGoalCard({
       status,
       skip_reason: reason,
       note: current?.note ?? null,
+      effort_texture: current?.effort_texture ?? null,
       created_at: new Date().toISOString(),
     };
+  }
+
+  // Toggle an effort-texture chip on a done check-in. Tapping the active chip
+  // clears it; tapping the other replaces it. Owner-private, never scored —
+  // it only annotates how fully the day went. No-op if not a done row.
+  function setEffort(tapped: EffortTexture) {
+    if (!current || current.status !== "done") return;
+    const value = nextEffort(current.effort_texture, tapped);
+    run(() => updateCheckInEffort(goalId, date, value), {
+      ...current,
+      effort_texture: value,
+    });
   }
 
   // Close the Skip dropdown on outside click or Escape
@@ -255,6 +271,28 @@ export default function TodayGoalCard({
 
         {isChecked ? (
           <div className="mt-2">
+            {current?.status === "done" ? (
+              <div className="flex items-center gap-1.5 mb-2">
+                {(["flow", "light"] as const).map((t) => {
+                  const selected = current?.effort_texture === t;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setEffort(t)}
+                      disabled={pending}
+                      aria-pressed={selected}
+                      className={`${tapTarget} text-xs rounded-full px-3 border transition-colors disabled:opacity-50 ${
+                        selected
+                          ? "border-black bg-black text-white"
+                          : "border-[color:var(--border)] text-[color:var(--muted)] hover:text-black hover:border-black"
+                      }`}
+                    >
+                      {t === "flow" ? "In flow" : "Light effort"}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
             {editingNote ? (
               <div className="flex items-center gap-2">
                 <input

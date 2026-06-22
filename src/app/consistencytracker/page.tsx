@@ -109,7 +109,7 @@ async function TodaySection() {
   ] = await Promise.all([
     supabase
       .from("check_ins")
-      .select("id, goal_id, date, status, skip_reason, note, created_at")
+      .select("id, goal_id, date, status, skip_reason, note, effort_texture, created_at")
       .in("goal_id", goalIds)
       .gte("date", prevWeekStart)
       .lte("date", today),
