@@ -83,7 +83,6 @@ export function buildTodayModel<G extends TodayModelGoal, C extends TodayModelCh
     const cls = classifyGoalForLogicalDay({
       weeklyTarget: g.weekly_target,
       inTargetDay: true,
-      hasCheckInOnDay: checkInByGoal.has(g.id),
       scoredDoneBeforeDay: scoredDoneBefore(
         checkIns,
         g.id,

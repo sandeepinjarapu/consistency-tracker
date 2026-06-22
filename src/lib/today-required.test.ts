@@ -7,7 +7,6 @@ describe("classifyGoalForLogicalDay", () => {
       classifyGoalForLogicalDay({
         weeklyTarget: 5,
         inTargetDay: true,
-        hasCheckInOnDay: false,
         scoredDoneBeforeDay: 5,
       })
     ).toBe("over_quota");
@@ -18,34 +17,37 @@ describe("classifyGoalForLogicalDay", () => {
       classifyGoalForLogicalDay({
         weeklyTarget: 5,
         inTargetDay: true,
-        hasCheckInOnDay: false,
         scoredDoneBeforeDay: 4,
       })
     ).toBe("required");
   });
 
-  it("weekly goal that reached quota via the day's check-in stays required (visible as done)", () => {
+  it("weekly goal that reaches quota via the day's check-in stays required (entry state 4 of 5)", () => {
     // Walked into the day at 4 of 5, then marked done → now 5 of 5. Must not
-    // vanish: it contributed to the promise on this day.
+    // vanish: classification is the day's ENTRY state (scoredDoneBeforeDay
+    // excludes the day's own check-in), so 4 < 5 → required. It renders as done.
     expect(
       classifyGoalForLogicalDay({
         weeklyTarget: 5,
         inTargetDay: true,
-        hasCheckInOnDay: true,
         scoredDoneBeforeDay: 4,
       })
     ).toBe("required");
   });
 
-  it("weekly goal already met before the day but checked in again stays required", () => {
+  it("regression: weekly goal ALREADY met before the day stays over-quota even after a surplus check-in", () => {
+    // 5 of 5 entering the day, user taps the over-quota chip → a 6th (surplus)
+    // check-in lands on the day. On refresh the goal must remain an optional
+    // over-quota chip, NOT flip into a required "1 of 1 done" card that inflates
+    // the header denominator. scoredDoneBeforeDay (entry state) is still 5
+    // because it excludes the day's own check-in.
     expect(
       classifyGoalForLogicalDay({
         weeklyTarget: 5,
         inTargetDay: true,
-        hasCheckInOnDay: true,
         scoredDoneBeforeDay: 5,
       })
-    ).toBe("required");
+    ).toBe("over_quota");
   });
 
   it("specific-day goal on a target day is always required", () => {
@@ -53,7 +55,6 @@ describe("classifyGoalForLogicalDay", () => {
       classifyGoalForLogicalDay({
         weeklyTarget: null,
         inTargetDay: true,
-        hasCheckInOnDay: false,
         scoredDoneBeforeDay: 0,
       })
     ).toBe("required");
@@ -64,7 +65,6 @@ describe("classifyGoalForLogicalDay", () => {
       classifyGoalForLogicalDay({
         weeklyTarget: 5,
         inTargetDay: false,
-        hasCheckInOnDay: false,
         scoredDoneBeforeDay: 5,
       })
     ).toBe("not_applicable");
@@ -72,7 +72,6 @@ describe("classifyGoalForLogicalDay", () => {
       classifyGoalForLogicalDay({
         weeklyTarget: null,
         inTargetDay: false,
-        hasCheckInOnDay: false,
         scoredDoneBeforeDay: 0,
       })
     ).toBe("not_applicable");

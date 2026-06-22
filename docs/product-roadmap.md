@@ -322,10 +322,26 @@ page inspection.
 `classifyWeek`, `computeTimePattern`), Goal detail / `WeekRows`, history,
 reflections, partner pages, weekly email, or server-action write semantics.
 
+**Correctness fix found during extraction:** writing the full state table for
+the model exposed a latent bug in `classifyGoalForLogicalDay` (from item 21).
+The classifier returned `required` whenever a check-in existed on the logical
+day (`hasCheckInOnDay`), conflating two states: (a) under quota entering the day,
+check-in completes it (4/5 → 5/5, correctly required, renders done) and (b)
+already over quota entering the day, check-in is surplus (5/5 → 6th, must stay an
+optional chip). Case (b) flipped a tapped over-quota chip into a required
+"1 of 1 done" card on refresh and inflated the header denominator. Fix:
+requiredness is the day's ENTRY state only — `scoredDoneBeforeDay < weeklyTarget`
+— and `hasCheckInOnDay` is dropped from the classifier (the day's check-in is
+display/status, owned by the caller). `scoredDoneBeforeDay` already excludes the
+day's own check-in, so completing the quota that day still classifies from its
+under-quota entry state. This is why "review the model before the code" matters:
+the shortcut was invisible at the diff level and only fell out of the state table.
+
 **Verification:** model-level tests cover under-quota required goals, daytime
-over-quota optional chips, check-in-completes-quota stability, off-target extras,
-night-owl over-quota chips keyed on yesterday, Monday-2am ISO-week behavior, and
-hidden skipped over-quota rows.
+over-quota optional chips, the surplus-stays-a-chip regression,
+check-in-completes-quota stability, off-target extras, night-owl over-quota chips
+keyed on yesterday, Monday-2am ISO-week behavior, and hidden skipped over-quota
+rows.
 
 ### 19. Check-in feel / session quality (discovery only) `Spec only`
 

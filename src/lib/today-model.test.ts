@@ -69,7 +69,11 @@ describe("buildTodayModel", () => {
     expect(m.summary).toBe("You're all caught up for the week");
   });
 
-  it("keeps a daytime over-quota check-in visible as a done required card after refresh", () => {
+  it("regression: a daytime surplus check-in (5/5 → 6th) stays a done over-quota chip, not a required card", () => {
+    // Quota of 3 already met Mon/Tue/Wed, then a 4th (surplus) logged today via
+    // the over-quota chip. On refresh it must NOT flip into a required "1 of 1
+    // done" card (which would inflate the header denominator) — it stays an
+    // optional, done, removable chip. Requiredness is the day's ENTRY state.
     const g = goal({ id: "weekly", weekly_target: 3 });
     const m = model({
       goals: [g],
@@ -81,11 +85,11 @@ describe("buildTodayModel", () => {
       ],
     });
 
-    // Existing classifier behavior: if the logical day already has a check-in,
-    // keep the card visible as done rather than moving it back to a chip.
-    expect(m.requiredGoals.map((x) => x.id)).toEqual(["weekly"]);
-    expect(m.extraGoals).toEqual([]);
-    expect(m.summary).toBe("1 of 1 done");
+    expect(m.requiredGoals).toEqual([]);
+    expect(m.extraGoals).toMatchObject([
+      { id: "weekly", status: "done", kind: "over_quota" },
+    ]);
+    expect(m.summary).toBe("You're all caught up for the week · 1 extra");
   });
 
   it("keeps a goal visible as required when today's check-in completes the quota", () => {
