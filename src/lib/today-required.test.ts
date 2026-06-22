@@ -1,81 +1,127 @@
 import { describe, it, expect } from "vitest";
-import { classifyTodayGoal } from "./today-required";
+import { classifyGoalForLogicalDay, scoredDoneBefore } from "./today-required";
 
-describe("classifyTodayGoal", () => {
-  it("weekly goal met (5 of 5) before today is not required", () => {
+describe("classifyGoalForLogicalDay", () => {
+  it("weekly goal met (5 of 5) before the day is over-quota, not required", () => {
     expect(
-      classifyTodayGoal({
+      classifyGoalForLogicalDay({
         weeklyTarget: 5,
-        inTargetToday: true,
-        hasTodayCheckIn: false,
-        scoredDoneBeforeToday: 5,
+        inTargetDay: true,
+        hasCheckInOnDay: false,
+        scoredDoneBeforeDay: 5,
       })
     ).toBe("over_quota");
   });
 
   it("weekly goal under quota (4 of 5) is required", () => {
     expect(
-      classifyTodayGoal({
+      classifyGoalForLogicalDay({
         weeklyTarget: 5,
-        inTargetToday: true,
-        hasTodayCheckIn: false,
-        scoredDoneBeforeToday: 4,
+        inTargetDay: true,
+        hasCheckInOnDay: false,
+        scoredDoneBeforeDay: 4,
       })
     ).toBe("required");
   });
 
-  it("weekly goal that reached quota via today's check-in stays required (visible as done)", () => {
-    // Walked into today at 4 of 5, then marked done → now 5 of 5. The card must
-    // not vanish: it contributed to the promise today.
+  it("weekly goal that reached quota via the day's check-in stays required (visible as done)", () => {
+    // Walked into the day at 4 of 5, then marked done → now 5 of 5. Must not
+    // vanish: it contributed to the promise on this day.
     expect(
-      classifyTodayGoal({
+      classifyGoalForLogicalDay({
         weeklyTarget: 5,
-        inTargetToday: true,
-        hasTodayCheckIn: true,
-        scoredDoneBeforeToday: 4,
+        inTargetDay: true,
+        hasCheckInOnDay: true,
+        scoredDoneBeforeDay: 4,
       })
     ).toBe("required");
   });
 
-  it("weekly goal already met before today but checked in again today stays required", () => {
-    // An over-quota done logged today is still shown in place, not hidden.
+  it("weekly goal already met before the day but checked in again stays required", () => {
     expect(
-      classifyTodayGoal({
+      classifyGoalForLogicalDay({
         weeklyTarget: 5,
-        inTargetToday: true,
-        hasTodayCheckIn: true,
-        scoredDoneBeforeToday: 5,
+        inTargetDay: true,
+        hasCheckInOnDay: true,
+        scoredDoneBeforeDay: 5,
       })
     ).toBe("required");
   });
 
   it("specific-day goal on a target day is always required", () => {
     expect(
-      classifyTodayGoal({
+      classifyGoalForLogicalDay({
         weeklyTarget: null,
-        inTargetToday: true,
-        hasTodayCheckIn: false,
-        scoredDoneBeforeToday: 0,
+        inTargetDay: true,
+        hasCheckInOnDay: false,
+        scoredDoneBeforeDay: 0,
       })
     ).toBe("required");
   });
 
-  it("any goal off its target weekday is not a Today task", () => {
+  it("any goal off its target weekday is not applicable to the day", () => {
     expect(
-      classifyTodayGoal({
+      classifyGoalForLogicalDay({
         weeklyTarget: 5,
-        inTargetToday: false,
-        hasTodayCheckIn: false,
-        scoredDoneBeforeToday: 5,
+        inTargetDay: false,
+        hasCheckInOnDay: false,
+        scoredDoneBeforeDay: 5,
       })
-    ).toBe("not_today");
+    ).toBe("not_applicable");
     expect(
-      classifyTodayGoal({
+      classifyGoalForLogicalDay({
         weeklyTarget: null,
-        inTargetToday: false,
-        hasTodayCheckIn: false,
-        scoredDoneBeforeToday: 0,
+        inTargetDay: false,
+        hasCheckInOnDay: false,
+        scoredDoneBeforeDay: 0,
       })
-    ).toBe("not_today");
+    ).toBe("not_applicable");
+  });
+});
+
+describe("scoredDoneBefore", () => {
+  const targetDays = [1, 2, 3, 4, 5]; // Mon–Fri
+
+  it("counts done rows on eligible weekdays within the week, before the date", () => {
+    const checkIns = [
+      { goal_id: "g", date: "2024-01-15", status: "done" }, // Mon
+      { goal_id: "g", date: "2024-01-16", status: "done" }, // Tue
+      { goal_id: "g", date: "2024-01-17", status: "done" }, // Wed
+    ];
+    expect(scoredDoneBefore(checkIns, "g", "2024-01-18", "2024-01-15", targetDays)).toBe(
+      3
+    );
+  });
+
+  it("excludes the date itself and anything after it", () => {
+    const checkIns = [
+      { goal_id: "g", date: "2024-01-15", status: "done" },
+      { goal_id: "g", date: "2024-01-18", status: "done" }, // the day itself
+      { goal_id: "g", date: "2024-01-19", status: "done" }, // after
+    ];
+    expect(scoredDoneBefore(checkIns, "g", "2024-01-18", "2024-01-15", targetDays)).toBe(
+      1
+    );
+  });
+
+  it("excludes rows before the week start (prior ISO week)", () => {
+    const checkIns = [
+      { goal_id: "g", date: "2024-01-12", status: "done" }, // prior week Fri
+      { goal_id: "g", date: "2024-01-15", status: "done" }, // this week Mon
+    ];
+    expect(scoredDoneBefore(checkIns, "g", "2024-01-17", "2024-01-15", targetDays)).toBe(
+      1
+    );
+  });
+
+  it("excludes skipped rows, off-target weekdays, and other goals", () => {
+    const checkIns = [
+      { goal_id: "g", date: "2024-01-15", status: "skipped" }, // skipped
+      { goal_id: "g", date: "2024-01-13", status: "done" }, // Sat, off-target
+      { goal_id: "other", date: "2024-01-16", status: "done" }, // other goal
+    ];
+    expect(scoredDoneBefore(checkIns, "g", "2024-01-18", "2024-01-15", targetDays)).toBe(
+      0
+    );
   });
 });

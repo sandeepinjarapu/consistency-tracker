@@ -2,9 +2,9 @@ import Link from "next/link";
 import { cache, Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/current-user";
-import { todayIn, dayOfWeekIn, addDays, isoWeekStart, hourIn, DAY_START_HOUR, dateInTimezone, dayOfWeekForDateString } from "@/lib/dates";
+import { todayIn, dayOfWeekIn, addDays, isoWeekStart, hourIn, DAY_START_HOUR, dateInTimezone } from "@/lib/dates";
 import { selectLastNightGoals } from "@/lib/last-night";
-import { classifyTodayGoal } from "@/lib/today-required";
+import { classifyGoalForLogicalDay, scoredDoneBefore } from "@/lib/today-required";
 import { todaySummary } from "@/lib/today-summary";
 import { computeStats } from "@/lib/stats";
 import { UNCATEGORIZED_COLOR } from "@/lib/colors";
@@ -148,12 +148,17 @@ async function TodaySection() {
   const loggedYesterday = new Set(
     twoWeekCheckIns.filter((c) => c.date === yesterday).map((c) => c.goal_id)
   );
-  const lastNightGoals = selectLastNightGoals({
+  const { required: lastNightRequiredGoals, overQuota: lastNightOverQuotaGoals } =
+    selectLastNightGoals({
     goals,
     hour,
     yesterday,
     yesterdayDow,
+    // Yesterday's ISO week, not today's: at Monday pre-dawn, yesterday (Sunday)
+    // is in the previous ISO week, so the quota counts against that week.
+    yesterdayWeekStart: isoWeekStart(yesterday),
     loggedYesterday,
+    weekCheckIns: twoWeekCheckIns,
     timezone,
   });
 
@@ -186,25 +191,24 @@ async function TodaySection() {
   // Split today's eligible goals into the ones still asking for action and the
   // weekly-count goals whose quota was already filled before today. The latter
   // are offered as optional over-quota extras, never counted as "left" (a goal
-  // that's met "5 of 5 this week" must not also read "1 left"). See
-  // classifyTodayGoal. Done check-ins on eligible weekdays earlier this week
-  // count toward the quota; today's own check-in keeps a card visible as done.
-  const scoredDoneBeforeToday = (g: GoalRow) =>
-    weekCheckIns.filter(
-      (c) =>
-        c.goal_id === g.id &&
-        c.status === "done" &&
-        c.date < today &&
-        g.target_days.includes(dayOfWeekForDateString(c.date))
-    ).length;
+  // that's met "5 of 5 this week" must not also read "1 left"). Same classifier
+  // the night-owl list uses (classifyGoalForLogicalDay), keyed on today; done
+  // check-ins on eligible weekdays earlier this week count toward the quota,
+  // and today's own check-in keeps a card visible as done.
   const requiredGoals: GoalRow[] = [];
   const overQuotaGoals: GoalRow[] = [];
   for (const g of goalsToday) {
-    const cls = classifyTodayGoal({
+    const cls = classifyGoalForLogicalDay({
       weeklyTarget: g.weekly_target,
-      inTargetToday: true, // goalsToday is already filtered to today's weekday
-      hasTodayCheckIn: checkInByGoal.has(g.id),
-      scoredDoneBeforeToday: scoredDoneBeforeToday(g),
+      inTargetDay: true, // goalsToday is already filtered to today's weekday
+      hasCheckInOnDay: checkInByGoal.has(g.id),
+      scoredDoneBeforeDay: scoredDoneBefore(
+        twoWeekCheckIns,
+        g.id,
+        today,
+        weekStart,
+        g.target_days
+      ),
     });
     if (cls === "over_quota") overQuotaGoals.push(g);
     else requiredGoals.push(g);
@@ -229,23 +233,29 @@ async function TodaySection() {
       kind: "off_target" as const,
     }));
 
-  // Weekly-count goals already met before today, offered as optional over-quota
-  // extras in the same "Did anything else today?" row. Eligible weekday, so a
-  // tap writes through markDone (not markExtraDone). Scoped to the daytime list:
-  // the night-owl extras belong to yesterday, and over-quota is computed against
-  // today, so we don't mix the two reference days.
-  const overQuotaExtras = isNightOwl
-    ? []
-    : overQuotaGoals.map((g) => ({
-        id: g.id,
-        name: g.name,
-        categoryColor: g.category?.color ?? UNCATEGORIZED_COLOR,
-        status: (checkInByGoal.get(g.id)?.status ?? null) as
-          | "done"
-          | "skipped"
-          | null,
-        kind: "over_quota" as const,
-      }));
+  // Weekly-count goals already met for the logical day, offered as optional
+  // over-quota extras in the same "Did anything else…" row. Eligible weekday, so
+  // a tap writes through markDone (not markExtraDone). Daytime over-quota is
+  // computed against today (from overQuotaGoals); the night-owl set belongs to
+  // yesterday (from selectLastNightGoals' overQuota bucket, quota counted
+  // against yesterday's ISO week). Both read status from extraCheckInByGoal,
+  // which is keyed on extraDate — yesterday at night, today by day. A `skipped`
+  // row is suppressed: "Did anything else…" is a done-only evidence surface, so
+  // a stale skip (e.g. a cadence edit left an old skipped row on a now-over-quota
+  // day) shouldn't read as noise here. null → tap to log; done → removable.
+  const overQuotaSource = isNightOwl ? lastNightOverQuotaGoals : overQuotaGoals;
+  const overQuotaExtras = overQuotaSource
+    .map((g) => ({
+      id: g.id,
+      name: g.name,
+      categoryColor: g.category?.color ?? UNCATEGORIZED_COLOR,
+      status: (extraCheckInByGoal.get(g.id)?.status ?? null) as
+        | "done"
+        | "skipped"
+        | null,
+      kind: "over_quota" as const,
+    }))
+    .filter((g) => g.status !== "skipped");
   const extraGoals = [...offTodayGoals, ...overQuotaExtras];
 
   // Header progress counts SCHEDULED goals only — extras are evidence, never
@@ -256,7 +266,9 @@ async function TodaySection() {
   const doneCount = scheduledToday.filter((c) => c.status === "done").length;
   const skippedCount = scheduledToday.filter((c) => c.status === "skipped").length;
   const remaining = requiredGoals.length - doneCount - skippedCount;
-  const extraToday = offTodayGoals.filter((g) => g.status === "done").length;
+  // Every logged extra counts toward the "· N extra" suffix — both off-target
+  // and over-quota chips. Effort is seen in the header, not just on the chip.
+  const extraToday = extraGoals.filter((g) => g.status === "done").length;
 
   // doneThisWeek (for count-goal pace) only depends on the current week.
   const paceByGoal = new Map<string, number>();
@@ -285,7 +297,9 @@ async function TodaySection() {
           skippedCount,
           remaining,
           extraToday,
-          // Over-quota chips are daytime-only, so the "caught up" line is too.
+          // The "all caught up for the week" line is about TODAY's goals being
+          // quota-met, so it stays daytime-only; night-owl over-quota chips
+          // belong to yesterday and surface as extras, counted via extraToday.
           overQuotaCount: isNightOwl ? 0 : overQuotaGoals.length,
           isNightOwl,
         })}
@@ -317,7 +331,7 @@ async function TodaySection() {
         </div>
       )}
 
-      {lastNightGoals.length > 0 ? (
+      {lastNightRequiredGoals.length > 0 ? (
         <div className="mt-8">
           <h2 className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
             Still open from last night
@@ -326,7 +340,7 @@ async function TodaySection() {
             Up late? Yesterday is still open until 5am.
           </p>
           <div className="space-y-2">
-            {lastNightGoals.map((g) => (
+            {lastNightRequiredGoals.map((g) => (
               <TodayGoalCard
                 key={g.id}
                 goalId={g.id}

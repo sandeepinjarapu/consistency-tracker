@@ -3,7 +3,7 @@
  *
  * Counts are over REQUIRED goals only — weekly-count goals whose quota was
  * already met before today are reclassified as optional over-quota extras
- * (see classifyTodayGoal) and must never appear as "left".
+ * (see classifyGoalForLogicalDay) and must never appear as "left".
  *
  * When nothing is required, two cases differ: if today's goals were all met
  * for the week (`overQuotaCount > 0` — the original "5 of 5 this week / 1 left"
