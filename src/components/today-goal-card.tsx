@@ -288,7 +288,7 @@ export default function TodayGoalCard({
                       className={`${tapTarget} text-xs rounded-full px-3 border transition-colors disabled:opacity-50 ${
                         selected
                           ? "border-gray-900 bg-gray-100 text-gray-900 font-medium"
-                          : "border-[color:var(--border)] text-[color:var(--muted)] hover:text-black hover:border-black"
+                          : "border-[color:var(--border)] text-[color:var(--muted)] hover:text-black"
                       }`}
                     >
                       {t === "flow" ? "In flow" : "Light effort"}
