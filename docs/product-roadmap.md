@@ -7,6 +7,12 @@ partners as a trust boundary, and a weekly rhythm as the core loop.
 
 Each item is tagged: **Now**, **Next**, **Later**, or **Spec only**.
 
+This file is a product-decision log, not a git history. The "Shipped and
+deployed" list records the PRs that closed a roadmap item — it is not an
+exhaustive changelog. Item-less PRs (e.g. ad-hoc copy fixes surfaced in
+conversation) live in git history and the PR list, not here. Use `git log` for
+the complete ledger.
+
 ---
 
 ## Now: Small polish with high trust impact
