@@ -349,49 +349,89 @@ check-in-completes-quota stability, off-target extras, night-owl over-quota chip
 keyed on yesterday, Monday-2am ISO-week behavior, and hidden skipped over-quota
 rows.
 
-### 19. Check-in feel / session quality (discovery only) `Spec only`
+### 19. Effort texture (how fully you showed up) `Spec only`
 
-**Idea:** Distinguish "showed up but it was rough" from "showed up and it
-was strong" — a signal richer than done/skipped/extra. Notes already cover
-this, but they're free-text, optional, and the `+ Add note` affordance is
-easy to miss.
+> Discovery resolved 2026-06-22 against a 32-row check-in note audit. The
+> shape below is decided; build is gated only on UI copy/labels and explicit
+> sign-off. Was formerly "Check-in feel / session quality."
 
-**Philosophy fit:** In tension with Design Principle 1 (evidence, not
-grades) if built as a numeric scale or anything evaluative like "Good /
-Alright / Can do better" — that reads as a performance review, not a
-personal record. Only acceptable as reflection texture: optional, three
-qualitative non-ranked states (e.g. `strong` / `okay` / `rough`), never
-averaged into a number, never affecting completion/streak scoring, never
-shared with partners or in email in V1.
+**Validated need — offload the binary's dissonance.** `done` / `skipped`
+forces two different truths into one bit, so the owner negotiates with the
+checkbox: "I did *something* but it was weak — do I mark done or skip?" and
+then carries the leftover feeling (marked done but barely; or did real effort
+yet marked skipped and felt bad). The feature relaxes `done` to its honest
+meaning — *I showed up* — and lets the owner privately record *how fully*, so
+that load comes off the checkbox and attention goes to growth, habit, and
+reflection. The point is **recognition, not grading**.
 
-**Open questions before any code:**
+**Rejected hypothesis.** The original "notes are buried / under-used" framing
+is false. The note audit shows notes are used heavily and serve three jobs —
+task evidence ("spoke to Umang"), how-it-went ("could do better" / "worth
+it"), and next-step planning ("will rest tomorrow"). ~27% carry an explicit
+intensity signal. The gap is *scannability and checkbox-dissonance*, not a
+missing affordance.
 
-1. Is the gap real, or is the existing note affordance just under-used
-   because it's visually buried?
-2. Capture grain — **not yet decided, and the schema differs by choice**:
-   - **Weekly, per goal:** one `Strong · Okay · Rough` prompt per goal per
-     week inside Reflections. Field would live on the reflection/week row
-     (something like `weekly_goal_feel`), not on `check_ins`.
-   - **Daily, per check-in:** one optional prompt after Mark done. Field
-     would live on `check_ins` (something like `session_feel`).
-   - These are different data models, not two UI skins on one field. Do not
-     pick a field name until the grain is chosen.
-3. Historical rows: whichever grain is chosen, the field is simply `null`
-   — not backfilled, not inferred from notes, never shown as a gap.
-4. Privacy leak guard: if prototyped inside Reflections, this field must be
-   excluded from the shared-reflection payload regardless of the reflection's
-   own Private/Shared toggle — that toggle governs Keep/Let go/Try
-   next/Notes today, and this field must not silently ride along with it.
+**Three axes, deliberately untangled:**
 
-**Recommended sequencing:** Do not build yet. If revisited, prototype the
-weekly-reflection grain first — it adds meaning without daily friction and
-stays inside a surface that's already allowed to summarize. Only promote to
-the per-check-in grain if the weekly version proves useful and raising the
-note affordance's visibility still isn't enough.
+1. **Did I show up?** → `done` / `skipped`. The scoring axis, unchanged.
+2. **How fully did I show up?** → the new private effort texture (this item).
+3. **What happened?** → the freeform check-in note, unchanged.
 
-**Trigger to revisit:** Repeated personal use shows notes aren't capturing
-this, or check-in notes are observed to be rare because the affordance is
-missed.
+**Scope decision:** formalize the **effort axis only** in V1. Difficulty
+("felt hard"), meaning ("worth it"), and everything else stay in freeform
+notes; revisit a richer vocabulary only when a real need appears.
+
+**V1 shape (decided):**
+
+- Optional texture chip on **`done` only** — `In flow` / `Light effort`
+  (labels still open). `skipped` keeps its existing constraint reasons and
+  gets **no** chip: "effort" on a non-show-up is muddy, and relaxing `done`
+  to "I showed up" already absorbs the weak-but-real day.
+- **Blank is normal** — the majority of `done` days carry no chip. Chips mark
+  only the deviations (the flow day, the I-tried-but-it-was-light day). Never
+  a required pick, never a nag.
+- **`Light effort` is fully scored like any `done` — never discounted.**
+  Showing up counts; that is the philosophy. The thing that must never count
+  ("marked done but did nothing") is still a `skip`. A future build must not
+  "helpfully" weight a light-effort day for less — that rebuilds the grade.
+- **Daily grain** — field on `check_ins` (e.g. `session_feel`), captured at
+  check-in. This corrects the earlier "weekly-first" prior: the dissonance
+  happens *at check-in time*, so weekly-only capture can't fix it.
+- Historical rows simply `null` — not backfilled, never inferred from notes,
+  never shown as a gap.
+
+**Weekly reflection summary (decided):** Reflections shows a private,
+per-goal, **within-week** glance of light vs flow days ("this week on
+Writing: 2 in flow, 1 light effort"), as reflection material. Absent if
+nothing was logged, exactly like check-ins.
+
+**Guardrails — the explicit don'ts:**
+
+- Owner-private. Never shown to partners, never in email — **even when the
+  reflection itself is shared** (inherits the daily-note boundary; does not
+  ride the reflection's Private/Shared toggle).
+- Never affects scoring, completion, streaks, rings, or any unlock.
+- No persistent calendar/ring intensity marker — visual repetition of a
+  "lesser" mark becomes a staring verdict even without a number.
+- Within-week descriptive only: **no cross-week trend, comparison, arrow, or
+  "you improved / declined" framing.** A single week's snapshot is reflection;
+  a trajectory line is a grade. The owner draws the trajectory; the app never
+  computes it.
+- Copy reads as texture ("2 in flow"), never evaluation ("good week!").
+
+**Success test:** net mental load **down** — fewer check-ins where the owner
+negotiates with the checkbox. If the chip ever feels like a required rating
+chore, it has failed its own purpose, regardless of how kind the labels are.
+
+**Known V1 gap (accepted):** strict-*output* goals where the owner genuinely
+tried but missed the output (e.g. wrote 40 of 200 words) have no `done`
+(output unmet) and no chip on `skip`, so they fall to `skip` + reason + note.
+Near-nonexistent in the audit; the note carries it; acceptable for V1.
+
+**Build gate:** `Spec only` until UI copy/labels are settled and the change
+gets explicit sign-off. When built, it is a domain-state change (new private
+field, new Reflections surface) — follow [change-protocol.md](change-protocol.md)
+and update [app-model.md](app-model.md) §6/§7.
 
 ### 14. Earlier weeks navigation: month grouping and status badges `Spec only`
 
