@@ -274,7 +274,7 @@ export default function TodayGoalCard({
             {current?.status === "done" ? (
               <div className="mb-2">
                 <p className="text-[11px] text-[color:var(--muted)] mb-1">
-                  How did it go? <span className="opacity-70">(optional)</span>
+                  How did you show up? <span className="opacity-70">(optional)</span>
                 </p>
                 <div className="flex items-center gap-1.5">
                 {(["flow", "light"] as const).map((t) => {
