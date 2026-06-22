@@ -287,7 +287,7 @@ export default function TodayGoalCard({
                       aria-pressed={selected}
                       className={`${tapTarget} text-xs rounded-full px-3 border transition-colors disabled:opacity-50 ${
                         selected
-                          ? "border-black bg-black text-white"
+                          ? "border-gray-900 bg-gray-100 text-gray-900 font-medium"
                           : "border-[color:var(--border)] text-[color:var(--muted)] hover:text-black hover:border-black"
                       }`}
                     >
