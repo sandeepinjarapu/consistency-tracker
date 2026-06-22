@@ -87,7 +87,7 @@ export function reactionSentence(
     s.latestWeek >= currentWeekStart
       ? "this week"
       : `the week of ${shortWeek(s.latestWeek)}`;
-  const verb = s.kind === "saw" ? "saw this" : "was proud of this";
+  const verb = s.kind === "saw" ? "saw this goal" : "was proud of this";
   return s.weeks === 1
     ? `${s.reactorName} ${verb} ${latest}.`
     : `${s.reactorName} ${verb} in ${s.weeks} separate weeks, most recently ${latest}.`;

@@ -88,7 +88,7 @@ describe("reactionSentence", () => {
         { kind: "saw", reactorName: "Richa", weeks: 1, latestWeek: "2026-05-25" },
         current
       )
-    ).toBe("Richa saw this this week.");
+    ).toBe("Richa saw this goal this week.");
   });
 
   it("dates a single older week", () => {
@@ -97,6 +97,6 @@ describe("reactionSentence", () => {
         { kind: "saw", reactorName: "Richa", weeks: 1, latestWeek: "2026-05-18" },
         current
       )
-    ).toBe("Richa saw this the week of May 18.");
+    ).toBe("Richa saw this goal the week of May 18.");
   });
 });
