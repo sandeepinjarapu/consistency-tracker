@@ -60,13 +60,15 @@ describe("buildReactionSummaries", () => {
 describe("reactionSentence", () => {
   const current = "2026-05-25";
 
-  it("phrases a proud streak with 'this week' when latest is the current week", () => {
+  it("phrases multiple proud weeks as a distinct-week count, latest this week", () => {
     expect(
       reactionSentence(
         { kind: "proud", reactorName: "Richa", weeks: 3, latestWeek: "2026-05-25" },
         current
       )
-    ).toBe("Richa has been proud of this for 3 weeks, latest this week.");
+    ).toBe(
+      "Richa was proud of this in 3 separate weeks, most recently this week."
+    );
   });
 
   it("uses a dated 'week of' when the latest is older", () => {
@@ -75,15 +77,26 @@ describe("reactionSentence", () => {
         { kind: "proud", reactorName: "Richa", weeks: 2, latestWeek: "2026-05-18" },
         current
       )
-    ).toBe("Richa has been proud of this for 2 weeks, latest week of May 18.");
+    ).toBe(
+      "Richa was proud of this in 2 separate weeks, most recently the week of May 18."
+    );
   });
 
-  it("singularizes a single week", () => {
+  it("singularizes a single week without a 'most recently' clause", () => {
     expect(
       reactionSentence(
         { kind: "saw", reactorName: "Richa", weeks: 1, latestWeek: "2026-05-25" },
         current
       )
-    ).toBe("Richa has noticed this for 1 week, latest this week.");
+    ).toBe("Richa saw this goal this week.");
+  });
+
+  it("dates a single older week", () => {
+    expect(
+      reactionSentence(
+        { kind: "saw", reactorName: "Richa", weeks: 1, latestWeek: "2026-05-18" },
+        current
+      )
+    ).toBe("Richa saw this goal the week of May 18.");
   });
 });
