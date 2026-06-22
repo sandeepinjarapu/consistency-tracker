@@ -1,41 +1,68 @@
+import { dayOfWeekForDateString } from "@/lib/dates";
+
 /**
- * Today-list classification for a single goal on the logical day.
+ * Shared logical-day requiredness for a single goal — used by BOTH the daytime
+ * Today list and the night-owl "Still open from last night" list, so the quota
+ * rule lives in exactly one place. (PR #145 fixed only the daytime path; the
+ * night-owl path kept its own weekday-only rule and so re-grew the same "demand
+ * a quota-met goal" bug. This is the de-duplication.)
  *
- * Specific-day goals (`weeklyTarget == null`) are required whenever the day is
- * one of their target days — unchanged behavior.
+ * "Logical day" is whichever day the surface is prompting for: today for the
+ * daytime list, yesterday for the 12–5 AM night-owl list.
  *
- * Weekly-count goals ("N times per week, any day") store every weekday in
- * `target_days`, so a naive "today is a target day" rule demands a check-in
- * every single day even after the weekly promise is already met. That produced
- * the contradiction where a goal could read "✓ 5 of 5 this week" and still be
- * counted as "1 left". The fix keys requiredness on the quota, not the weekday:
+ * Specific-day goals (`weeklyTarget == null`) are required whenever the logical
+ * day is a target day. Weekly-count goals ("N×/week, any day") store every
+ * weekday in `target_days`, so requiredness keys on the quota, not the weekday:
  *
- * - Required while the quota still has room (`scoredDoneBeforeToday <
- *   weeklyTarget`), OR once today has contributed a check-in (`hasTodayCheckIn`)
- *   — so a card that *completed* the quota today stays visible as done rather
- *   than vanishing the instant it's tapped.
- * - Over-quota once the quota was already met *before* today and today is still
- *   open: not an obligation, but offered as optional extra evidence (a chip in
- *   "Did anything else today?"). Because the day is an eligible weekday, logging
- *   it uses the normal `markDone` path — NOT `markExtraDone`, which is only for
- *   off-target days (see `isExtraLoggable`).
+ * - required — quota still has room (`scoredDoneBeforeDay < weeklyTarget`), OR a
+ *   check-in already landed on the logical day (`hasCheckInOnDay`) so a card
+ *   that *completed* the quota that day stays visible rather than vanishing.
+ * - over_quota — quota was already met *before* the logical day and the day is
+ *   still open: optional, never an obligation.
+ * - not_applicable — the logical day isn't a target weekday for this goal.
  *
- * `scoredDoneBeforeToday` must count only done check-ins on eligible weekdays
- * (those in `target_days`) strictly before the logical day.
+ * `scoredDoneBeforeDay` must count only done check-ins on eligible weekdays,
+ * within the logical day's OWN ISO week, strictly before the logical day — see
+ * `scoredDoneBefore`. The "own ISO week" part matters at the Monday-pre-dawn
+ * boundary, where yesterday (Sunday) belongs to the previous ISO week.
  */
-export type TodayClass = "required" | "over_quota" | "not_today";
+export type LogicalDayClass = "required" | "over_quota" | "not_applicable";
 
-export function classifyTodayGoal(args: {
+export function classifyGoalForLogicalDay(args: {
   weeklyTarget: number | null;
-  inTargetToday: boolean;
-  hasTodayCheckIn: boolean;
-  scoredDoneBeforeToday: number;
-}): TodayClass {
-  const { weeklyTarget, inTargetToday, hasTodayCheckIn, scoredDoneBeforeToday } =
-    args;
+  inTargetDay: boolean;
+  hasCheckInOnDay: boolean;
+  scoredDoneBeforeDay: number;
+}): LogicalDayClass {
+  const { weeklyTarget, inTargetDay, hasCheckInOnDay, scoredDoneBeforeDay } = args;
 
-  if (!inTargetToday) return "not_today";
+  if (!inTargetDay) return "not_applicable";
   if (weeklyTarget == null) return "required";
-  if (hasTodayCheckIn || scoredDoneBeforeToday < weeklyTarget) return "required";
+  if (hasCheckInOnDay || scoredDoneBeforeDay < weeklyTarget) return "required";
   return "over_quota";
+}
+
+/**
+ * Count done check-ins that score toward a goal's weekly quota strictly before
+ * `beforeDate`, scoped to the ISO week starting `weekStart`. Only done rows on
+ * eligible weekdays (those in `targetDays`) count. Pass the ISO week start of
+ * the LOGICAL day (`isoWeekStart(today)` for daytime, `isoWeekStart(yesterday)`
+ * for night-owl) so the Monday-pre-dawn case counts Sunday's week, not the new
+ * one.
+ */
+export function scoredDoneBefore(
+  checkIns: { goal_id: string; date: string; status: string }[],
+  goalId: string,
+  beforeDate: string,
+  weekStart: string,
+  targetDays: number[]
+): number {
+  return checkIns.filter(
+    (c) =>
+      c.goal_id === goalId &&
+      c.status === "done" &&
+      c.date >= weekStart &&
+      c.date < beforeDate &&
+      targetDays.includes(dayOfWeekForDateString(c.date))
+  ).length;
 }

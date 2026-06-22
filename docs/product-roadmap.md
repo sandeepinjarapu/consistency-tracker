@@ -288,6 +288,32 @@ item 9) land, the "quota met for the period" logic and the
 Re-examine `classifyTodayGoal` and `scoredDoneBeforeToday` then rather than
 extending them speculatively now.
 
+### 22. `buildTodayModel`: one Today-page state model `Spec only`
+
+**Context:** Item 21 fixed the daytime over-quota bug; a follow-up
+(`fix/night-owl-quota-classification`) extended the SAME requiredness decision
+to the night-owl "Still open from last night" list via a shared
+`classifyGoalForLogicalDay` + `scoredDoneBefore` (`src/lib/today-required.ts`).
+That closed the duplicated-quota-rule drift — daytime and night-owl now share
+one classifier. But the Today route (`page.tsx`) still assembles the rest of
+its product state across several local branches: `requiredGoals` /
+`overQuotaGoals`, `lastNightGoals`, `offTodayGoals` / `overQuotaExtras`, and
+`todaySummary` inputs.
+
+**Idea:** a single pure `buildTodayModel({ goals, checkIns, today, hour,
+timezone })` returning `{ requiredGoals, lastNightGoals, extraGoals,
+summaryInput }`, so the page fetches data and renders, and the whole logical-day
+state becomes unit-testable as one unit (rather than a classifier in isolation
+plus page wiring). Deliberately deferred out of the night-owl fix to keep that
+PR a focused correctness change, not a page rewrite.
+
+**Scope guard:** state assembly only. Must NOT touch scoring (`computeStats`,
+`classifyWeek`, `computeTimePattern`), Goal detail / `WeekRows`, history,
+reflections, partner pages, weekly email, or server-action write semantics.
+
+**Trigger to revisit:** the next change that has to touch Today-page state in
+more than one of those branches at once, or another drift bug from the split.
+
 ### 19. Check-in feel / session quality (discovery only) `Spec only`
 
 **Idea:** Distinguish "showed up but it was rough" from "showed up and it
