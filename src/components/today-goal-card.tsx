@@ -272,7 +272,11 @@ export default function TodayGoalCard({
         {isChecked ? (
           <div className="mt-2">
             {current?.status === "done" ? (
-              <div className="flex items-center gap-1.5 mb-2">
+              <div className="mb-2">
+                <p className="text-[11px] text-[color:var(--muted)] mb-1">
+                  How did it go? <span className="opacity-70">(optional)</span>
+                </p>
+                <div className="flex items-center gap-1.5">
                 {(["flow", "light"] as const).map((t) => {
                   const selected = current?.effort_texture === t;
                   return (
@@ -291,6 +295,7 @@ export default function TodayGoalCard({
                     </button>
                   );
                 })}
+                </div>
               </div>
             ) : null}
             {editingNote ? (
