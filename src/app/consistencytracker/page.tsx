@@ -239,18 +239,23 @@ async function TodaySection() {
   // computed against today (from overQuotaGoals); the night-owl set belongs to
   // yesterday (from selectLastNightGoals' overQuota bucket, quota counted
   // against yesterday's ISO week). Both read status from extraCheckInByGoal,
-  // which is keyed on extraDate — yesterday at night, today by day.
+  // which is keyed on extraDate — yesterday at night, today by day. A `skipped`
+  // row is suppressed: "Did anything else…" is a done-only evidence surface, so
+  // a stale skip (e.g. a cadence edit left an old skipped row on a now-over-quota
+  // day) shouldn't read as noise here. null → tap to log; done → removable.
   const overQuotaSource = isNightOwl ? lastNightOverQuotaGoals : overQuotaGoals;
-  const overQuotaExtras = overQuotaSource.map((g) => ({
-    id: g.id,
-    name: g.name,
-    categoryColor: g.category?.color ?? UNCATEGORIZED_COLOR,
-    status: (extraCheckInByGoal.get(g.id)?.status ?? null) as
-      | "done"
-      | "skipped"
-      | null,
-    kind: "over_quota" as const,
-  }));
+  const overQuotaExtras = overQuotaSource
+    .map((g) => ({
+      id: g.id,
+      name: g.name,
+      categoryColor: g.category?.color ?? UNCATEGORIZED_COLOR,
+      status: (extraCheckInByGoal.get(g.id)?.status ?? null) as
+        | "done"
+        | "skipped"
+        | null,
+      kind: "over_quota" as const,
+    }))
+    .filter((g) => g.status !== "skipped");
   const extraGoals = [...offTodayGoals, ...overQuotaExtras];
 
   // Header progress counts SCHEDULED goals only — extras are evidence, never
@@ -261,7 +266,9 @@ async function TodaySection() {
   const doneCount = scheduledToday.filter((c) => c.status === "done").length;
   const skippedCount = scheduledToday.filter((c) => c.status === "skipped").length;
   const remaining = requiredGoals.length - doneCount - skippedCount;
-  const extraToday = offTodayGoals.filter((g) => g.status === "done").length;
+  // Every logged extra counts toward the "· N extra" suffix — both off-target
+  // and over-quota chips. Effort is seen in the header, not just on the chip.
+  const extraToday = extraGoals.filter((g) => g.status === "done").length;
 
   // doneThisWeek (for count-goal pace) only depends on the current week.
   const paceByGoal = new Map<string, number>();
@@ -290,7 +297,9 @@ async function TodaySection() {
           skippedCount,
           remaining,
           extraToday,
-          // Over-quota chips are daytime-only, so the "caught up" line is too.
+          // The "all caught up for the week" line is about TODAY's goals being
+          // quota-met, so it stays daytime-only; night-owl over-quota chips
+          // belong to yesterday and surface as extras, counted via extraToday.
           overQuotaCount: isNightOwl ? 0 : overQuotaGoals.length,
           isNightOwl,
         })}

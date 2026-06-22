@@ -65,4 +65,21 @@ describe("todaySummary", () => {
       todaySummary({ ...base, requiredCount: 2, doneCount: 2, extraToday: 1 })
     ).toBe("2 of 2 done · 1 extra");
   });
+
+  // extraToday now counts over-quota chips too (page.tsx derives it from the
+  // full extraGoals list, not just off-target). These pin the copy that a logged
+  // over-quota chip surfaces in the header — "seen, not scored".
+  it("a daytime over-quota done chip contributes '· 1 extra'", () => {
+    // requiredCount 0, the quota-met goal moved to an over-quota chip and was
+    // tapped done → counted in extraToday, named alongside the 'caught up' line.
+    expect(
+      todaySummary({ ...base, overQuotaCount: 1, extraToday: 1 })
+    ).toBe("You're all caught up for the week · 1 extra");
+  });
+
+  it("a night-owl over-quota done chip reads '· 1 extra from late last night'", () => {
+    expect(
+      todaySummary({ ...base, extraToday: 1, isNightOwl: true })
+    ).toBe("Nothing scheduled today · 1 extra from late last night");
+  });
 });
