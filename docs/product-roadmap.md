@@ -299,7 +299,7 @@ window will need to generalize beyond the ISO week. Re-examine
 `classifyGoalForLogicalDay` and `scoredDoneBefore` then rather than extending
 them speculatively now.
 
-### 22. `buildTodayModel`: one Today-page state model `Implemented — PR #147 pending`
+### 22. `buildTodayModel`: one Today-page state model `Done — PR #147 · Deployed`
 
 **Context:** Item 21 fixed the daytime over-quota bug; a follow-up
 (`fix/night-owl-quota-classification`) extended the SAME requiredness decision
@@ -597,14 +597,15 @@ or the dead CTA generates confusion or support noise.
 14. Item 18 — Reflection content in weekly email (partner "In their own words", self "Your reflection")
 15. PR #145 (item 21) — Today over-quota classification: quota-met weekly goals drop from the required list into optional over-quota chips; warmer "all caught up" header copy
 16. PR #146 (item 21 follow-up) — Night-owl symmetry: shared `classifyGoalForLogicalDay` across daytime + "Still open from last night"; night-owl over-quota chips keyed on yesterday (`isoWeekStart(yesterday)`); header counts over-quota extras; skipped over-quota chips hidden
+17. PR #147 (item 22) — `buildTodayModel` extraction; entry-state quota requiredness fix (surplus over-quota check-in stays a done chip, not a required card); model-level state-table tests
 
 ### Not started — ordered by effort and dependency
-17. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
+18. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
     before coding.
-18. **PR E (item 7):** Partner reaction compression — defer until a goal is
+19. **PR E (item 7):** Partner reaction compression — defer until a goal is
     shared with 3+ partners.
-19. **Item 6:** Calendar month alignment — revisit with real screenshots first.
-20. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
+20. **Item 6:** Calendar month alignment — revisit with real screenshots first.
+21. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
 
 ### Spec only / Later
 - Item 8: Planned break / vacation mode
