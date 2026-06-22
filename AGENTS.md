@@ -19,7 +19,7 @@ person sees. Examples:
 - goal status and goals-list rings
 - any future pause / vacation / longer-cadence feature
 
-**If the change is domain-state, read [docs/change-protocol.md](docs/change-protocol.md) before writing code.**
+**If the change is domain-state, start with [docs/app-model.md](docs/app-model.md) for the surface / invariant map, then read [docs/change-protocol.md](docs/change-protocol.md) before writing code.**
 
 Low-risk changes skip the protocol: copy, spacing, icons, loading skeletons,
 isolated non-state UI polish, and docs cleanup. Make the focused change.

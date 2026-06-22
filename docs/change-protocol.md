@@ -36,11 +36,16 @@ undecided — resolve it (or ask) before coding, do not let the code decide it.
 
 ## 3. List impacted surfaces
 
-Name every surface that renders the affected concept, and what each owns:
-Today, Goal detail / history, reflections, partner page, weekly email,
-calendar. A domain-state change is rarely confined to one surface — the
-recurring bug class here is fixing one surface and leaving another with the
-old rule.
+Name every surface that renders the affected concept, and what each owns. Use
+the ownership table and surface matrix in [app-model.md](app-model.md) to find
+the impacted surfaces and the invariants in play: Today, Goals list, Goal
+detail / history, reflections, partner page, weekly email, calendar. A
+domain-state change is rarely confined to one surface — the recurring bug class
+here is fixing one surface and leaving another with the old rule.
+
+If the change alters a §5 invariant, §6 trust boundary, §7 surface behavior, or
+§8 seam in [app-model.md](app-model.md), update that doc (or add an ADR) in the
+same PR. Otherwise state "no app-model change" in the PR body.
 
 ## 4. Encode the table as model-level tests, first
 
