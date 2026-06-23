@@ -10,6 +10,7 @@ Built with Next.js 15 (App Router), Supabase (Postgres + Auth + Row-Level Securi
 
 - **Goals, your way** — track a habit on **specific days** (e.g. weekdays) or as a **weekly count** ("3× a week, any day"). Group goals by category with colors, an optional goal document link, and a "why this matters" note that gives later reflection some context.
 - **Fast daily check-ins** — mark a goal *done* or *skipped* (with a reason: travel / illness / mood / other) and jot a short note. Cards take on a calm done/skipped tint so the day is scannable at a glance.
+- **Effort, recognized not graded** — on a *done* check-in you can privately note **how fully** you showed up: *In flow* or *Light effort*. It stays owner-private, is never scored, and is never shown to partners or in email; a quiet within-week effort glance in Reflections lets you see the pattern for yourself.
 - **Extra check-ins, seen not scored** — did something on an unscheduled day? A quiet "Did anything else today?" chip row lets you add it as extra evidence. If you go beyond a weekly quota on eligible days, the surplus is also shown as extra. Extras appear in your history, partner view, and reflection narrative as evidence of showing up, but never inflate streaks, completion rates, or weekly-met scoring.
 - **Calendar history** — goal pages show recent months as calendar grids and older months as a compact strip. The Goals page unlocks an aggregate calendar across all goals after 3+ active goals with some check-in history. The history is read-only; recent days are edited in the "This week" rows on a goal page (the current week plus a short grace period).
 - **Streaks and progress, not grades** — day streaks for specific-day goals, **week streaks** and quota progress for weekly-count goals, plus longest streak, this week's progress, and your typical time of day ("you usually do this in the morning"). Completion percentages are reserved for finished weekly reflections and the summary email.
@@ -76,7 +77,7 @@ Open http://localhost:3000.
 - `npm run test` / `npm run test:run` — Vitest (watch / run once)
 
 ## Testing
-The pure logic — timezone date math, streak/completion scoring, weekly-count cadence, extra check-in classification (scored vs. extra, off-target vs. over-quota), link safety, catch-up editable-window rules, email content and reflection rendering, and Resend error handling and retry backoff — is unit-tested with Vitest (349 tests):
+The pure logic — timezone date math, streak/completion scoring, weekly-count cadence, extra check-in classification (scored vs. extra, off-target vs. over-quota), link safety, catch-up editable-window rules, effort-texture validity and effort-glance summarizing, email content and reflection rendering, and Resend error handling and retry backoff — is unit-tested with Vitest (392 tests):
 ```bash
 npm run test:run
 ```
