@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   markDone,
@@ -33,6 +33,7 @@ export default function TodayGoalCard({
   checkIn,
   paceLabel,
   lateCheckIn = false,
+  onLocalCheckInChange,
 }: {
   goalId: string;
   name: string;
@@ -43,6 +44,7 @@ export default function TodayGoalCard({
   checkIn: CheckIn | null;
   paceLabel?: string;
   lateCheckIn?: boolean;
+  onLocalCheckInChange?: (next: CheckIn | null) => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -52,20 +54,17 @@ export default function TodayGoalCard({
   const [savingNote, startNoteTransition] = useTransition();
   const skipMenuRef = useRef<HTMLDivElement>(null);
 
-  // Reflect the action in the UI immediately; reconciles to the server prop
-  // when the background router.refresh() lands (and reverts on failure).
-  const [optimistic, setOptimistic] = useOptimistic(checkIn);
-
-  // Late check-in cards deliberately never refresh or revalidate in-session
-  // (the card must survive while a note is being written), so useOptimistic is
-  // the wrong tool for them: it reverts to the `checkIn` prop the instant the
-  // transition ends, and that prop never catches up without a refresh. Late
-  // cards therefore own durable local state instead. Only a reload or
-  // navigation reconciles them with the server (which filters logged goals out
-  // of the "Still open from last night" list). `current` is the single source
-  // the render reads, picked per mode.
+  // The card owns its immediate display state so a tap can flip the UI before
+  // the server write + route refresh finishes. Regular cards reconcile when
+  // the refreshed server prop arrives; late-night cards intentionally do not
+  // refresh in-session, so they keep the same durable local behavior.
+  const [regularCheckIn, setRegularCheckIn] = useState<CheckIn | null>(checkIn);
   const [localCheckIn, setLocalCheckIn] = useState<CheckIn | null>(checkIn);
-  const current = lateCheckIn ? localCheckIn : optimistic;
+  const current = lateCheckIn ? localCheckIn : regularCheckIn;
+
+  useEffect(() => {
+    if (!lateCheckIn) setRegularCheckIn(checkIn);
+  }, [checkIn, lateCheckIn]);
 
   function optimisticRow(
     status: "done" | "skipped",
@@ -119,37 +118,53 @@ export default function TodayGoalCard({
 
   function run(fn: () => Promise<void>, next: CheckIn | null) {
     setShowSkipMenu(false);
+    const prev = current;
     if (lateCheckIn) {
       // Durable local state, no refresh and no server revalidation (the action
       // is called with skipRevalidate=true). The card stays put so a note can
       // be written; it only leaves the list on reload/navigation.
-      const prev = localCheckIn;
       setLocalCheckIn(next);
+      onLocalCheckInChange?.(next);
       startTransition(async () => {
         try {
           await fn();
         } catch {
           setLocalCheckIn(prev);
+          onLocalCheckInChange?.(prev);
         }
       });
       return;
     }
+    setRegularCheckIn(next);
+    onLocalCheckInChange?.(next);
     startTransition(async () => {
-      setOptimistic(next);
       try {
         await fn();
         router.refresh();
       } catch {
-        // swallow — RLS errors shouldn't occur for own goals. On failure we
-        // skip the refresh, so the optimistic value reverts to the prop.
+        // RLS errors shouldn't occur for own goals. Revert the local display
+        // if the write fails; otherwise the refresh reconciles to server truth.
+        setRegularCheckIn(prev);
+        onLocalCheckInChange?.(prev);
       }
     });
   }
 
   function saveNote() {
     startNoteTransition(async () => {
-      await updateCheckInNote(goalId, date, noteDraft);
-      setEditingNote(false);
+      const trimmed = trimNoteDraft(noteDraft);
+      try {
+        await updateCheckInNote(goalId, date, noteDraft);
+        if (current) {
+          const next = { ...current, note: trimmed };
+          if (lateCheckIn) setLocalCheckIn(next);
+          else setRegularCheckIn(next);
+          onLocalCheckInChange?.(next);
+        }
+        setEditingNote(false);
+      } catch {
+        return;
+      }
       // Saving the note completes the late check-in's job, so let the server
       // reconcile: the now-logged goal drops out of the night-owl list and the
       // card leaves. Same path for regular cards (the prop catches up).
@@ -350,4 +365,9 @@ export default function TodayGoalCard({
       </div>
     </div>
   );
+}
+
+function trimNoteDraft(note: string): string | null {
+  const trimmed = note.trim().slice(0, 100);
+  return trimmed.length > 0 ? trimmed : null;
 }

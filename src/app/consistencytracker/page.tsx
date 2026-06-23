@@ -9,6 +9,7 @@ import { UNCATEGORIZED_COLOR } from "@/lib/colors";
 import { computeTodayBanner } from "@/lib/today-banner";
 import { computeGoalRowState, type GoalRowState } from "@/lib/today-goal-row";
 import TodayGoalCard from "@/components/today-goal-card";
+import TodayLoop from "@/components/today-loop";
 import LogExtra from "@/components/log-extra";
 import Skeleton from "@/components/skeleton";
 import type { CheckIn } from "@/lib/actions/check-ins";
@@ -69,11 +70,12 @@ async function TodaySection() {
   const dow = dayOfWeekIn(timezone);
   const hour = hourIn(timezone);
   const firstName = profile?.display_name?.split(" ")[0];
+  const prettyDate = formatTodayHeaderDate(timezone);
 
   if (goals.length === 0) {
     return (
       <div>
-        <Header timezone={timezone} firstName={firstName} />
+        <Header timezone={timezone} firstName={firstName} prettyDate={prettyDate} />
         <div className="border border-dashed border-[color:var(--border)] rounded-lg p-10 text-center">
           <p className="text-sm mb-4">
             Start with one small promise you want evidence for.
@@ -180,37 +182,16 @@ async function TodaySection() {
 
   return (
     <div>
-      <Header
+      <TodayLoop
         timezone={timezone}
         firstName={firstName}
-        summary={todayModel.summary}
+        prettyDate={prettyDate}
+        date={today}
+        initialSummaryInput={todayModel.summaryInput}
+        goals={todayModel.requiredGoals}
+        checkIns={Array.from(todayModel.checkInByGoal.entries())}
+        paceByGoal={Array.from(paceByGoal.entries())}
       />
-
-      {todayModel.requiredGoals.length === 0 ? null : (
-        <div className="space-y-2 mt-6">
-          {todayModel.requiredGoals.map((g) => {
-            const paceLabel =
-              g.weekly_target != null
-                ? (paceByGoal.get(g.id) ?? 0) >= g.weekly_target
-                  ? `✓ ${g.weekly_target} of ${g.weekly_target} this week`
-                  : `${paceByGoal.get(g.id) ?? 0} of ${g.weekly_target} this week`
-                : undefined;
-            return (
-              <TodayGoalCard
-                key={g.id}
-                goalId={g.id}
-                name={g.name}
-                description={g.description}
-                categoryColor={g.category?.color ?? UNCATEGORIZED_COLOR}
-                date={today}
-                timezone={timezone}
-                checkIn={todayModel.checkInByGoal.get(g.id) ?? null}
-                paceLabel={paceLabel}
-              />
-            );
-          })}
-        </div>
-      )}
 
       {todayModel.lastNightRequiredGoals.length > 0 ? (
         <div className="mt-8">
@@ -399,19 +380,14 @@ function AllGoalsSkeleton() {
 function Header({
   timezone,
   firstName,
+  prettyDate,
   summary,
 }: {
   timezone: string;
   firstName?: string;
+  prettyDate: string;
   summary?: string;
 }) {
-  const prettyDate = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  }).format(new Date());
-
   return (
     <header className="mb-2">
       <h1 className="text-xl font-light tracking-tight">
@@ -423,6 +399,15 @@ function Header({
       </p>
     </header>
   );
+}
+
+function formatTodayHeaderDate(timezone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date());
 }
 
 // Compose the calm re-engagement copy from the row state.
