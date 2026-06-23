@@ -485,11 +485,15 @@ inspection and are worth doing; one is a discipline habit, not a library.
 **1. Untyped Supabase boundary — real, worth doing.**
 Confirmed: `createClient()` in `src/lib/supabase/server.ts` and `client.ts` is
 untyped (`@supabase/supabase-js` v2, no `Database` generic), there's no
-generated types file in the repo, and there are ~108 `.from(...)` call sites
+generated types file in the repo, and there are 111 `.from(...)` call sites
 across `src/app`, `src/lib`, `src/components` relying on hand-written row
 types (`Goal`, `CheckIn`, reflection rows, etc.) staying in sync with
 `supabase/schema.sql` by hand. This is exactly the kind of drift that caused
 past schema/doc mismatches.
+- Since this was written, effort texture shipped (`effort_texture` on
+  `check_ins`), adding another owner-private field that must stay aligned
+  across schema, app types, partner views, and email surfaces. That makes
+  generated Supabase types more valuable, not less.
 - Generate types via the Supabase CLI from `supabase/schema.sql` /
   migrations, type `createClient<Database>()` in both `server.ts` and
   `client.ts`.
@@ -539,6 +543,11 @@ new library — it was modeling the states explicitly.
 - Going forward: any component juggling 3+ overlapping state sources
   (optimistic, durable-local, server-prop, in-flight) gets its state
   transitions written out before patching, not after a bug report.
+- The same review rule now applies to `updateCheckInEffort` /
+  `effort_texture`, because it shares the check-in card path and the late-card
+  `skipRevalidate` behavior.
+- For future domain-state changes, follow `docs/change-protocol.md`: write the
+  state-transition table before coding and include it in the PR body.
 - `useReducer` is the right escalation for a component if it grows past
   that; XState is not warranted anywhere in this app today and shouldn't be
   added speculatively.
