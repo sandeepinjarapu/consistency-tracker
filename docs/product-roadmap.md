@@ -49,7 +49,9 @@ fine for now, but a bottom sheet may fit the product better if Skip starts to
 feel like a considered choice rather than a tiny dropdown action.
 
 **Trigger to revisit:** real mobile use shows cramped tapping, accidental
-selection, or skip reasons become longer / more nuanced.
+selection, skip reasons become longer / more nuanced, or the menu opening over
+the next card feels sloppy on mobile. The UX audit observed the overlay on
+desktop as acceptable but worth mobile checking before deeper polish.
 
 ### 11. Reflections page: visual structure and density `Done — PR #143 · Deployed`
 
@@ -80,6 +82,54 @@ afternoon` (plain language, singular-aware). Late-night bucket copy fixed to
   tooltips: `Tue, Jun 4 · Missed` instead of `Tuesday · Missed`.
 - `TimeHistogram` late-night copy: `N check-ins late into the night`.
 
+### 23. Goal form: duplicate category options `Now`
+
+**Source:** UX audit session `019ef994-562f-7512-9f23-60baec13e440`.
+
+**Problem:** The goal form category dropdown renders every category row it
+receives. If duplicate category rows exist with the same visible name, the
+dropdown shows duplicate options. Even if the selected value works, setup feels
+unreliable because the user sees the same category repeated.
+
+**Proposed direction:** De-duplicate visible category options in the form
+before rendering, while preserving the underlying selected `category_id`.
+Prefer the canonical / earliest category row for duplicate names unless the DB
+model exposes a better ordering signal.
+
+**Surfaces affected:** `src/components/goal-form.tsx`.
+
+**Why roadmap-worthy:** It is a small fix, but it sits inside goal setup - a
+trust-sensitive moment where the user is defining what the tracker should
+remember. This is more than visual polish.
+
+### 24. Reflections: color and save-context clarity `Now`
+
+**Source:** UX audit session `019ef994-562f-7512-9f23-60baec13e440`.
+
+**Problem:** Reflections currently has two small trust/meaning issues:
+
+- Missed days in the week grid use a soft red/pink state. That is muted, but it
+  still conflicts with the product principle that missed habits should not feel
+  like a verdict.
+- Expanded earlier weeks can show editable reflection fields and a `Save
+  reflection` action, which may make it unclear which week will be saved.
+
+**Proposed direction:**
+
+- Revisit the missed-day color in Reflections so it communicates "not done" /
+  "needs reflection" without verdict-red language. Keep it distinct from skipped
+  and empty.
+- Make the editable week context explicit when saving an earlier week, either in
+  the button copy (`Save Jun 15-21`) or a nearby lightweight context line.
+
+**Surfaces affected:** `src/components/week-grid.tsx`,
+`src/app/consistencytracker/reflections/page.tsx`,
+`src/components/reflection-editor.tsx`.
+
+**Decision needed:** Whether the missed-day color vocabulary should change only
+in Reflections, or be reconciled across every history/calendar surface. Start
+with Reflections unless the code shows the same verdict-red problem elsewhere.
+
 ---
 
 ## Next: Product payoff and scale improvements
@@ -107,6 +157,11 @@ center dot, `skipped` = gray ring + horizontal bar, `empty` = gray outline,
 
 **Mobile ring cap shipped:** 4 rings on mobile (index ≥ 4 hidden below `sm:`),
 6 on desktop. Pure CSS, no JS resize logic.
+
+**Deferred UX-audit follow-up:** the rings are elegant but compressed. New
+users may not understand full arc / partial arc / center dot / skipped bar /
+gray outline from the row alone. Fold this into item 26 rather than reopening
+the shipped rings work directly.
 
 ### 5. Aggregate calendar unlock for engaged single-goal users `Done — PR #131 · Deployed`
 
@@ -154,6 +209,12 @@ history below the first viewport.
 
 **Trigger to revisit:** Any goal shared with more than 3 partners, or reactions
 pushing This Week/history below the first viewport.
+
+**UX-audit note:** even with few partners, the partner-detail reaction buttons
+can sit visually far from the `This week` / `Last week` labels on desktop.
+When this item is picked up, review both scaling and spatial grouping; the
+small-count layout should not make the reaction target feel detached from the
+week it applies to.
 
 ### 13. Reflection visibility: replace pill toggle with inline glyph `Done — PR #144 · Deployed`
 
@@ -216,6 +277,58 @@ call, not a code call.
 **Shipped:** Archive confirmation dialog in `goal-row-menu.tsx` shows
 *"Partners will no longer see this goal."* when `isShared` is true. The
 `isShared` prop is threaded from the goals list query.
+
+### 25. Partner and sharing trust-boundary copy `Next`
+
+**Source:** UX audit session `019ef994-562f-7512-9f23-60baec13e440`.
+
+**Problem:** The app's privacy model is strong, but the highest-anxiety
+moments still under-explain it locally. A user inviting a partner or seeing a
+shared goal should not have to remember the privacy page to know what the other
+person can and cannot see.
+
+**Proposed direction:**
+
+- Partner invite: include one compact line near the invite action explaining
+  what partners see (`goal name, cadence, check-ins, shared reflections`) and
+  what stays private (`daily notes, effort texture, private reflections`).
+- Shared goal area: make the `Shared with X` row a little more self-explanatory
+  without turning it into a tutorial.
+- Reflection visibility: already improved, but keep it under this review if
+  the sharing model changes again.
+
+**Surfaces affected:** `src/app/consistencytracker/partners/page.tsx`,
+`src/app/consistencytracker/goals/[id]/page.tsx`,
+`src/components/reflection-editor.tsx`, `docs/app-model.md`.
+
+**Why roadmap-worthy:** This is trust-boundary UX, not cosmetic copy. It
+protects the partner feature from feeling ambiguous.
+
+### 26. Visual language decoding: rings, grids, icons, and calendars `Next`
+
+**Source:** UX audit session `019ef994-562f-7512-9f23-60baec13e440`.
+
+**Problem:** Several surfaces now rely on compact visual language: goal-list
+week rings, aggregate calendars, week grids, shared/reaction icons, and hover
+tooltips. This is efficient for returning users, but a new user may not decode
+what the signals mean without exploration.
+
+**Proposed direction:** Add lightweight local decoding where the signal first
+matters. This should be closer to a legend / inline explanation than a tutorial:
+
+- Goals list: small `How to read this` affordance or inline legend for rings
+  once per page.
+- Goal detail / history grids: make editable vs. historical cells clearer
+  without adding instructional paragraphs.
+- Shared / reaction icons: pair with text when the meaning affects trust or
+  action; keep icon-only only where the row context already explains it.
+
+**Surfaces affected:** Goals overview, Goal detail, Reflections, Partner
+detail.
+
+**Guardrail:** Do not make the app noisy. The product's restraint is still a
+strength; the goal is to make meaning discoverable, not to add onboarding
+chrome everywhere.
 
 ---
 
@@ -672,12 +785,21 @@ or the dead CTA generates confusion or support noise.
 18. PRs #150–#154 (item 19) — Effort texture: owner-private `In flow` / `Light effort` chip on `done` check-ins, never scored; private within-week effort glance in Reflections; migration `0017_effort_texture.sql`
 
 ### Not started — ordered by effort and dependency
-19. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
+19. **UX-1 (item 23):** Goal form duplicate category options — small setup
+    trust bug; fix before more form polish.
+20. **UX-2 (item 24):** Reflections color/save-context clarity — small,
+    trust-sensitive polish on the weekly reflection surface.
+21. **UX-3 (item 25):** Partner/sharing trust-boundary copy — write the exact
+    visible/private language before coding, then update app-model if wording
+    changes the mental model.
+22. **UX-4 (item 26):** Visual language decoding — prototype the smallest
+    useful legends/inline explanations for rings, grids, icons, and calendars.
+23. **PR H (item 16):** Archived goal row UI — mock tab vs. section shape
     before coding.
-20. **PR E (item 7):** Partner reaction compression — defer until a goal is
+24. **PR E (item 7):** Partner reaction compression — defer until a goal is
     shared with 3+ partners.
-21. **Item 6:** Calendar month alignment — revisit with real screenshots first.
-22. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
+25. **Item 6:** Calendar month alignment — revisit with real screenshots first.
+26. **Item 15:** Partner page scaling — spec lazy loading before real usage hits.
 
 ### Spec only / Later
 - Item 8: Planned break / vacation mode
@@ -686,6 +808,8 @@ or the dead CTA generates confusion or support noise.
 - Item 20: Frontend architecture hygiene — typed Supabase client + error
   boundaries are real and bounded; UI primitives only opportunistically;
   no TanStack Query / XState / offline sync / query-param libs warranted yet
+- Item 3 deferred: mobile Skip bottom sheet — revisit only if mobile use shows
+  the current menu feels cramped or sloppy.
 
 **Rule:** Do not combine model changes with polish PRs. Planned breaks and
 longer cadences must not ride along with UI cleanup.
